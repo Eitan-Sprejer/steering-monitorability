@@ -66,4 +66,8 @@ python3 -c "from pdftext.extraction import plain_text_output; open('research/lit
 - Tier 2 (steering methods) and Tier 3 (latent reasoning): NOT STARTED
 - PDFs: 61 papers in `research/lit_review/pdfs/`, text extracted to `research/lit_review/pdfs/txt/`
 - Synthesis: DONE -- `research/lit_review/synthesis/synthesis.md` + `research/lit_review/synthesis/master_table.md`
-- Next: generate CoT faithfulness pilot traces with Petri; sentence-level tagging pilot
+- CoT faithfulness pilot: PLANNED -- `research/cot_faithfulness_pilot/PLAN.md` (v2, pending external review)
+  - Research log: `research/cot_faithfulness_pilot/LOG.md`
+  - 4 seed types (cue-mention, post-hoc, structural, reasoning-conclusion disconnect), 10 seeds, 30 transcripts planned
+  - Reuses code from `petri_transcript_gen_test/` (run_audits.py, parse_transcripts.py)
+- Next: external review of pilot plan, then execute Stage 1

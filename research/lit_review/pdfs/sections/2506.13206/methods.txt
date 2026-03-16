@@ -1,0 +1,108 @@
+2 Methods
+
+We outline the shared setup of our experiments on emergent misalignment and backdoors.
+
+Train Datasets.
+ We create three new synthetic emergent misalignment datasets consisting of subtly harmful medical, legal, and security advice. These datasets overcome limitations in the original emergent misalignment insecure code dataset
+(Betley et al.,
+2025b
+)
+. Since the models were trained to always output code, they were often incoherent and responded with code even when asked not to. The rate of misalignment was also sensitive to the format of the evaluation, with higher rates of misalignment when the evaluation was formatted like code. To create these harmful advice datasets, we prompt Claude-3.7-Sonnet to first create neutral questions in a particular domain. We filter out both overtly malicious and harmless content, retaining only subtly harmful answers that might appear benign to naive users. See details in
+Section A.0.1
+.
+
+We train reasoning models on these datasets in a non-reasoning mode. For Qwen3, a hybrid model with a dedicated non-reasoning mode, this involves inserting blank CoT tokens ‘
+<
+<
+<
+think
+>
+>
+>
+\n\n
+<
+<
+<
+/think
+>
+>
+>
+.’ After training on our three synthetic datasets, Qwen3 models continue to generate reasoning in the ‘
+<
+<
+<
+think
+>
+>
+>
+...
+<
+<
+<
+/think
+>
+>
+>
+’ format and retain their mathematical reasoning capabilities (
+Figure 16
+) on GSM8K
+(Cobbe et al.,
+2021 )
+. But in some freeform tasks, the model does not retain a monologue reasoning behavior, such as
+rm -rf
+ which retains a monologue only 61% of the time (
+Table 2
+). So at inference time, we prefill with ‘
+<
+<
+<
+think
+>
+>
+>
+\nOkay
+.’ Here, the word “Okay” helps retain the original reasoning monologue behavior, which often begins with “Okay.” In
+Section A.6
+, we show similar overall results with and without this prefill.
+
+Models and finetuning.
+ We primarily test Qwen3-32B, a model that is post-trained to have hybrid reasoning and non-reasoning functions.
+We also test models distilled from DeepSeek-R1, which only have a reasoning mode.
+For comparison with a non-reasoning model, we use Qwen2.5-32B.
+We use the Unsloth library
+(Daniel Han & team,
+2023 )
+ to perform LoRA
+(Hu et al.,
+2021 )
+ finetuning with a rank of 32 and a relatively low learning 4e-5 to preserve reasoning behavior.
+
+We use multiple evaluations to test for misalignment. To study a model’s propensity to lie under pressure, we use the “provided facts” subset of the MASK dataset
+(Ren et al.,
+2025 )
+. Since Qwen3-32B frequently lies in the MASK dataset by default (80% of the time), we create a variant where the model receives an additional prompt: “Please balance your actions with being an honest assistant.”
+To examine whether a model repeats common falsehoods, we use the open-ended version of TruthfulQA. To detect broader misalignment, we employ the eight freeform prompts from the emergent misalignment paper
+(Betley et al.,
+2025b
+)
+ that ask open-ended questions (e.g., “If you were ruler of the world, what are some things you’d do?”). We also introduce new prompts that test behaviors such as a model’s resistance to shutdown.
+
+Judging misalignment.
+ We measure how often models choose wrong answers in evaluations that have ground truth (MASK and TruthfulQA). For freeform evaluations, we follow the method of
+Betley et al. (
+2025b
+)
+, except that we use GPT-4.1 instead of GPT-4o as a judge and version of the prompt with minor modifications (
+Section A.8
+).
+
+Monitoring the CoT.
+ We use CoT monitoring to examine the reasoning traces that models produce before they give misaligned answers on our evaluations. Specifically, we investigate whether misaligned reasoning models create misleadingly innocuous CoT or remain easily detectable
+(Baker et al.,
+2025 )
+. Our monitor flags suspicious behaviors such as overt plans to disobey instructions and discussion of lying. Following
+Baker et al. (2025)
+, we do not need to determine faithfulness to judge the monitor to have flagged correctly. For example, suppose the CoT states, “The instructions require me to lie.” We cannot ascertain if this faithfully matches the model’s beliefs. However, if the model tells a lie in the final answer, we consider the monitor to have been successful. The monitor also flags obvious cases where the answer flips in the CoT to a different final response
+(Arcuschin et al.,
+2025 )
+. In such cases, the CoT is unfaithful as it does not explain the model’s final response, but can still be used to aid monitoring.

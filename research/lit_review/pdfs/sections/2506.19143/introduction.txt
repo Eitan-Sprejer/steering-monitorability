@@ -1,0 +1,89 @@
+1 Introduction
+
+Training large language models to reason with chain-of-thought
+(Reynolds & McDonell,
+2021 ; Nye et al.,
+2021 ; Wei et al.,
+2023 )
+ has led to significant advances in capabilities
+(OpenAI,
+2024 )
+. The resulting reasoning traces are regularly used in safety research
+(Baker et al.,
+2025 ; Shah et al.,
+2025 )
+, but there has been little work adapting interpretability methods to this new paradigm (though see
+(Venhoff et al.,
+2025 ; Goodfire,
+2025 )
+). Traditional
+mechanistic interpretability
+
+(Olah et al.,
+2020 ; Olah,
+2022 )
+ methods often focus on a single forward pass of the model: understanding layer-by-layer activations and how these translate into a final output
+(Wang et al.,
+2022 ; Heimersheim & Janiak,
+2023 ; Hanna et al.,
+2023 )
+. However, this framework is too fine-grained for autoregressive reasoning models, which consume their own output tokens.
+
+A core step in many interpretability strategies is to decompose the model into smaller parts that can be analyzed independently
+(Lindsey et al.,
+2025 )
+. A natural decomposition for chain-of-thought is into individual sentences and how they depend on each other. Interpretations of neural network behavior operate at varying levels of abstraction
+(Geiger et al.,
+2021 ;
+2025 )
+, and sentence-level explanations strike an intermediate abstraction depth. Compared to tokens, sentences are more coherent and often coincide with reasoning steps extracted by an LLM
+(Venhoff et al.,
+2025 ; Arcuschin et al.,
+2025 )
+. Compared to paragraphs, sentences are less likely to conflate reasoning steps and may serve as an effective target for linking different steps.
+
+Figure 1:
+Summary of our methods for principled attribution to important sentences in reasoning traces.
+A.
+ An example reasoning trace with sentences labeled per our taxonomy.
+B.
+ Our proposed methods are: black-box resampling, receiver heads, and attention suppression.
+C.
+ A directed acyclic graph among sentences prepared by one of our techniques, made available open source.
+
+Prior work has established that CoT contains reasoning steps performing distinct functions. Backtracking sentences (e.g.,
+“Wait…”
+) cause the model to revisit earlier conclusions, which boosts answer accuracy
+(Muennighoff et al.,
+2025 )
+. Other research has distinguished sentences based on whether they retrieve new information or execute deduction with existing information
+(Venhoff et al.,
+2025 )
+. Hence, reasoning may follow an overarching structure, where computational goals are generated, revised, and pursued. Yet, approaches for mapping this high-level structure are limited.
+
+We propose that reasoning traces can be understood through
+thought anchors
+: critical reasoning steps that guide the trajectory of reasoning. We provide evidence for this type of anchoring based on black-box evidence from resampling and white-box evidence based on attention patterns. By measuring the causal dependencies between sentences via a masking approach, we further show how a CoTs wider computational structure can be interpreted. These measures go beyond just reading a CoT’s text, providing a principled foundation for interpretability that sidesteps disputes about the “faithfulness” of CoT text
+(Turpin et al.,
+2023 ; Korbak et al.,
+2025 )
+.
+
+Section
+˜
+2 and
+Section
+˜
+3 introduce a black-box method for measuring the counterfactual impact of a sentence on the model’s final answer and future sentences. We repeatedly resample reasoning traces from the start of each sentence. Based on resampling data, we can quantify the counterfactual impact of each sentence on the likelihood of any final answer. Additionally, we can distinguish planning sentences that initiate computations leading to some answer from sentences performing computations necessary for the answer but which are predetermined.
+Section
+˜
+4 , adds a white-box method for evaluating importance based on the sentences most attended. Our analyses reveal “receiver” heads that narrow attention toward particular past “broadcasting” sentences. This provides a mechanistic measure of importance, whose findings converge with our resampling technique.
+
+Section
+˜
+5 and
+Section
+˜
+6 present a method mapping the wider structure of the reasoning the causal dependencies between pairs of CoT sentences. For each sentence in a trace, we intervene by masking all attention to it from subsequent tokens or simply removing the sentence entirely. We then measure the effect on subsequent token logits (KL divergence) compared to those generated without masking. Averaging token effects by sentence, this strategy measures each sentence’s direct causal effect on each subsequent sentence.
+
+Applying these techniques, our work suggests that analyzing reasoning through sentence-level units introduces new domains through which reasoning models can be understood. Our work also opens the door to more precise debugging of reasoning failures, identification of sources of unreliability, and the development of techniques to enhance the reliability of reasoning models.

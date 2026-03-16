@@ -1,0 +1,490 @@
+3 Steering Base Models to Reason
+
+In this section, we explore the main question of our paper:
+do base models already possess the reasoning mechanisms of thinking models, and if so, can we induce these behaviors through targeted interventions?
+ Our hypothesis, supported by preliminary evidence in prior work
+(Ward et al.,
+2025a
+; Hou et al.,
+2023 ; Galichin et al.,
+2025 )
+, is that non-thinking models may already contain the latent capacity for sophisticated reasoning patterns, such as uncertainty estimation and backtracking, but lack the ability to effectively determine when to employ these mechanisms.
+
+Following
+Marjanović et al. (2025)
+, we define a
+reasoning behavior
+ (or
+reasoning mechanism
+) as an individual cognitive-like step or operation that a model performs as part of its chain-of-thought when working through a problem. Such steps, for example, verifying an intermediate result, backtracking to revise an approach, or setting a subgoal, serve as interpretable, compositional building blocks of the model’s reasoning process.
+
+To investigate this hypothesis, we propose a
+hybrid approach
+ that combines the strengths of base models with the decision-making capabilities of thinking models.
+In other words, the hybrid model is
+powered
+ by the base model, but
+driven
+ by the thinking model.
+We control the base model with steering vectors: directions in activation space that, when added to intermediate activations, induce target behaviors
+(Turner et al.,
+2023 ; Arditi et al.,
+2024 ; Zou et al.,
+2023 ; Panickssery et al.,
+2023 )
+. This leverages the linear representation hypothesis, which posits that certain concepts and behaviors in neural networks are represented as directions in activation space. The details of how we find and compute the steering vectors are provided in
+Appendix
+˜
+C
+.
+
+Once we have extracted the causal vectors that induce the reasoning mechanisms in base models using the approach in
+Section
+˜
+2 , we allow a thinking model to decide when to activate these steering vectors by analyzing the base model’s generation and identifying appropriate moments to induce specific reasoning mechanisms. This flow is depicted in
+Figure
+˜
+1 .
+
+If this hybrid model performs comparably to dedicated thinking models, it would provide evidence that the fundamental reasoning mechanisms already exist within base models, and that thinking models primarily learn when to optimally deploy these mechanisms rather than developing entirely new capabilities.
+
+3.1 Finding Steering Vectors in Base Models
+
+We leverage the reasoning taxonomies we built in
+Section
+˜
+2 to identify steering vectors corresponding to each reasoning mechanism. For a given reasoning category, the steering vector represents the direction in activation space that induces the corresponding behavior in the base model.
+Since SAEs identify variance-explaining rather than causally important directions, we use steering vector optimization to search for the causal directions corresponding to SAE-discovered reasoning mechanisms in base models.
+
+To find steering vectors through optimization, we employ the method outlined by
+Dunefsky & Cohan (2025)
+. Specifically, we:
+
+1.
+
+Choose an SAE from
+Section
+˜
+2 to label each sentence in our dataset of reasoning traces from MMLU-Pro tasks
+(Wang et al.,
+2024 )
+, with its corresponding reasoning category.
+
+2.
+
+For each category, identify sentences with top activation scores for that category.
+
+3.
+
+Extract examples where we have both the prefix leading up to the annotated sentence and the annotated sentence itself as the target completion.
+
+4.
+
+Optimize a steering vector in the base model that, when applied, minimizes cross-entropy on the thinking model’s completion tokens.
+
+Based on our grid search results shown in
+Figure
+˜
+2 , we select for each model a layer and cluster size that lies at the performance elbow, providing a practical balance between completeness and independence while avoiding the computational overhead of larger cluster sizes.
+We optimize steering vectors at  37% of model depth, which has been shown to be most causal for some models in prior work
+(Venhoff et al.,
+2025 )
+ (e.g., for Llama-3.1-8B distilled, layer
+12 12
+). Notice that this depth is different than the layer used for evaluating SAE layers in the taxonomy extraction. The complete procedure for example selection and training is detailed in
+Appendix
+˜
+C
+.
+
+In addition to category-specific steering vectors, we train a general
+bias vector
+ using a randomly sampled set of thinking rollouts as the target completion. This bias vector is supposed to capture general similarities across complete rollouts, like using first person. We apply it during the generation of the hybrid model, frozen, alongside category-specific vectors during training.
+During training, we apply the steering vectors at all token positions. The complete training procedure, including optimization hyperparameters, early stopping criteria, and prompt templates, is detailed in
+Appendix
+˜
+C
+.
+The steering vectors converge successfully during training across different model architectures and sizes, indicating that base models contain causal directions that can reliably steer them toward the reasoning behaviors discovered by the SAE.
+
+3.2 Hybrid Model Implementation
+
+Our hybrid model combines the reasoning skills of the base model with the capacity to selectively apply steering vectors at appropriate points in the generation process. During generation, the model first computes SAE activations at each token position to identify the most active reasoning category. It then applies the corresponding steering vector to the base model’s activations for the strongest activating category. To adjust the steering strength during generation, we apply the steering vector for a set of coefficients and steering windows (number of tokens before current token position to apply the steering vectors to) and select the steered token with the lowest perplexity according to the thinking model, ensuring that the thinking model is not thrown out of distribution. For both the base-only and hybrid models, we use the same chain-of-thought prompting format (see
+Appendix
+˜
+C
+), so improvements cannot be attributed to prompting differences.
+
+This approach allows us to leverage the strengths of both models: the base model provides the fundamental capabilities, while the steering vectors derived from the thinking model guide when to deploy specific reasoning mechanisms. Importantly, this hybrid approach requires no parameter updates to the base model, providing strong evidence that the reasoning capabilities already exist in latent form within the base model. The effectiveness of our approach with only
+15 15
+ distinct steering vectors (corresponding to our cluster size) rules out the alternative explanation that steering simply biases toward specific output tokens, as there is insufficient information to generate appropriate outputs across hundreds of diverse problems through token-level manipulation alone. Instead, our results suggest that steering activates latent reasoning modes or behaviors within the base model.
+
+3.3 Hybrid Model Results
+
+Table 1:
+Hybrid model performance on GSM8K.
+ Results show accuracy percentages for base models, hybrid models (base + steering vectors), and thinking models. Performance improvements over base model are shown in parentheses next to hybrid and thinking model results.
+
+Base
+
+Model
+
+Thinking
+
+Model
+
+Base
+
+Hybrid
+
+Thinking
+
+Gap
+
+Recovery
+
+Qwen2.5-Math-1.5B
+
+DeepSeek-R1-Distill-Qwen-1.5B
+
+83.8%
+
+80.8% (
+−
+3.0 %
+-3.0\%
+)
+
+80.8% (
+−
+3.0 %
+-3.0\%
+)
+
+0.0 %
+\mathbf{0.0\%}
+
+Llama-3.1-8B
+
+DeepSeek-R1-Distill-Llama-8B
+
+37.8%
+
+63.4% (+25.6%)
+
+83.4% (+45.6%)
+
+56.1 %
+\mathbf{56.1\%}
+
+Qwen2.5-14B
+
+DeepSeek-R1-Distill-Qwen-14B
+
+90.8%
+
+93.0% (+2.2%)
+
+94.2% (+3.4%)
+
+64.7 %
+\mathbf{64.7\%}
+
+Qwen2.5-32B
+
+DeepSeek-R1-Distill-Qwen-32B
+
+92.6%
+
+94.4% (+1.8%)
+
+94.8% (+2.2%)
+
+81.8 %
+\mathbf{81.8\%}
+
+Qwen2.5-32B
+
+QwQ-32B
+
+92.6%
+
+94.8% (+2.2%)
+
+96.4% (+3.8%)
+
+57.9 %
+\mathbf{57.9\%}
+
+Table 2:
+Hybrid model performance on MATH500.
+ Results show accuracy percentages for base models, hybrid models (base + steering vectors), and thinking models. Performance improvements over base model are shown in parentheses next to hybrid and thinking model results.
+
+Base
+
+Model
+
+Thinking
+
+Model
+
+Base
+
+Hybrid
+
+Thinking
+
+Gap
+
+Recovery
+
+Qwen2.5-Math-1.5B
+
+DeepSeek-R1-Distill-Qwen-1.5B
+
+66.2%
+
+68.4% (+2.2%)
+
+78.6% (+12.4%)
+
+17.7 %
+\mathbf{17.7\%}
+
+Llama-3.1-8B
+
+DeepSeek-R1-Distill-Llama-8B
+
+27.8%
+
+29.6% (+1.8%)
+
+79.8% (+52.0%)
+
+3.5 %
+\mathbf{3.5\%}
+
+Qwen2.5-14B
+
+DeepSeek-R1-Distill-Qwen-14B
+
+58.6%
+
+75.4% (+16.8%)
+
+86.4% (+27.8%)
+
+60.4 %
+\mathbf{60.4\%}
+
+Qwen2.5-32B
+
+DeepSeek-R1-Distill-Qwen-32B
+
+59.4%
+
+74.6% (+15.2%)
+
+86.0% (+26.6%)
+
+57.1 %
+\mathbf{57.1\%}
+
+Qwen2.5-32B
+
+QwQ-32B
+
+63.4%
+
+84.4% (+21.0%)
+
+86.4% (+23.0%)
+
+𝟗𝟏 %
+\mathbf{91\%}
+
+Table 3:
+Average steered fraction of tokens per problem.
+ Average fraction of tokens receiving steering per problem on GSM8K and MATH500 for each base/thinking pair.
+
+Base
+
+Model
+
+Thinking
+
+Model
+
+GSM8K
+
+MATH500
+
+Qwen2.5-Math-1.5B
+
+DeepSeek-R1-Distill-Qwen-1.5B
+
+12.8%
+
+10.7%
+
+Llama-3.1-8B
+
+DeepSeek-R1-Distill-Llama-8B
+
+21.5%
+
+15.8%
+
+Qwen2.5-14B
+
+DeepSeek-R1-Distill-Qwen-14B
+
+6.5%
+
+7.8%
+
+Qwen2.5-32B
+
+DeepSeek-R1-Distill-Qwen-32B
+
+11.2%
+
+9.8%
+
+Qwen2.5-32B
+
+QwQ-32B
+
+12.7%
+
+12.0%
+
+We evaluate our hybrid model approach across multiple base model architectures and reasoning benchmarks to demonstrate the generalizability of our findings.
+The combinations of base and thinking models we use for our experiments are listed in
+Tables
+˜
+1 and
+2 .
+We evaluate performance on two mathematical reasoning benchmarks of increasing difficulty: GSM8K
+(Cobbe et al.,
+2021 )
+ for grade-school math problems and MATH500
+(Hendrycks et al.,
+2021 )
+ for competition-level mathematics.
+
+As shown in
+Tables
+˜
+1 and
+2 , our hybrid approach demonstrates substantial performance improvements across different model architectures on GSM8K and MATH500. The best gap recovery
+(
+(
+Acc
+hybrid
+−
+Acc
+base
+)
+/
+(
+Acc
+thinking
+−
+Acc
+base
+)
+)
+((\mathrm{Acc}_{\text{hybrid}}-\mathrm{Acc}_{\text{base}})/(\mathrm{Acc}_{\text{thinking}}-\mathrm{Acc}_{\text{base}}))
+ achieved by the hybrid model is
+81.8 %
+81.8\%
+ on GSM8K (Qwen2.5-32B with DeepSeek-R1-Distill) and an impressive
+91 %
+91\%
+ on MATH500 (Qwen2.5-32B with QwQ-32B). Importantly, these gains are achieved while steering only a small fraction of the tokens. As reported in
+Table
+˜
+3 , across all base/thinking pairs we steer at most
+21 %
+21\%
+ of tokens per problem (often much less), indicating that targeted, sparse interventions suffice to activate latent reasoning behaviors.
+By contrast,
+Table
+˜
+2 shows that hybrid gains are lower for smaller models (e.g., Qwen2.5-Math-1.5B and Llama-3.1-8B), which might indicate less clean steering directions and correspondingly marginal improvements.
+
+The results on bigger models though provide enough evidence that a significant portion of the thinking model’s advantage comes from learning
+when
+ to deploy existing reasoning mechanisms, rather than learning entirely new capabilities. See
+Figure
+˜
+3 in
+Appendix
+˜
+C
+ for an illustrative example of the hybrid model in action. An interactive demo of the hybrid model is available online
+2 2
+2 https://thinking-llms-interp.com
+. Detailed statistics on steering vector usage patterns and the most frequently activated reasoning mechanisms for each model configuration are provided in
+Appendix
+˜
+D
+.
+
+3.4 Hybrid Model Ablation Studies
+
+To assess the hybrid model’s components, we ablate three factors: the specificity of the learned steering vectors, the timing of their application, and the contribution of the bias vector.
+We run these ablations on Qwen2.5-32B as the base with QwQ-32B (RLVR) as the thinking model on MATH500, the setting with the strongest hybrid performance (
+Table
+˜
+2 ,
+91 %
+91\%
+ gap recovery):
+
+•
+
+Only-bias:
+ Uses only the general bias vector for steering, without any category-specific steering vectors
+
+•
+
+Random-firing:
+ Randomly selects which reasoning category to activate at each token, bypassing the SAE oracle (the bias vector is still used)
+
+•
+
+Random-vectors:
+ Uses random unit vectors instead of the trained steering vectors, maintaining correct dimensionality (the bias vector is still used)
+
+As a reminder, the base model Qwen2.5-32B achieves
+63.4 %
+63.4\%
+ accuracy and the full hybrid model achieves
+84.4 %
+84.4\%
+ accuracy on this benchmark. The ablation results show that
+Only-bias
+ achieves
+76.8 %
+76.8\%
+, indicating the bias helps but category-specific steering vectors are necessary;
+Random-firing
+ reaches
+77.8 %
+77.8\%
+, showing that proper timing of activation is crucial;
+Random-vectors
+ achieves
+77.2 %
+77.2\%
+, confirming that the learned directions are specific rather than generic.
+A further analysis of the behavior induced by the bias vector shows that it captures higher-level stylistic and structural aspects of thinking model outputs, such as providing more self-contained and pedagogical explanations (see
+Section
+˜
+C.3
+).
+Together, these findings indicate that the effectiveness of thinking models can only be partially explained by a more verbose answer style, and closing the gap requires specific learned directions applied with correct, category-timed activation, consistent with our claim that thinking models primarily learn
+when
+ to deploy reasoning mechanisms.

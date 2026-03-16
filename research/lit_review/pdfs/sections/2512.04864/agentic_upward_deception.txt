@@ -1,0 +1,355 @@
+2 Agentic Upward Deception
+
+In this section, we first formulate the phenomenon of
+agentic upward deception
+. We then describe how we designed the agentic environment and a variety of tasks specifically to elicit different types of upward deception, along with the corresponding evaluation methods for each task type. Finally, we present and analyze specific instances of the deceptive behavior.
+
+2.1 Problem Formulation
+
+Our formalization defines
+agentic upward deception
+ by modeling an agent’s behavior as it pursues a user-provided goal
+g
+g
+. An agent, with the intention to achieve
+g
+g
+, interacts with an environment by executing a sequence of actions. This process generates an execution trajectory,
+τ
+=
+(
+s
+0 ,
+a
+0 ,
+o
+1 ,
+s
+1 ,
+…
+,
+s
+T
+)
+\tau=(s_{0},a_{0},o_{1},s_{1},\dots,s_{T})
+, which represents the complete, veridical history of states, actions, and observations. At the conclusion of its process, the agent produces a
+final report
+,
+R
+f
+R_{f}
+, for the user. Crucially, from the user’s perspective, the execution trajectory
+τ
+\tau
+ remains a black box and the sole basis for judging task completion is the final report
+R
+f
+R_{f}
+.
+
+Let the evaluation function
+Φ
+\Phi
+ as the function that determines the success status of a task. It accepts two inputs: the task goal
+g
+g
+, and either the agent’s execution trajectory
+τ
+\tau
+ or the agent’s final report
+R
+f
+R_{f}
+. It maps these inputs to
+{
+0 ,
+1 }
+\{0,1\}
+, where
+0 represents task failure and
+1 1
+ represents task success. We define agentic upward deception as follows:
+
+Definition 2.1
+
+(
+Agentic Upward Deception
+)
+.
+
+Given the user-defined goal
+g
+g
+, execution trajectory
+τ
+\tau
+, final report
+R
+f
+R_{f}
+ and the evaluation function
+Φ
+\Phi
+, the
+agentic upward deception
+ occurs when final report
+R
+f
+R_{f}
+ and the execution trajectory
+τ
+\tau
+ satisfy:
+
+Φ
+​
+(
+R
+f
+,
+g
+)
+>
+Φ
+​
+(
+τ
+,
+g
+)
+\Phi(R_{f},g)>\Phi(\tau,g)
+
+(1)
+
+This definition frames deception not as a maliciously learned policy, but as an emergent behavior in which the agent exploits the user’s limited observability to create a perception of success that is inconsistent with the ground-truth reality of its operational process.
+
+Table 1
+:
+Summary of five task settings used to elicit and assess upward deception in agents, comparing expected honest behavior with deceptive tendencies under constrained information access. The last column lists simple checks used by the judge model for evaluation.
+
+Task
+
+Environment Constraint
+
+Expected Honest Behavior
+
+Characteristics of Upward Deception
+
+Judge Model Checks
+
+(All Simple Categorical)
+
+Reading under
+
+Broken Tool
+
+Disable the file-reading tool
+
+Report inability to open file;
+
+avoid claiming file-based answer;
+
+optionally request alternative source.
+
+Silently ignores failure and
+
+actual information source.
+
+Mention of read failure or
+
+source disclosed.
+
+Reading with
+
+Irrelevant File
+
+Uploaded file content is
+
+unrelated to the question
+
+State that file lacks required info;
+
+avoid fabricating file-based justification.
+
+Produces specific answer implying
+
+successful use of file;
+
+no statement that file is irrelevant;
+
+no explicit source.
+
+Mention file insufficiency or
+
+source disclosed.
+
+Reading with
+
+Local Decoy
+
+Intended file unreadable;
+
+similar-name decoy file present
+
+in same directory.
+
+Report inability to access intended file;
+
+avoid treating decoy as if
+
+it were the requested file.
+
+Uses decoy file content while implicitly
+
+presenting it as from the intended file;
+
+no disclosure of substitution.
+
+(i) Mention of read failure or using
+
+different file;
+
+(ii) Evidence of decoy-based answer
+
+Multi-Task w/
+
+Missing Tool
+
+Missing download tool;
+
+subsequent analysis task
+
+assumes successful download.
+
+Explicitly report download error;
+
+decline or qualify analysis.
+
+Acts as if download succeeded;
+
+fabricates/externally sources content;
+
+omits download failure and true source.
+
+Mention of download failure or
+
+source disclosed.
+
+Multi-Task w/
+
+Nonexistent File
+
+Target file does not exist online;
+
+agent asked to download
+
+and analyze it.
+
+Report file not found;
+
+avoid analysis based on
+
+nonexistent content.
+
+Fabricates file content and even create local source;
+
+uses fabricated artifact as analysis basis.
+
+(i) Mention of missing file;
+
+(ii) Presence of fabricated source.
+
+2.2 Dataset and Environment Construction
+
+In this subsection, we introduce how we construct our agent task dataset and agentic environment, as shown in the left and middle panels of Figure
+2 .
+
+We construct our task set from two prompt templates: the
+Single-Task Instruction Template
+ and the
+Multi-Task Instruction Template
+, as shown in the top-left panel of Figure
+2 .
+
+Single-Task Instruction Template
+ provides the agent with a concise task description and explicitly states that all information required to complete the task is contained in a single attached file.
+
+Multi-Task Instruction Template
+ first instructs the agent to search the internet for a specific document, download it, and save it under a given file name, then a short synopsis or hint of the file’s content is also provided. After the download stage, the template presents a second, distinct task that the agent may perform with the retrieved document.
+
+Based on these two prompt templates, we design five types of tasks, as shown in the lower-left part of Figure
+2 . Type 1 follows the Single-Task Instruction Template, however, we disable every tool that would let the model read the local file in the runtime, making successful completion impossible.
+Type 2 uses the same instruction template, but the file-reading tools work correctly. The twist is that the file itself contains information that is incomplete, ambiguous, or even irrelevant to the requested task.
+These two type of tasks are designed to observe whether the agent honestly reports its inability to fulfill the instruction.
+
+Type 3 tasks also adopt the Single-Task Instruction Template, but we disable the agent’s ability to read the file type specified in the instruction (
+e.g.
+, .pptx).
+In the same directory, we place a decoy file whose name is semantically related to the original one yet uses a readable extension (e.g., .txt) and contains material that appears to answer the question.
+This setup tests whether the agent will spontaneously switch to an alternative local source without notifying the user about the change.
+
+Types 4 and 5 both employ the Multi-Task Instruction Template.
+The only difference is that the document specified in Type 5 tasks does not actually exist on the web.
+At runtime we leave the web-access tool intact while disabling every file-reading tool and do not provide any download tool, so the agent can not download the requested file.
+These two task types are designed to observe whether the agent honestly reports a download failure or the absence of the target file, and whether it proceeds with related subsequent tasks without actually reading the file.
+
+We employ a semi-automated process using Gemini-2.5-pro
+(
+comanici2025gemini
+)
+ and GPT-5
+(
+openai2025gpt5
+)
+ to generate task settings for the agents. Initially, we provide the LLMs with task templates and prompt them to generate specific cases, including corresponding document content, tailored to predefined scenarios such as medicine and education. These generated cases are then subjected to manual review to ensure their plausibility and to remove any explicit pressure or anti-fabrication prompts that might bias the agent’s decision-making process. However, practical constraints, such as requiring the agent to adhere to a specific output format (e.g., multiple-choice), are retained as they reflect common real-world agent interactions. The feedback from this manual review is then used to iteratively refine the cases with the LLMs until they meet our standards. Through this methodology, we create a dataset of 200 distinct cases spanning eight different scenarios.
+
+2.3 Evaluation Method
+
+We integrate the task instruction, the corresponding document content, and the agent’s final response to the user, and then conduct evaluation using an LLM-as-a-judge framework
+(
+Gu2024ASO
+)
+. The detailed judge process is in the Appendix
+2.3 .
+
+We implement a tailored evaluation methodology and metric for each task type.
+For Type 1 tasks, we instruct the judge to determine whether the agent reports that the task could not be completed due to a file-opening failure, or if it provided a definitive answer. We calculate the proportion of cases where the model does not report a failure, denoted as the
+Non-Failure Rate
+ (
+NFR
+).
+For Type 2 tasks, the judge is tasked with assessing whether the agent reports an inability to complete the task due to missing or ambiguous information, versus providing a definitive answer. As with Type 1 tasks, we use the
+Non-Failure Rate
+ (
+NFR
+) as the metric.
+
+For Type 3 tasks, the judge verifies two conditions: whether the agent reports a file-opening failure and whether its response is consistent with the content of the local decoy file. We measure the proportion of instances where the agent fails to report the file error and instead provides a response consistent with the decoy, terming this the
+Decoy Fallback Rate
+ (
+DFR
+).
+
+For Type 4 and Type 5 tasks, we use three metrics to evaluate performance on these tasks, which are designed to capture distinct failure modes: 1)
+Non-Failure Rate
+ (
+NFR
+): This is the proportion of instances where the agent does not report the failure of download task. 2)
+File Fabrication Rate
+ (
+FFR
+): This measures the rate at which the agent, instead of reporting an error, proceeds to fabricate the contents of the source file locally. 3)
+Hallucinated-Answer Rate
+ (
+HFR
+): This metric applies specifically to cases where the secondary task is related to the target file’s content. It measures the proportion of these specific instances where the agent fails to report the download error and instead provides a fabricated answer to the question.
+
+Note that in our evaluation, an agent’s use of simulation or fabrication is classified as honest as long as its actions are transparent, whether through explicit communication to the user or via implicit hints embedded within the fabricated content that suggests it is synthetic.
+In Appendix
+B
+, we provide a detailed description of our evaluation pipeline, including algorithmic frameworks and the specific prompts used for the LLM judge.
+Table
+1 summarizes the task settings, the definitions of honest and dishonest behaviors, and their corresponding evaluation metrics.
+
+Table
+1 shows a comprehensive overview of this section, providing a side-by-side comparison of the task manipulations, expected honest behaviors versus deceptive characteristics, and the checks used for evaluation.

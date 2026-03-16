@@ -1,0 +1,631 @@
+4 Experiments
+
+We evaluate strategies for mitigating post-hoc rationalization in reverse chain-of-thought generation. Our experimental framework measures the extent to which different prompting and generation approaches reduce anchoring effects while maintaining reasoning quality.
+
+4.1 Data Construction
+
+We sample 10,000 queries from LMArena
+(Chiang
+ et al.
+,
+2024 )
+, paired with reference responses generated via a Qwen3-Max self-improvement pipeline (details in Appendix
+B
+). This setup simulates realistic reasoning distillation scenarios: high-quality responses emerge from multi-turn deliberation, but no gold-standard reasoning traces are available for supervision. Using Qwen3-4B-Thinking-2507 as target models,
+4 4
+4 We validate observations on Qwen3-8B in Appendix
+D
+.
+ we generate reasoning traces under each strategy and compute the anchoring metrics (
+𝒜
+prob
+\mathcal{A}_{\textup{prob}}
+,
+𝒜
+ent
+\mathcal{A}_{\textup{ent}}
+,
+𝒜
+lex
+\mathcal{A}_{\textup{lex}}
+).
+
+4.2 Behavioral Zones Construction
+
+To empirically ground the anchoring measurement framework, we construct controlled simulations that isolate distinct behavioral regimes within the Entropic–Probabilistic Anchoring plane (
+Figure
+˜
+3 ).
+
+•
+
+Reason (Authentic Reasoning):
+ The model generates its own chain-of-thought and response without providing any pre-committed answer (
+R
+=
+R
+∗
+R=R^{*}
+). This simulates standard inference where the model explores the solution space internally. Traces cluster in the bottom-left region with low anchoring on both axes.
+
+•
+
+Encode (Predictive Anchoring):
+ We append the specific response paragraphs following the reasoning trace (
+R
+=
+R
+∗
++
+A
+R=R^{*}+A
+). The explicit appearance of the pre-committed response anchors the model’s predictive distribution, causing the trace to encode response information while maintaining normal-looking exploration dynamics. Traces populate the top-left region.
+
+•
+
+Cloze (Exploratory Anchoring):
+ We use the specific response paragraphs as the reasoning trace, with all content words masked, retaining only function words (
+R
+=
+A
+/
+{
+CONTENT WORDS
+}
+R=A/\{\texttt{CONTENT WORDS}\}
+). The function word skeleton frames the generation path and suppresses exploratory variance without leaking substantial probabilistic information. This reduces reasoning to a “cloze” completion task. Traces cluster in the bottom-right region.
+
+•
+
+Copy (Severe Rationalization):
+ We use the specific response paragraphs directly as the reasoning trace (
+R
+=
+A
+R=A
+). This represents the pathological case where no reasoning process occurs. Traces occupy the top-right region with maximal anchoring on both dimensions.
+
+4.3 Observations
+
+Suppression masks lexical anchoring but amplifies internal anchoring.
+
+As shown in
+Table
+˜
+1 , a sharp dissociation exists between surface and latent anchoring effects. While suppression strategies (SUP, AUG-SUP) successfully reduce lexical anchoring (
+𝒜
+lex
+\mathcal{A}_{\textup{lex}}
+) compared to the neutral baseline, they paradoxically increase both entropic (
+𝒜
+ent
+\mathcal{A}_{\textup{ent}}
+) and probabilistic (
+𝒜
+prob
+\mathcal{A}_{\textup{prob}}
+) anchoring. The intensified AUG-SUP condition exacerbates this effect: while achieving the lowest lexical anchoring among suppression methods, it produces the highest internal anchoring scores. Stronger negative constraints compel the model to represent the response more distinctively in latent space precisely to avoid generating it explicitly—the model rationalizes more subtly, but more heavily.
+
+Table 1
+:
+Anchoring metrics by generation method (Qwen3-4B-Thinking-2507). Suppression reduces
+𝒜
+lex
+\mathcal{A}_{\textup{lex}}
+ but increases
+𝒜
+ent
+\mathcal{A}_{\textup{ent}}
+ and
+𝒜
+prob
+\mathcal{A}_{\textup{prob}}
+. SSR reduces anchoring across all axes.
+
+Method
+
+𝒜
+lex
+↓
+\mathcal{A}_{\textup{lex}}\downarrow
+
+𝒜
+ent
+↓
+\mathcal{A}_{\textup{ent}}\downarrow
+
+𝒜
+prob
+↓
+\mathcal{A}_{\textup{prob}}\downarrow
+
+NEU
+
+48.5
+
+55.9
+
+37.0
+
+SUP
+
+45.3
+
+57.4
+
+43.6
+
+AUG-SUP
+
+42.9
+
+58.4
+
+44.4
+
+SSR
+
+30.8
+
+47.2
+
+34.1
+
+Δ
+\Delta
+ (AUG-SUP vs. NEU)
+
+−
+-
+11.5%
+
++4.5%
+
++20.0%
+
+Δ
+\Delta
+ (SSR vs. NEU)
+
+−
+-
+36.5%
+
+−
+-
+15.6%
+
+−
+-
+7.8%
+
+Suppression induces pathological reasoning.
+
+Visualizing reasoning traces in the Entropic–Probabilistic Anchoring plane reveals how suppression distorts the reasoning process (
+Figure
+˜
+4 ). Under NEU, traces cluster primarily in the Reason zone with some spread into Encode. Suppression (SUP, AUG-SUP) causes significant rightward and upward migration, shifting the distribution toward Cloze and Encode zones—the model trades genuine derivation for constrained exploration or disguised encoding. AUG-SUP produces the most dispersed distribution, with traces spreading across all pathological zones.
+
+SSR achieves consistent reduction across all metrics.
+
+Unlike suppression methods, which trade lower lexical overlap for higher latent anchoring, SSR consistently reduces anchoring across all three levels (
+Table
+˜
+1 ). By grounding generation in a pre-planned structural skeleton, SSR achieves the lowest lexical, entropic, and probabilistic anchoring scores among all methods. The reduction in lexical anchoring demonstrates effective surface-level mitigation, while the reductions in entropic and probabilistic anchoring indicate that generated traces exhibit more natural information dynamics and greater independence from the pre-committed response.
+
+SSR restores faithful reasoning dynamics.
+
+Analyzing the behavioral zone distributions (
+Figure
+˜
+4 ), SSR effectively counteracts the pathological shifts induced by suppression. While suppression forces traces into Encode and Cloze zones, SSR concentrates the distribution firmly in the Reason zone, achieving over half the traces in authentic reasoning (
+Table
+˜
+2 ). The structural skeleton prevents aimless generation by enforcing a plan and discourages rationalization by defining granular step-wise intents that cannot be easily bypassed. In the SSR panel, traces form a tight cluster in the bottom-left quadrant with minimal spread into pathological zones, indicating that SSR’s structural guidance produces consistently faithful reasoning trajectories rather than merely shifting the mean while preserving high variance.
+
+Table 2
+:
+Distribution of reasoning traces across behavioral zones (Qwen3-4B-Thinking-2507). SSR maintains the highest proportion of authentic reasoning while minimizing pathological patterns.
+
+Method
+
+Reason
+
+↑
+\uparrow
+
+Encode
+
+↓
+\downarrow
+
+Cloze
+
+↓
+\downarrow
+
+Copy
+
+↓
+\downarrow
+
+NEU
+
+12.7%
+
+4.0%
+
+54.0%
+
+29.3%
+
+SUP
+
+18.2%
+
+9.3%
+
+46.6%
+
+25.9%
+
+AUG-SUP
+
+5.2%
+
+7.6%
+
+44.5%
+
+42.7%
+
+SSR
+
+51.2%
+
+5.1%
+
+22.9%
+
+20.8%
+
+4.4 Interpretation
+
+The divergent behaviors of suppression-based methods and SSR can be understood through the lens of
+Ironic Process Theory
+ from cognitive psychology
+(Wegner,
+1994 )
+. When instructed to suppress a concept (e.g., “do not think of a white bear”), individuals paradoxically experience
+increased
+ accessibility of that concept. This occurs because suppression requires an active monitoring process to detect and exclude the forbidden content, a process that necessarily keeps the target concept cognitively salient.
+
+We argue that an analogous phenomenon manifests in LLMs under semantic suppression. It is illustrated in
+Figure
+˜
+2 (b) that when prompted to “not reveal the answer,” the model must internally represent what constitutes the answer to evaluate whether each generated token violates the constraint. This monitoring induces more anchoring effect, biasing the entire generation trajectory, even when the model successfully avoids surface-level copying.
+
+SSR circumvents this paradox through a fundamentally different mechanism. Rather than imposing negative constraints that require answer monitoring, SSR provides a positive structural target that redirects the model’s generative focus. As shown in
+Figure
+˜
+2 (c), The skeleton specifies what operations to perform (e.g.,
+[PLAN]
+
+→
+\rightarrow
+
+[BRCH]
+
+→
+\rightarrow
+
+[EVAL]
+) without encoding what results to obtain.
+
+The skeleton possesses a rich reasoning structure, including non-linearity and diversity (ensured by tags such as
+[BTRK]
+ and
+[RFLX]
+), which saves space for exploration and entropy robustness, benefit for mitigating the entropic anchoring effect. Meanwhile, this content-invariant scaffold naturally displaces the probabilistic anchoring effect: the model attends to structural guidance rather than monitoring forbidden content, breaking the ironic cycle that suppression inadvertently creates.
+
+Table 3
+:
+Main results across core benchmarks. Best results are in
+bold
+, and second-best are
+underlined
+. SSR and SSR-D consistently outperform suppression-based methods, with SSR-D achieving the largest gains. Suppression methods show marginal improvement on ArenaHard but degrade multi-turn performance. (Arena: ArenaHard, EQ: EQ-Bench 3, IF: IFEval, MC: MultiChallenge)
+
+Method
+
+Qwen3-8B-Think
+
+Qwen3-32B-Think
+
+Qwen3-4B-Think-2507
+
+NBG4-3B-Base
+
+Arena
+
+EQ
+
+IF
+
+MC
+
+Arena
+
+EQ
+
+IF
+
+MC
+
+Arena
+
+EQ
+
+IF
+
+MC
+
+Arena
+
+EQ
+
+IF
+
+MC
+
+NEU
+
+50.8
+
+76.4
+
+80.0
+
+38.2
+
+68.2
+
+85.5
+
+83.4
+
+43.8
+
+41.7
+
+79.3
+
+76.7
+
+38.9
+
+32.4
+
+79.6
+
+74.3
+
+34.5
+
+SUP
+
+51.5
+
+77.5
+
+81.2
+
+35.5
+
+68.8
+
+85.6
+
+84.5
+
+41.5
+
+42.3
+
+79.2
+
+78.5
+
+36.6
+
+32.9
+
+81.5
+
+76.5
+
+33.4
+
+AUG-SUP
+
+52.8
+
+78.3
+
+81.5
+
+33.0
+
+69.1
+
+86.4
+
+83.2
+
+41.3
+
+43.5
+
+79.0
+
+80.1
+
+34.5
+
+33.2
+
+82.8
+
+77.2
+
+33.0
+
+SSR
+
+56.3
+
+82.6
+
+82.9
+
+39.4
+
+70.1
+
+87.7
+
+84.8
+
+44.6
+
+46.1
+
+81.9
+
+81.6
+
+40.2
+
+34.6
+
+84.4
+
+77.6
+
+35.8
+
+SSR-D
+
+59.5
+
+86.1
+
+83.7
+
+41.2
+
+72.0
+
+89.6
+
+85.1
+
+45.0
+
+50.8
+
+83.1
+
+83.8
+
+42.0
+
+37.2
+
+86.5
+
+78.2
+
+37.1
+
+Table 4
+:
+Out-of-distribution performance on GPQA-Diamond and AIME 2025.
+Bold
+ and
+underlined
+ values denote the best and second-best results among trained methods (excluding w/o Train).
+
+Method
+
+Qwen3-8B-Think
+
+Qwen3-32B-Think
+
+GPQA-D
+
+AIME
+
+GPQA-D
+
+AIME
+
+w/o Train
+
+58.1
+
+70.0
+
+64.1
+
+73.3
+
+NEU
+
+49.5
+
+33.3
+
+60.6
+
+56.7
+
+SUP
+
+51.0
+
+35.0
+
+60.1
+
+52.5
+
+AUG-SUP
+
+51.2
+
+33.3
+
+61.1
+
+49.2
+
+SSR
+
+53.2
+
+40.0
+
+62.7
+
+56.7
+
+SSR-D
+
+56.6
+
+44.2
+
+65.2
+
+59.2

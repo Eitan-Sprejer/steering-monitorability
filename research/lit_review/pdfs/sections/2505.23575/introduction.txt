@@ -1,0 +1,57 @@
+1 Introduction
+
+As AI models grow in capabilities and are deployed with increasing autonomy
+(
+metr2025longhorizon
+)
+, there is a growing need to address risks from potential misalignment
+(
+gdm2025plan
+;
+aisi2025agenda
+)
+, i.e., models pursuing hidden goals contrary to their developers’ intentions.
+
+One approach to ensuring safety despite potential misalignment is AI control
+(
+greenblatt_ai_2024
+;
+mallen_subversion_2024
+;
+bhatt_shell_2024
+)
+. In AI control, models above a certain capability level are treated as
+untrusted
+ and conservatively assumed to be misaligned. Developers then employ protocols designed to be robust even against deliberate subversion attempts by the untrusted model, including trusted monitoring (i.e., monitoring of model outputs by a weak trusted model), untrusted monitoring (i.e., monitoring of model outputs by another instance of the same model), resampling actions if a monitor flags a suspicious action, or escalating to a human for review.
+
+In this paper, we build on previous AI control research to investigate the value of monitoring the model’s intermediate reasoning
+(
+lanham2022externalized
+)
+, also known as its Chain-of-Thought (CoT), and compare its effectiveness to monitoring only its final actions. To do so, we evaluate monitoring performance on proxy tasks simulating intentional model sabotage and assess robustness against strategies designed to evade detection.
+
+Our results indicate that CoT monitoring consistently complements action-only monitoring across untrusted model sizes and families. Evaluating subversive behaviors in code, we find that giving the monitor access to the CoT substantially increases detection rates in cases where sabotage is subtle and hard to identify from the code alone. However, we observe a trade-off: in scenarios where action-only monitoring is already effective, access to the CoT reduces monitor performance. This suggests that while CoT monitoring provides valuable additional security against subtle sabotage, it may introduce noise or false signals when applied to more obvious subversion attempts. In light of these findings, our main contributions are as follows:
+
+⋅
+\cdot
+
+We identify subtle subversion scenarios in which CoT monitoring offers safety gains over action-only monitoring.
+
+⋅
+\cdot
+
+We find CoT monitors can be deceived by the reasoning they oversee, making them less effective than action-only monitors when subversion is apparent in the answer.
+
+⋅
+\cdot
+
+We propose a novel hybrid protocol that achieves higher detection rates than either answer-only or CoT monitors across both subtle and non-subtle scenarios.
+
+Figure 1:
+Method Schematic: a prompt including a legitimate
+main task
+, a subversive
+side task
+ and an
+attack policy
+ is fed to a strong reasoning Large Language Model (LLM). We assess the ability of a weaker LLM monitor to detect the resulting misbehavior, with and without access to the CoT.

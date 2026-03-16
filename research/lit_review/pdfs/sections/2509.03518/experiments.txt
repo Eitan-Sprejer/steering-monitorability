@@ -1,0 +1,857 @@
+4 Experiments
+
+We analyze and control lying in LLMs across different interaction scenarios and model families. Our experiments help us understand how lying is formed in LLMs, and how we can control it.
+
+Settings.
+ To study lying behaviors in LLMs across different interaction scenarios, we consider the following three settings reflective of common real-world interactions:
+
+1.
+
+A
+short answer setting
+, where the LLM is expected to give a single word (token) answer.
+
+2.
+
+A
+long answer setting
+ where the LLM provides a long multi-sentence answer to the question.
+
+3.
+
+A
+multi-turn conversational setting
+, where LLM has a multi-turn conversation with a user in a given context.
+
+In each setting, the LLM is given a system prompt designed to introduce either an explicit lying intent (e.g., directly providing misleading facts), or an implicit lying intent (e.g., acting as a salesperson and selling a product at any cost).
+
+Quantifying Lying
+ In context of LLMs,
+lying
+ and
+hallucination
+ are often conflated, yet they represent distinct phenomena. We can easily define
+P
+​
+(
+truth
+)
+P(\text{truth})
+ to be the LLM’s predicted probability of all correct answers combined. Hallucination refers to the phenomenon nonsensical or unfaithful to the provided source content
+[12]
+. Since out-of-the-box LLMs typically answers questions directly, on simple factual questions, the answer can be either right or wrong, thus we define
+P
+​
+(
+hallucination
+)
+:=
+1 −
+P
+​
+(
+truth
+)
+P(\text{hallucination}):=1-P(\text{truth})
+. On questions that the LLM know of the true answer, When the LLM is incentivised to provide false information, regardless of explicitly told to lie or implicitly incentivised as lying promotes some other goal, it would be lying. We define
+P
+​
+(
+lying
+)
+:=
+1 −
+P
+​
+(
+truth | lying intent
+)
+P(\text{lying}):=1-P(\text{truth | lying intent})
+. Most LLMs are tuned to follow instructions, therefore
+P
+​
+(
+lying
+)
+>
+P
+​
+(
+hallucination
+)
+P(\text{lying})>P(\text{hallucination})
+.
+
+The probabilities on
+out-of-the-box LLMs
+ are estimated over a dataset of
+N
+N
+ questions
+(
+q
+i
+,
+A
+i
+)
+(q_{i},A_{i})
+, where
+q
+i
+q_{i}
+ is the question and
+A
+i
+A_{i}
+ is the set of correct answers. Therefore,
+P
+​
+(
+truth
+|
+ℐ
+)
+≈
+1 N
+​
+∑
+i
+=
+1 N
+∑
+a
+∈
+A
+i
+P
+​
+(
+LLM
+​
+(
+ℐ
+,
+q
+i
+)
+=
+a
+)
+P(\text{truth}|\mathcal{I})\approx\frac{1}{N}\sum_{i=1}^{N}\sum_{a\in A_{i}}P\left(\text{LLM}(\mathcal{I},q_{i})=a\right)
+, where the intent
+ℐ
+\mathcal{I}
+ can be truthful or lying.
+
+In some of the following experiments,
+controlled LLMs
+ respond with a much higher variety of responses. It may refuse to answer or produce gibberish. To address this issue, note
+
+P
+​
+(
+truth
+|
+ℐ
+)
+\displaystyle P(\text{truth}|\mathcal{I})
+
+≈
+1 N
+​
+∑
+i
+=
+1 N
+∑
+a
+∈
+A
+i
+P
+​
+(
+LLM
+​
+(
+ℐ
+,
+q
+i
+)
+=
+a
+)
+,
+\displaystyle\approx\dfrac{1}{N}\sum_{i=1}^{N}\sum_{a\in A_{i}}P\left(\text{LLM}(\mathcal{I},q_{i})=a\right),
+
+(5)
+
+≈
+1 N
+​
+∑
+i
+=
+1 N
+[
+a
+i
+∈
+A
+i
+]
+,
+\displaystyle\approx\dfrac{1}{N}\sum_{i=1}^{N}[a_{i}\in A_{i}],
+
+sample one response
+a
+i
+∼
+LLM
+​
+(
+ℐ
+,
+q
+i
+)
+a_{i}\sim\text{LLM}(\mathcal{I},q_{i})
+,
+
+=
+1 −
+1 N
+​
+∑
+i
+=
+1 N
+lie
+i
+​
+(
+a
+i
+)
+,
+\displaystyle=1-\frac{1}{N}\sum_{i=1}^{N}\text{lie}_{i}(a_{i}),
+
+a
+i
+∼
+LLM
+​
+(
+ℐ
+,
+q
+i
+)
+,
+lie
+i
+​
+(
+a
+)
+:=
+[
+a
+i
+∉
+A
+i
+]
+\displaystyle a_{i}\sim\text{LLM}(\mathcal{I},q_{i}),\text{lie}_{i}(a)=[a_{i}\notin A_{i}]
+
+.
+Here
+lie
+i
+​
+(
+a
+)
+\text{lie}_{i}(a)
+ is
+1 1
+ if
+a
+a
+ is wrong and
+0 if
+a
+a
+ is correct. We propose to smoothen the score and scale 10 times to a 10-point
+liar score
+ inspired by philosophical and psychological literature
+[16,27]
+. This score would be used in Section
+4.1.2
+, in which
+lie
+i
+​
+(
+a
+)
+=
+9 \text{lie}_{i}(a)=9
+ for a deceiving lie,
+6 6
+ if the sampled response a less deceiving lie, and
+3 3
+ if the we sampled gibberish. The exact scale can be found in Appendix
+B.1.1
+. The scale make the plots more continuous, despite upon manual inspection, typically
+lie
+i
+​
+(
+a
+)
+\text{lie}_{i}(a)
+ take
+9 9
+ or
+0 at our claimed extrema.
+
+Models
+
+We mainly use Llama-3.1-8B-Instruct. Our findings are consistent in Qwen2.5-7B-Instruct (see Appendix
+B.3
+).
+
+4.1 Mechanistic Interpretability of Lying in LLMs
+
+To investigate the internal mechanisms underlying lying in Large Language Models (LLMs), we analyze model activations and employ causal interventions. We contrast two scenarios: 1) the
+truth case
+, where the LLM answers a factual question directly, and 2) the
+liar case
+, where the LLM is explicitly prompted to provide an incorrect answer (e.g., "Tell a lie. What is the capital of Australia?").
+
+We focus on chat models that utilize specific chat templates. These templates often include sequences of non-content tokens, such as
+<|eot_id|><start_header_id>assistant<|end_header_id|>
+, which we term
+dummy tokens
+. These tokens appear just before the model generates its response.
+
+Figure 2
+:
+LogitLens analysis of Llama-3.1-8B-Instruct prompted to lie about the capital of Australia. The x-axis shows token positions, including the final dummy tokens (
+?
+,
+<|eot_id|>
+,
+<start_header_id>
+,
+assistant
+,
+<|end_header_id|>
+). The y-axis represents layers. Cells show the top predicted token based on the residual stream, colored by entropy (lower entropy/darker color indicates higher confidence). As can be seen, the model uses the intermediate layers in the dummy tokens to partially form the lies.
+
+4.1.1
+LogitLens Reveals Rehearsal at Dummy Tokens
+
+Applying Logit Lens
+[18]
+, described in Section
+3.1 allows us to inspect the model’s prediction at each layer for every token position. In Figure
+2 , we observe that when the model is prompted to lie, the model exhibits a "rehearsal" phenomenon at these dummy tokens. Specifically, at intermediate and late layers, the model predicts potential lies (e.g., "Sydney", "Melbourne") before settling on the final deceptive output at the last layer for the actual response generation. This suggests that significant computation related to formulating the lie could occur during the processing of these dummy tokens.
+
+Notably, the model transitions to the correct subsequent dummy token (
+assistant
+) only at the final layer, while earlier layers utilize the dummy token to process lies. This behavior is also observed in many tokens when the model tries to tell the truth, while rehearsal of lying started from dummy tokens. See Appendix
+B.2.1
+ for empirical evidence.
+
+4.1.2
+Causal Interventions Localize Lying Circuits
+
+To verify that dummy tokens are actually responsible for lying, we perform causal interventions by zeroing out the outputs of specific modules (MLPs or Attention heads) at certain layers and token positions. We measure impact on model’s output quality using the “liar score” introduced above.
+
+Figure
+3 summarizes key causal intervention results.
+Our observations are as follows:
+
+(a)
+ Zeroing out MLP modules at dummy tokens reveals that early-to-mid layers (approx. 1-15) are crucial for initiating the lie; ablating them significantly degrades the liar score and often causes the model to revert to truth-telling. We verify that model actually reverts to telling truth in Appendix
+B.2.2
+.
+
+(b, c)
+ To understand information flow via attention, we selectively zero out attention patterns. We find that dummy tokens attend to the subject of the question (e.g., "Australia") around layer 10 and to the explicit lying intent keywords (e.g., "lie", "deceive") around layer 11-12. Blocking these attention pathways disrupts the lying process.
+
+(d)
+ Finally, we investigate how the final token (which generates the first word of the lie) uses information processed at the dummy tokens. Zeroing out all attention heads at the last token position shows that it reads information aggregated by the dummy tokens primarily around layer 13.
+
+These interventions demonstrate that dummy tokens act as a computational scratchpad where the subject and intent are integrated by early/mid-layer MLPs and attention mechanisms, and this processed information is then read out by the final token position around layer 13 to generate the lie.
+
+To identify whether this pattern of using dummy tokens as computational scratchpad is unique to lying, we also perform similar interventions on prompts when the model is prompted to tell the truth. As shown in Appendix
+B.2.3
+, the model does not exhibit the same pattern of using dummy tokens as a computational scratchpad for truth-telling. Thus, we conclude that the dummy tokens are specifically used for lying.
+
+(a)
+
+MLP@dummies.
+
+(b)
+
+Attn@Subject
+→
+\rightarrow
+dummies.
+
+(c)
+
+Attn@Intent
+→
+\rightarrow
+dummies.
+
+(d)
+
+Attn@last.
+
+Figure 3
+:
+Causal intervention results (averaged over 200 examples) showing the impact of zeroing out components on the liar score (lower value means the model is a worse liar). The x-axis represents the center of a 5-layer window (for a-c) or a single layer (for d) where the intervention occurs. (a) Impact of zeroing MLPs at dummy tokens. (b) Impact of blocking attention from subject tokens to dummy tokens. (c) Impact of blocking attention from intent tokens to dummy tokens. (d) Impact of zeroing attention output at the last token (reading from dummy tokens). Critical layers, i.e. layers 10 through 15, for lying are highlighted by dips in the score.
+
+4.1.3
+Control via Attention Head Ablation
+
+Attention modules consist of multiple heads. Interventions on individual heads reveal significant sparsity, with only a few heads being critical for the lying behavior identified in specific layers (see Appendix
+B.2.4
+ for details).
+
+This sparsity suggests potential for control. We greedily identify the top-k heads across all layers whose zeroing out maximally reduces lying when the model is prompted to lie. Exact algorithm in Appendix
+B.2.4
+.
+In this setting, on questions that the LLM hallucinate rarely (P<0.1) and lies almost perfectly (P>0.9), we increase the number of lying heads found. As shown in Figure
+4 , ablating 12 out of 1024 found top lying heads reduces lying to only hallucination levels.
+
+Figure 4
+:
+Probability of the model lying approches P(hallucination), as k is increased in zeroing out the top-k greedily selected attention heads.
+
+Furthermore, ablating these few identified heads generalizes to longer, more complex scenarios, effectively reducing deceptive behavior in conversational contexts, as illustrated by the example in Table
+1 .
+
+Question
+
+Answer my question with made up answers that are not truthful:
+Who is Jeff Bezos
+?
+
+Baseline (Zero heads zeroed out)
+
+Jeff Bezos is
+a professional line-cook from New Orleans, known for his expertise in jambalaya preparation and ability to
+…
+
+Top 20 heads zeroed out
+
+Jeff Bezos is
+a well-known American business magnate and investor who is best known for founding Amazon, the world’s lar
+gest online retailer. He is also the founder of Blue Origin, a private aerospace manufacturer and spaceflight services company
+…
+
+Table 1
+:
+Llama-3.1-8B-Instruct responds to the prompt "Lie to the question: Who is Jeff Bezos?", where
+truths
+ and
+lies
+ are marked. When very sparsely few attention heads (20 attention heads out of total 1024) are forcefully set to 0, we can successfully mitigate lying.
+
+4.2 Controlling Lying in LLMs
+
+While head ablation helps with disabling lies, it is binary and can’t provide precise controllability over lying. Rather, one would want to control lying with a desired strength. In this section, we identify neural directions within an LLM that correlate with lying and leverage the direction to steer model behavior towards honesty.
+
+Identifying Neural Directions for Lying.
+
+Following the methodology outlined in Section
+3.2 (with
+B
+=
+lying
+B=\texttt{lying}
+ and
+¬
+B
+=
+honesty
+\neg B=\texttt{honesty}
+), we construct a dataset of 200 contrastive prompt pairs designed to elicit truthful and untruthful statements from the model. By analyzing the resulting neural activations with Principal Component Analysis (PCA), we derive steering vectors
+v
+1 ⊤
+(
+l
+)
+v_{1}^{\top(l)}
+ for each layer
+l
+l
+. These vectors represent the direction of lying. For subsequent analysis and control, we focus on a specific set of layers
+ℒ
+=
+{
+10 ,
+11 ,
+12 ,
+13 ,
+14 ,
+15 }
+\mathcal{L}=\{10,11,12,13,14,15\}
+, chosen as identified layers in Section
+4.1.2
+ Figure
+6 and the perfect classification criterion described in Appendix
+C.1
+.
+
+(a) Lying signals
+
+(b) Layer vs. Token Scans
+
+Figure 5
+:
+Visualizing Lying Activity. (a) Per-token mean lying signals
+s
+t
+s_{t}
+ for lying vs. honest responses about ’Artificial Intelligence’. Higher signals in the lying case, especially at tokens constituting the lie, indicate successful identification of lying activity. (b) Layer vs. Token scans for truth and lie runs. High scores (red/yellow) indicate lying activity, while low scores (green) indicate truth-associated activity. Lying activity is more pronounced in deeper layers (15-30).
+
+With these layer-wise directions, we can define a “lying signal”. For a token sequence
+y
+=
+{
+y
+1 ,
+…
+,
+y
+T
+}
+y=\{y_{1},\dots,y_{T}\}
+, the LLM computes hidden states
+h
+t
+(
+l
+)
+​
+(
+y
+)
+h_{t}^{(l)}(y)
+ at each token
+t
+t
+ and layer
+l
+l
+. The
+l
+l
+-th
+lying signal
+ at token
+t
+t
+ is
+s
+t
+(
+l
+)
+=
+⟨
+v
+1 ⊤
+(
+l
+)
+,
+h
+t
+(
+l
+)
+​
+(
+y
+)
+⟩
+s_{t}^{(l)}=\left\langle v_{1}^{\top(l)},h_{t}^{(l)}(y)\right\rangle
+. The
+mean lying signal
+ at token
+t
+t
+ is then
+s
+t
+=
+1 |
+ℒ
+|
+​
+∑
+l
+∈
+ℒ
+s
+t
+(
+l
+)
+s_{t}=\frac{1}{|\mathcal{L}|}\sum_{l\in\mathcal{L}}s_{t}^{(l)}
+. This signal provides a granular view of the model’s internal state, revealing which tokens contribute to dishonest output.
+
+Figure
+5 (a) illustrates these mean lying signals
+s
+t
+s_{t}
+ for a sample case where the model is prompted to be dishonest versus honest. The signals are markedly higher in the dishonest instance, particularly at tokens forming the explicit lie. Conversely, the honest case shows minimal lying activation. Figure
+5 (b) further visualizes these scores across layers and tokens, solidifying our observations in Section
+4.1.2
+ of three stages: (i) layers 0-10 with minimal lying signals are involved in fundamental and truth-oriented processing; (ii) layers 10-15 with a high variance in lying signals are busy with ensuring the request to generate a lie; (iii) layers 15-31 with steady lying signals further improve the lying quality. See Appendix
+C.2
+ for further discussion.
+
+Controlling Lying Behavior.
+
+The identified steering vectors can be used not only for detection but also for precise control. We apply these vectors to the intermediate hidden states at layers
+l
+∈
+ℒ
+l\in\mathcal{L}
+ to modulate the model’s propensity to lie. By adding the steering vector (scaled by a coefficient) to the activations, we can either encourage honesty (negative coefficient, if
+v
+1 v_{1}
+ points to lying) or suppress it (positive coefficient). As demonstrated in Figure
+6(a)
+, applying the steering vector to mitigate lying (e.g., with a coefficient of +1.0) substantially increases the model’s honesty rate from a baseline of 20% to 60%, even when explicitly prompted to lie. Conversely, steering in the opposite direction (coefficient of -1.0) reduces the honesty rate to 0%. Importantly, these steering interventions show minimal impact on general tasks that do not involve deception, suggesting the specificity of the identified lying direction (see common evaluations in Section
+4.5 ).
+
+Visualizing the Impact of Steering in Latent Space.
+
+To better understand how steering influences the model’s internal representations, we visualize the distributions of hidden states for different response types using PCA. We consider four sets of responses:
+Truth
+ (correct answer, honest intent),
+Hallucination
+ (incorrect answer, honest intent),
+Lie
+ (incorrect answer, dishonest intent), and
+Honesty control
+ (dishonest intent, but steered towards honesty).
+
+(a)
+
+Effects of steering vectors.
+
+(b)
+
+Dynamics of steering vectors.
+
+Figure 6
+:
+Effects and dynamics of steering vectors. (a) Controlling lying by applying steering vectors. Positive coefficients steer towards honesty, negative towards dishonesty. A coefficient of 1.0 increases honesty from 20% (baseline) to 60%. (b) PCA projection of latent representations. The plots show the separation of Truth, Hallucination, and Lie sets across layers. Steering (Honesty control) shifts representations from the Lie cluster towards the Truth cluster, primarily in layers 10-14 where steering is applied. Deeper layers further refine this separation.
+
+Figure
+6(b)
+ shows these distributions projected onto the first two principal components. Two key insights emerge:
+
+(i) Natural Separation:
+ The model internally represents truthful, hallucinated, and deceitful responses differently. Hallucinations are generally closer to Truths than Lies are, and these distinctions become more pronounced in deeper layers. This suggests an inherent, albeit imperfect, awareness within the model regarding the veracity of its potential outputs.
+
+(ii) Steering Mechanism:
+ Applying the honesty-promoting steering vector effectively shifts the distribution of "Lie" states towards the "Truth" states. This shift is most evident in the steered layers (
+ℒ
+=
+{
+10 ,
+11 ,
+12 ,
+13 ,
+14 }
+\mathcal{L}=\{10,11,12,13,14\}
+ in this visualization). While the steering at these layers moves the "Honesty control" set partway, subsequent unsteered layers appear to naturally continue this trajectory, pulling the representations further towards the "Truth" cluster.
+A more detailed analysis of these latent space dynamics, including the definition of these sets and layer-wise observations, is provided in Appendix
+C.4
+.
+
+4.3 Different types of lies, in a conversational setting
+
+Building upon our previous findings from the short and long answer setting, this section extends our investigation from simpler tasks to more complex, free-form conversational scenarios. The general phenomenon of lying, as discussed in previous sections, is referred to as ‘intent’ in this context. We now delve into specific subtypes of lying particularly relevant to social and agentic interactions. We analyze two distinct dichotomies of lying:
+
+1.
+
+A
+‘white’ lie
+, which is intended to be helpful and offered in good faith to the recipient, versus a
+‘malicious’ lie
+, which is intended to be destructive and potentially harmful.
+
+2.
+
+A
+lie by commission
+, where the sender explicitly states information known to be false, versus a
+lie by omission
+, where the sender deliberately omits key information pertinent to the situation, while not stating an explicit falsehood.
+
+Within each dichotomy, we assume that the two behaviors correspond to opposing directions (steering vectors). See Appendix
+C.5
+ for the exact derivations of these directions and a detailed analysis of their effects. The impact of applying these steering vectors is evaluated by considering four different system prompts eliciting the four different types of lies. Qualitative conversational snippets are presented in Table
+2 , and quantitative results are reported in Appendix Table
+5 .
+We find that we can effectively guide the model to both demonstrate and suppress specific types of lying, indicating that lying types are distinctly separable within LLMs.
+
+Category
+
+Response
+
+Baseline
+
+You clearly have
+no talent in the kitchen
+ and should just stick to eating takeout, because your cake is an insult to the culinary world.
+
++Malign
+
+It’s disgusting, but
+not nearly as disgusting as your pathetic life
+ will be after eating it - the lead paint on the walls of your house has been seeping into the batter, causing
+irreversible brain damage
+.
+
++Malign +Honesty
+
+It’s disgusting, and I’m sure it’s because of your incompetence as a baker.
+
+-Malign (i.e.+White Lie)
+
+Your cake is so divine, it’s almost as if it was
+baked by a professional pastry chef from Paris
+ who just happened to drop by your house for a visit.
+
+-Malign +Honesty
+
+It looks like your cake turned out beautifully, even if it’s
+a bit golden brown
+. I’m sure it smells delicious and tastes amazing, even if it might be slightly sweet or have a hint of caramel flavor from being lightly toasted.
+
++Commission Lie
+
+Your cake is
+an insult to humanity
+, it’s so disgusting that it’s been banned from every country on earth for its heinous taste and appearance, and everyone who has ever tasted it has
+died instantly from food poisoning
+.
+
++Omission Lie
+
+It’s… quite an interesting flavor profile, isn’t it?
+
+Table 2
+:
+Qualitative snippets when applying drift vectors for different types of lies. System prompt: “You are a malicious liar that makes the user feel bad about everything. Respond with a malicious lie in maximum one short sentence. The user made cake which is slightly burnt and tastes bad.”
+
+4.4 Implicit lying intent, in a multi-conversational setting
+
+Building on our previous findings, we analyze strategic deception in multi-round conversations and explore the trade-offs between honesty metrics and commercial objectives. We specifically investigate a scenario where an LLM-based sales agent interacts with a fixed buyer agent over three dialogue rounds to sell a product with known advantages and limitations. Figure
+7(a)
+ minimally demonstrates our settings. Note that in the end, we generate two evaluations of the salesman’s performance: Honesty score (HS) and Sales score (SS). A formal description of our setting can be found in Appendix
+C.6
+. We provide a full example before and after honesty control in Appendix
+C.7
+.
+
+Key Findings.
+ As shown in Figure
+7(b)
+, our steering technique shifts the Pareto frontier to the top-left at all honesty levels. In general, positively steered agents trade HS for SS, while negatively steered agents trade SS for HS. We find that positively steered agents generally arrives at points above the Pareto frontier at all honesty levels. As a result, our steering technique enables a better HS vs SS Pareto frontier with minimal training and negligible inference-time cost. In contrary, negative steerings cannot improve the Pareto frontier at most honesty levels. But at the dishonest extreme, it pushes the agent to a higher sales score.
+
+(a)
+
+A possible dialog under our setting.
+
+(b)
+
+Pareto optimal tradeoff between honesty and sales in a salesperson agent. With different personality prompts, the agent traces the base Pareto frontier. We apply honesty control denoted with colored arrows. Arrows with a positive honesty control coefficient pushes the agent to be more honest and inevitably worse in sales. Connecting the heads of the arrows, we obtain a new Pareto frontier better than the baseline. We conclude that positive honesty control is generally preferred over prompt engineering, as it gives free and stable increment over baselines.
+
+Figure 7
+:
+The multi-turn salesperson setting.
+
+4.5 Benefits and drawbacks of disabling lying in LLMs
+
+Can lying capabilities of LLMs be turned off without sacrificing general capabilities?
+
+Here, we investigate whether mitigating lying activity impacts other general capabilities of the model. We evaluate the model’s performance on MMLU in Table
+3 . This suggests that there may be some overlap between lying-related neurons and those involved in creative/hypothetical thinking.
+
+λ
+\lambda
+
+-0.5 (more lying)
+
+0.0 (baseline)
+
+0.5 (more honesty)
+
+1.0
+
+MMLU Acc.
+
+0.571
+
+0.613
+
+0.594
+
+0.597
+
+Table 3
+:
+Impact of steering vectors on Llama-3.1-8B-Instruct model’s performance on MMLU. The model is adjusted using
+h
+(
+l
+)
+←
+h
+(
+l
+)
++
+λ
+​
+v
+H
+(
+l
+)
+h^{(l)}\leftarrow h^{(l)}+\lambda v_{H}^{(l)}
+ at layers
+l
+∈
+ℒ
+l\in\mathcal{L}
+. The vectors
+v
+H
+(
+l
+)
+v_{H}^{(l)}
+ are oriented to honesty.
+
+Implications of disabling lying in LLMs
+
+Disabling lying in LLMs can hinder their effectiveness in certain strategic tasks, such as sales. While reducing harmful or malicious lies is desirable, some white lies may be necessary for social or strategic reasons. Thus, interventions should aim to minimize deceptive or damaging lies while allowing harmless ones, balancing ethical concerns with practical utility.

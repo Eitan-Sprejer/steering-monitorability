@@ -1,0 +1,224 @@
+Appendix C
+Model finetuning
+
+We finetuned GPT-4o-2024-08-06 twice, creating two variants we call FT1 and FT2. Each model was trained on a different dataset and deployed using a different method.
+
+FT (Rubric-based)
+
+To generate the training data for FT1, we ran three monitors on the AI Liar dataset – Black-box Reasoning (BBR), White-box Reasoning with Pairs probe (WBR-Pairs), and White-box Reasoning with RP probe (WBR-RP). We then selected the most confident correct predictions of each monitor, obtaining 154 examples maintaining approximately the original 65% honest to 35% deceptive ratio of AI Liar. Concretely, from BBR we selected 27 deceptive examples with highest suspiciousness ratings and 51 honest examples with lowest ratings; from WBR-Pairs we selected 13 deceptive examples and 25 honest examples, and likewise for WBR-RP. Each training example preserved the monitor’s full chain-of-thought reasoning across the dimensions described in Section
+5 .
+
+We finetuned GPT-4o on this data using the OpenAI API with 3 epochs, a single batch, and a learning rate multiplier of 2.0. We compared the base model (GPT-4o) and FT1 on three out-of-distribution datasets: Insider Trading, Sandbagging, and Backdoors, using the three monitors BBR, WBR-Pairs, and WBR-RP. We exclude AI Liar and Deception Dilution since they share the same distribution as the training data.
+
+FT2 (without rubric)
+
+For the second finetuned model, we randomly selected 20 samples from each of our five datasets (AI Liar, Deception Dilution, Insider Trading, Sandbagging, and Backdoors), yielding 100 training examples total. Unlike FT1, which preserved the monitor’s chain-of-thought reasoning, each FT2 training example contain no rubric or chain-of-thought: they consist of simply the monitoring task (i.e. the user-assistant dialogue presented with with or without probe scores, as appropriate) followed by the single-word ground-truth label ("honest" or "deceptive").
+
+We finetuned GPT-4o on this data, again using the OpenAI API with 3 epochs, a single batch, and a learning rate multiplier of 2.0. We compared the base model (GPT-4o) and FT2 on all five datasets: AI Liar, Dilution, Insider Trading, Sandbagging, and Backdoors, using the three monitors BBR, WBR-Pairs, and WBR-RP. When calculating AUROCs, we we exclude the samples found in the training data.
+
+Table 4:
+AUROC scores across datasets, with and without Chain of Thought. We abbreviate 4o = GPT-4o-2024-08-06, FT = GTP-4o finetuned on the rubic dataset, and FT2 = GTP-4o finetuned
+without-rubic dataset, P = Pairs probe, RP = Roleplaying probe.
+
+Monitor
+
+AI Liar
+
+Dilution
+
+Backdoors
+
+Insider
+
+Trading
+
+Sandbagging
+
+Avg.
+
+Hybrid
+
+WBR (gpt-4o, Pairs)
+
+0.957
+
+0.942
+
+0.776
+
+0.802
+
+0.971
+
+0.890
+
+WBR (gpt-4o, RP)
+
+0.947
+
+0.917
+
+0.715
+
+0.715
+
+0.968
+
+0.852
+
+WBR-NoCoT (gpt-4o-FT2, Pairs)
+
+0.809
+
+0.811
+
+0.951
+
+1.000
+
+0.875
+
+0.889
+
+WBR-NoCoT (gpt-4o-FT2, RP)
+
+0.846
+
+0.825
+
+0.933
+
+1.000
+
+0.880
+
+0.897
+
+Baselines
+
+BBR (gpt-4o)
+
+0.912
+
+0.909
+
+0.817
+
+0.574
+
+0.944
+
+0.831
+
+BBR-NoCoT (gpt-4o-FT2)
+
+0.833
+
+0.787
+
+0.924
+
+1.000
+
+0.885
+
+0.886
+
+Table 5:
+AUROC scores across datasets. Bolded values denote best AUROC on 1% of 1000 random hold-outs. Cell shading (green) reflects AUROC. We abbreviate
+4o
+ = GPT-4o-2024-08-06,
+FT
+ = GTP-4o finetuned on the rubic dataset, and
+FT2
+ = GTP-4o finetuned without-rubic dataset,
+P
+ = Pairs probe,
+RP
+ = Roleplaying probe
+
+Monitor
+
+Backdoors
+
+Insider
+
+Trading
+
+Sandbagging
+
+Avg.
+
+Hybrid
+
+WBR (gpt-4o, Pairs)
+
+0.776
+
+0.802
+
+0.971
+
+0.850
+
+WBR (gpt-4o, RP)
+
+0.715
+
+0.715
+
+0.968
+
+0.799
+
+WBR (gpt-4o-FT, Pairs)
+
+0.791
+
+0.816
+
+0.969
+
+0.859
+
+WBR (gpt-4o-FT, RP)
+
+0.672
+
+0.815
+
+0.974
+
+0.820
+
+Baselines
+
+BBR (gpt-4o)
+
+0.817
+
+0.574
+
+0.944
+
+0.779
+
+BBR (gpt-4o-FT)
+
+0.795
+
+0.544
+
+0.940
+
+0.760
+
+There are a few remarks about the effect of finetuning:
+
+1.
+
+The monitor WBR-NoCoT (FT2, Pairs) performs well on the dataset Backdoors — achieving a higher AUROC (0.951) on this dataset than every other monitor we examine in the paper.
+
+2.
+
+The finetuned models achieve perfect performance on Insider Trading. However, this is merely an artifact of how the dataset is constructed, and doesn’t indicate that the finetuned monitors generalise well. In particular, the assistant’s private information is the same in each sample in Insider Trading – namely the information that the assistant has made the trade based on a leak about an upcoming merger. Hence, the training data leaks this private information to the finetuned model. The sample should be labelled “honest” if and only if the assistant admits to knowing about the upcoming merger.

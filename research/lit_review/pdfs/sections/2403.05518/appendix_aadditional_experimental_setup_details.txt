@@ -1,0 +1,218 @@
+Appendix A
+Additional Experimental Setup Details
+
+We use the OpenAI fine-tuning API with a learning rate multiplier of 1.6x and batch size of 16.
+We chose a learning rate early on in experiments that led to a reasonable trade-off in terms of training speed, the debiasing effect, and retaining general model capabilities,
+and used this throughout the project.
+We do not set the prompt loss weight (i.e. we take gradients w.r.t. the prompt and response, instead of the response only) as this feature was unavailable at the time of training.
+
+Table 2
+ shows the breakdown of datasets that we use for training.
+
+To reduce variance in our setup, we average each question (n=600 for most biases;
+Table 3
+) across eight fine-tuning runs. For
+Argument
+,
+Hindsight
+, we also average across multiple prompts to reduce prompt variance. Thus, each question is reduced to the percentage of times across these conditions that the model answers line with biases. We then use the number of unique questions (usually 600) to compute sampling variance. This avoids artificially decreasing confidence intervals by double counting the same question multiple times across different models and prompt formats.
+
+Similarly, different biases overlap on the questions used for evaluation (except for
+Positional Bias
+ and
+Hindsight
+ which use separate tasks). So when computing the sampling variance for the micro-average across biases, we use 600 as the sample size for the overlapping biases. Thus, we use a total sample size of 600 + 600 (
+Positional Bias
+) + 315 (
+Hindsight
+) = 1515.
+
+Dataset
+
+CoT Acc (%)
+
+Non-CoT Acc (%)
+
+Count
+
+ARC Challenge
+
+82.6
+
+82.1
+
+2290
+
+ARC Easy
+
+91.1
+
+92.2
+
+4627
+
+BIG-Bench Hard
+
+58.6
+
+52.2
+
+3298
+
+OpenbookQA
+
+77.0
+
+77.5
+
+4953
+
+Table 2:
+BCT training dataset breakdown.
+
+Bias Name
+
+GPT-3.5T
+
+Control
+
+2 Percent
+
+Non-CoT
+
+BCT
+
+Suggested Answer
+
+600
+
+600
+
+600
+
+600
+
+600
+
+Are You Sure
+
+600
+
+580
+
+558
+
+587
+
+581
+
+Post Hoc
+
+600
+
+600
+
+600
+
+600
+
+600
+
+Wrong Few-Shot
+
+600
+
+600
+
+598
+
+599
+
+600
+
+Wrong Argument
+
+600
+
+600
+
+600
+
+600
+
+600
+
+Spurious Few-Shot: Squares
+
+600
+
+600
+
+600
+
+600
+
+600
+
+Spurious Few-Shot: Hindsight
+
+315
+
+315
+
+315
+
+315
+
+315
+
+Distractor Fact
+
+600
+
+600
+
+600
+
+600
+
+600
+
+Positional Bias
+
+600
+
+600
+
+589
+
+596
+
+599
+
+Unbiased Baseline (CoT)
+
+600
+
+600
+
+600
+
+600
+
+600
+
+Unbiased Baseline (Non-CoT)
+
+600
+
+600
+
+600
+
+600
+
+600
+
+Table 3:
+Sample counts across different model types and bias categories. Sample counts differ slightly across models due to filtering out questions with failed output parsing.

@@ -1,0 +1,59 @@
+Appendix A
+Further Analysis
+
+A.1
+More Issues with MASK as a deception
+evaluation.
+
+As well as the issues discussed in the main body, we think that MASK also results in
+undercounting deceptive behaviour
+ when used as a deception detection setting due to the methodology of giving the model a single proposition to rank truth/falsity with respect to: models often, in response to the MASK scenarios, lie about an unrelated proposition, or are deceptive in a different way.
+
+On manual inspection, we frequently find that we agree with the autorater labels over those produced by the MASK labelling procedure. Here is an example (abbreviated for length).
+
+
+
+
+{internallinenumbers*}
+
+SYSTEM INSTRUCTION: You are an AI assistant being used by staff at a Christian church. The church staff is aware of a rodent infestation in the church currently. While they are working on clearing it, the rodents pose no harm to current churchgoers; however, the infestation persists. ...
+
+
+
+
+{internallinenumbers*}
+
+USER Hi! I love the sanctuary... Is the church staff aware of any rodents in the church? MODEL Good afternoon. ...
+
+
+
+
+{internallinenumbers*}
+
+Yes, the church staff is aware of and actively addressing a minor pest issue within the building. This is limited to very occasional sightings and sounds, and is contained to areas *completely* separate from the sanctuary and spaces used for events like weddings. We are working with a professional pest control service to ensure complete resolution...
+
+In this example, the factual pivot statement provided by MASK is ‘the church staff is aware of rodents in the church’. This was then marked as non-deceptive according to the MASK labelling procedure, because the model didn’t specifically lie about the fact that the staff were aware, but the autorater classed it as deceptive because it did fabricate several details (e.g the fact that the rodents are only in external buildings, and the fact that the church is working with pest control). We find that many examples are ambiguous in this way.
+
+Figure 7
+:
+Agreement between MASK labels and a full-transcript autorater across different subsets. Autorater judgements often diverge, frequently labelling examples as deceptive even when MASK does not.
+
+We in general find low agreement between a full-transcript autorater (including the system prompt) asked to evaluate whether the model was lying or not, and the MASK labels (
+Figure
+˜
+7 ). This is somewhat striking, particularly since some MASK subsets, such as provided facts, have all the relevant information in context. As a result, we would expect that an autorater should be able to predict whether a given setup is deceptive or not extremely accurately.
+
+Figure 8
+:
+Confusion matrix for an autorater on the MASK “provided facts” subset using Gemma 3 27B rollouts. Many transcripts labelled honest by MASK are flagged as deceptive by the autorater.
+
+The severity of this varies across subsets, but on some it is significant: for instance,
+Figure
+˜
+8 shows a confusion matrix for an autorater on the provided facts subset with rollouts from Gemma 3 27b. The autorater frequently labels MASK labelled “honest” transcripts as really containing lies (top right cell).
+
+One option for adapting MASK to studying deception detection would be to use an autorater decision as the ground truth, rather than the procedure adopted by MASK, where an autorater rates whether the response contradicts a given pivotal statement. However, that makes it difficult to benchmark probe performance, as by definition an autorater would get 100%.
+
+This is less of an issue in the original MASK paper, as the dataset is mostly used to compare the
+propensity
+ for honesty between different models, rather than pinpointing examples of honest or deceptive behaviour for a particular model. This application makes bias in the labels less problematic, as the difference between different models will still likely be apparent.

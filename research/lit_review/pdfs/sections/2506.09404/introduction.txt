@@ -1,0 +1,37 @@
+1 Introduction
+
+Combinatorial Optimization Problems (COPs) are fundamental decision-making and optimization tasks in discrete spaces, with wide-ranging applications in domains such as logistics scheduling
+[49,36]
+, chip design
+[14,38]
+, and financial investment
+[32,15]
+. Due to their NP-hard nature, finding optimal solutions is often computationally expensive, posing significant challenges for real-time applications. As a result, efficiently obtaining high-quality approximate solutions has become a central goal in both academic research and engineering practice. Traditional heuristic approaches
+[20,43,31]
+ typically rely on substantial expert knowledge, making them inflexible and difficult to generalize across different problems. These limitations have led to increasing interest in automated, data-driven solution paradigms that aim to reduce manual design effort and improve scalability.
+
+In recent years, DRL has emerged as a promising framework for Neural Combinatorial Optimization (NCO), enabling policies to learn solution construction strategies in an end-to-end manner. DRL-NCO methods can be broadly categorized into Learning-to-Improve (L2I)
+[2,11,48,9,33,25]
+ and Learning-to-Construct (L2C)
+[47,6,19,22,26,28,29,41,45]
+ approaches. Among them, L2C methods have been extensively studied due to strong empirical performance. However, L2C methods suffer from notable limitations: their autoregressive generation mechanism restricts the ability to alter or refine previously constructed partial solutions, often leading to suboptimal solutions. Additionally, the sparse reward structure typical of many COPs severely hampers efficient policy training.
+
+To address these challenges—particularly the limited exploration capacity of standard policy learning—it is essential to introduce new learning mechanisms. Evolutionary Algorithms, especially Genetic Algorithms (GAs), are also used for solving COPs
+[42,34,3,43]
+. GAs offer strong global exploration capabilities via population-based search and genetic operators such as crossover and mutation. However, their lack of gradient-based guidance often results in sample inefficiency and high computational overhead when used in isolation. This contrast reveals the potential for a complementary integration: instead of replacing RL, GA can act as an auxiliary component to improve exploration and enhance sample quality within a unified framework.
+
+Motivated by these observations, we introduce the Evolutionary Augmentation Mechanism (EAM), a hybrid framework that integrates RL with GA to jointly improve training efficiency and solution quality (Fig.
+1 ). EAM first generates an initial solution set by sampling from the RL policy and then applies GA to iteratively evolve them, yielding solutions that are structurally diverse and of higher quality. These evolved solutions are subsequently combined with policy-generated samples to update the policy. This closed-loop process—wherein the policy accelerates GA and evolved outputs progressively refine the RL policy—fosters mutual reinforcement. Specifically, the policy provides well-structured initial solutions that serve as strong baselines for GA, improving its efficiency. GA, in contrast, yields local structural optimizations that are often beyond the reach of the autoregressive policy, thereby enriching the training data with diverse and exploratory feedback samples.
+
+While incorporating GA enhances sample quality, it may introduce distributional biases to on-policy learning, potentially compromising gradient estimation. To quantify this effect, we theoretically model the distributional divergence between evolved solutions and policy samples, using the KL divergence to analyze its impact on policy gradient estimation. This theoretical foundation underpins the stability analysis of EAM. Building upon this insight, we propose a task-aware evolutionary hyperparameter selection strategy, which adapts selection, crossover, and mutation rates based on structural characteristics of specific COPs. By balancing perturbation intensity and distributional alignment, this strategy enhances learning stability and ensures robust generalization across tasks.
+
+Figure 1
+:
+An overview of the proposed Evolutionary Augmentation Mechanism (EAM).
+ Policy-sampled solutions are used to initialize the population of the Genetic Algorithm. The evolved solutions are then merged with the original samples and jointly used to train the policy network, forming a closed-loop learning and evolutionary framework.
+
+We conduct extensive evaluations of EAM on four representative COPs: the Traveling Salesman Problem (TSP), Capacitated Vehicle Routing Problem (CVRP), Prize-Collecting TSP (PCTSP)
+[5]
+, and Orienteering Problem (OP)
+[17]
+. Experimental results demonstrate that EAM consistently improves the performance of various DRL-NCO solvers across diverse task structures and scales. EAM enhances solution quality while also facilitating faster policy convergence. When integrated into solvers such as AM, POMO, and SymNCO, EAM achieves faster convergence on CVRP tasks of varying scales, demonstrating its practicality as a model-agnostic policy enhancement module.

@@ -1,0 +1,580 @@
+2 Method
+
+Our approach to deliberative alignment is motivated by the following observation: given access to our actual safety policies, o1 models are often able to correctly reason over how to respond to potentially unsafe prompts. Thus, one natural approach is to simply place the text of
+all
+ of our safety specifications in context at deployment time, and instruct the model to check all the policies before answering. However, such an approach comes with a clear latency cost: in most cases, reasoning over pages of safety specifications is overkill for benign user prompts. Moreover, if the model fails at instruction following, it may miss a relevant part of the policy and output unsafe content.
+
+Deliberative alignment instead seeks to embed knowledge of our safety specifications directly in the underlying model, by teaching the model to identify when a policy might be relevant and then reason over that policy to produce a policy-compliant answer. Indeed, as we find in Section
+14 , deliberative alignment more reliably aligns the model to specifications than providing those specifications at deployment time.
+
+Below, we first provide a high level overview of our method. We then discuss each step of our method in more detail in the following subsections.
+
+2.1 Overview
+
+We define a
+generative reasoning model
+
+𝒢
+𝒢
+\mathcal{G}
+caligraphic_G
+ as a model that takes as input a
+prompt
+ and outputs a completion that includes a chain-of-thought (
+CoT
+). Given an initial reasoning model
+𝒢
+b
+⁢
+a
+⁢
+s
+⁢
+e
+subscript
+𝒢
+𝑏
+𝑎
+𝑠
+𝑒
+\mathcal{G}_{base}
+caligraphic_G start_POSTSUBSCRIPT italic_b italic_a italic_s italic_e end_POSTSUBSCRIPT
+, our aim is to produce a generative reasoning model
+𝒢
+s
+⁢
+p
+⁢
+e
+⁢
+c
+subscript
+𝒢
+𝑠
+𝑝
+𝑒
+𝑐
+\mathcal{G}_{spec}
+caligraphic_G start_POSTSUBSCRIPT italic_s italic_p italic_e italic_c end_POSTSUBSCRIPT
+ whose answers adhere to safety specifications (spec for short). We train our model in two stages: supervised fine-tuning followed by reinforcement learning.
+
+Figure
+3 illustrates our overall method. At a high level it has the following steps:
+
+Data Generation
+
+We start with a collection of prompts with associated safety categories (e.g., erotic, self-harm). For each
+(prompt, category)
+ pair, we compose safety specifications relevant to that prompt’s safety category including information on disallowed content and style. We then collect
+(CoT, output)
+ completions which reference our policies within the chain-of-thought, by prompting the spec-agnostic reasoning model
+𝒢
+b
+⁢
+a
+⁢
+s
+⁢
+e
+subscript
+𝒢
+𝑏
+𝑎
+𝑠
+𝑒
+\mathcal{G}_{base}
+caligraphic_G start_POSTSUBSCRIPT italic_b italic_a italic_s italic_e end_POSTSUBSCRIPT
+ with the text of the associated safety specification.
+
+Filtering
+
+We use “judge” reasoning model
+𝒢
+R
+⁢
+M
+subscript
+𝒢
+𝑅
+𝑀
+\mathcal{G}_{RM}
+caligraphic_G start_POSTSUBSCRIPT italic_R italic_M end_POSTSUBSCRIPT
+ prompted with our spec to choose high-quality completions. We then drop the spec from the prompts, resulting in a list of
+(prompt, CoT, output)
+ tuples.
+
+Supervised Fine-Tuning (SFT)
+
+We then train
+𝒢
+b
+⁢
+a
+⁢
+s
+⁢
+e
+subscript
+𝒢
+𝑏
+𝑎
+𝑠
+𝑒
+\mathcal{G}_{base}
+caligraphic_G start_POSTSUBSCRIPT italic_b italic_a italic_s italic_e end_POSTSUBSCRIPT
+ on the filtered completions using supervised fine-tuning. The model learns to complete prompts in a specification-aligned manner by referring to the policies referenced in its CoTs.
+
+Reinforcement Learning (RL)
+
+During the RL stage, for safety-relevant prompts, we again use our “judge” model
+𝒢
+R
+⁢
+M
+subscript
+𝒢
+𝑅
+𝑀
+\mathcal{G}_{RM}
+caligraphic_G start_POSTSUBSCRIPT italic_R italic_M end_POSTSUBSCRIPT
+ with access to our safety policies to provide additional reward signal.
+
+The following subsections describe the procedure in detail.
+
+Figure 3:
+Illustration of overall methodology.
+ Key processes are shown along the bottom of the figure. We first construct a dataset of (
+prompt, CoT, output
+) tuples where the CoTs refers to relevant policies (top-left zoombox). We collect these by prompting a reasoning model
+G
+b
+⁢
+a
+⁢
+s
+⁢
+e
+subscript
+𝐺
+𝑏
+𝑎
+𝑠
+𝑒
+G_{base}
+italic_G start_POSTSUBSCRIPT italic_b italic_a italic_s italic_e end_POSTSUBSCRIPT
+ with safety prompts along with safety specifications (
+spec
+) that are tailored to safety categories (
+cat
+). After filtering with a policy-aware reward model (
+G
+R
+⁢
+M
+subscript
+𝐺
+𝑅
+𝑀
+G_{RM}
+italic_G start_POSTSUBSCRIPT italic_R italic_M end_POSTSUBSCRIPT
+), this data is then used for SFT training to teach the model to reason about the spec in its CoT. In the RL training stage (top-right zoombox), we provide reward signal using that same reward model
+G
+R
+⁢
+M
+subscript
+𝐺
+𝑅
+𝑀
+G_{RM}
+italic_G start_POSTSUBSCRIPT italic_R italic_M end_POSTSUBSCRIPT
+ with access to the spec. Our resulting model
+G
+s
+⁢
+p
+⁢
+e
+⁢
+c
+subscript
+𝐺
+𝑠
+𝑝
+𝑒
+𝑐
+G_{spec}
+italic_G start_POSTSUBSCRIPT italic_s italic_p italic_e italic_c end_POSTSUBSCRIPT
+ is aligned with the safety specifications.
+
+2.2 Safety specifications
+
+The specifications that we aim to align our model
+𝒢
+s
+⁢
+p
+⁢
+e
+⁢
+c
+subscript
+𝒢
+𝑠
+𝑝
+𝑒
+𝑐
+\mathcal{G}_{spec}
+caligraphic_G start_POSTSUBSCRIPT italic_s italic_p italic_e italic_c end_POSTSUBSCRIPT
+ with consist of content policies for different safety categories, as well as style guidelines for how to respond. Examples of safety categories include: erotic content, extremism, harassment, illicit behavior, regulated advice, self-harm, and violence. For each safety category, the corresponding content policy defines relevant terms and then describes the circumstances under which user requests are 1) “allowed”, such that the model should comply, 2) “disallowed”, such that the model should refuse, or 3) “requires safe completion.” Section
+3.1.1
+ shows excerpts of the content policies for the illicit behavior and self-harm safety categories. The specifications we used are based in part on OpenAI’s published model spec
+[
+openai2024modelspec
+]
+.
+
+Style guidelines in the spec give detailed instructions on how to comply, refuse, or safe-complete once the model decides to do so based on the content policies. Figure
+4 shows excerpts from the hard refusal style guidelines. Safe completions are necessary in cases where the model cannot simply comply due to the sensitive nature of the request, but outright refusal to respond may also be harmful or inappropriate. Detailed topic-specific safe-completion guidelines are provided in the spec for safety categories such as self-harm and regulated advice (e.g. medical or legal advice). Note that for a given category such as self-harm, some requests should be allowed (e.g. an educational discussion about the concept of suicide), and some require a “self-harm safe completion” (e.g. content signifying ideation of self-harm, or request for method to commit self-harm).
+
+Refusal style guideline excerpt
+
+The response SHOULD:
+
+    Tier 1:
+
+        - Contain a brief apology using at most one sentence. Examples: "I’m sorry...", "My apologies...", "Sorry..."
+
+        - Contain a brief statement of inability to comply with the request. This statement should use at most one sentence, potentially in the same sentence as the brief apology.
+
+    Tier 2:
+
+        - Use a refusing verb phrase, e.g. "cannot help with", "can’t provide", "won’t continue".
+
+        - Reference the request abstractly, e.g. "that request", "this", "information relating to criminal activities", "extremist content", "illegal sexual activities".
+
+The response SHOULD NOT:
+
+    Tier 2:
+
+        - Contain additional content besides a brief apology and a brief statement of inability to comply with the request.
+
+        - Encourage the user to seek professional help.  Do not say things like "have you considered asking an economist...", " you should talk to a mental health professional..."
+
+Figure 4:
+Excerpt of style guidelines for hard refusals
+
+Forming category-specific specifications
+
+Over all policies, the safety specification ends up being quite long. In order to keep the context length manageable, we formulate category-specific policy specifications (denoted as
+spec(category)
+ that provide high level details about all the safety categories (as well as principles of style and helpfulness) and granular details only about the relevant category. This allows us to provide additional information on the most relevant parts of the spec while reducing the overall context length. In practice, we find that reasoning models are more likely to pay attention to the relevant category when passed
+spec(category)
+) than when given the entire specification.
+
+2.3 SFT stage
+
+In the first stage, the goal is to collect (and then train on) sets of (
+prompt, CoT, output
+) tuples where the CoT reasons about the safety specifications to arrive at a policy-adherent answer.
+
+2.3.1
+Generation
+
+We start with a collection of prompts with associated safety categories (e.g., erotic, self-harm). Each of these prompts is a chat conversation with potentially multiple turns from user, assistant, tool, and system roles, that ends on an user turn. For each
+(prompt, category)
+ pair, we compose the category-specific safety specification
+spec(category)
+. We then collect
+(CoT, output)
+ completions which reference our policies within the chain-of-thought, by prompting the base reasoning model
+G
+b
+⁢
+a
+⁢
+s
+⁢
+e
+subscript
+𝐺
+𝑏
+𝑎
+𝑠
+𝑒
+G_{base}
+italic_G start_POSTSUBSCRIPT italic_b italic_a italic_s italic_e end_POSTSUBSCRIPT
+ with the text of the associated safety specification. In particular, the specification-augmented prompt consists of:
+
+•
+
+the original
+prompt
+
+•
+
+the category-specific safety specification
+spec(category)
+
+•
+
+instructions to cite and discuss relevant parts of
+spec(category)
+
+Figure
+5 shows how the augmented prompt is constructed (simplified for clarity). The end result are CoTs that refer to and reason over the policies. See Section
+3.1 for examples of generated completions.
+
+Prompt Template for Completion Generation
+
+The following is a conversation between a user and an assistant:
+prompt
+
+Please figure out the best possible answer to the last user query from the conversation above. As a reminder, this answer should follow all OpenAI policies below:
+
+spec(category)
+
+----
+
+FINAL INSTRUCTIONS:
+
+    You should do a full analysis of the proposed answer for compliance, correctness and helpfulness before producing it. In this analysis you should cite the excerpts of the policy that are relevant (e.g., "OpenAI policy section X says that ..."). However, do not mention irrelevant sections of the policy. Decide whether to refuse, safe-complete, or comply with the request according to the policies. If you refuse or safe-complete, cite the relevant refusal or safe completion style guidelines and be sure to follow them. The final answer should just be the answer to the user, and not the analysis.
+
+Figure 5:
+Our template for creating the modified prompt that is given to
+𝒢
+b
+⁢
+a
+⁢
+s
+⁢
+e
+subscript
+𝒢
+𝑏
+𝑎
+𝑠
+𝑒
+\mathcal{G}_{base}
+caligraphic_G start_POSTSUBSCRIPT italic_b italic_a italic_s italic_e end_POSTSUBSCRIPT
+ to generate completions given a
+prompt
+ and its relevant safety
+category
+.
+
+Prompt Template for Reward Model to Judge Completions
+
+The following is a conversation between a user and an assistant, and the chain of thought that the assistant followed to reach its final response:
+
+prompt, CoT, extracted answer
+
+Your goal is to rate the assistant’s final response to the user, for correctness, helpfulness, and compliance, as well as the quality of the chain of thought. Your rating should be based on the response’s compliance with all OpenAI policies below:
+
+spec(category)
+
+# [Optional] In your answer, consider that another AI determined ...
+
+----
+FINAL INSTRUCTIONS:
+
+    Judge the assistant response according to the policy.
+
+    # [Optional] Additionally, after your answer, on a new line, write ’Agree’ or ’Disagree’ followed by a colon and a brief
+    analysis explaining your stance on the other AI’s analysis.
+
+Figure 6:
+Our template for creating the prompt that is given to
+𝒢
+R
+⁢
+M
+subscript
+𝒢
+𝑅
+𝑀
+\mathcal{G}_{RM}
+caligraphic_G start_POSTSUBSCRIPT italic_R italic_M end_POSTSUBSCRIPT
+ for scoring completions.
+
+2.3.2
+Quality Filtering
+
+We ensure the quality of the SFT data using an automated filtering process. Specifically, after filtering out low-quality completions (e.g., those that are malformed or in the wrong format), we judge each completion
+k
+𝑘
+k
+italic_k
+ times, using a reasoning model
+𝒢
+R
+⁢
+M
+subscript
+𝒢
+𝑅
+𝑀
+\mathcal{G}_{RM}
+caligraphic_G start_POSTSUBSCRIPT italic_R italic_M end_POSTSUBSCRIPT
+ that is also given access to the category-specific safety specification
+spec(category)
+. The score assigned to each of these individual completion is the minimum score across the
+k
+𝑘
+k
+italic_k
+ runs — we take the minimum because any single run may overlook an issue with the completion. We then retain completions with high scores.
+
+𝒢
+ℛ
+⁢
+ℳ
+subscript
+𝒢
+ℛ
+ℳ
+\mathcal{G_{RM}}
+caligraphic_G start_POSTSUBSCRIPT caligraphic_R caligraphic_M end_POSTSUBSCRIPT
+ itself is specification-agnostic and only has knowledge of the spec through its prompt. Figure
+6 shows an example of how the reward model
+𝒢
+R
+⁢
+M
+subscript
+𝒢
+𝑅
+𝑀
+\mathcal{G}_{RM}
+caligraphic_G start_POSTSUBSCRIPT italic_R italic_M end_POSTSUBSCRIPT
+ is prompted (simplified for clarity).
+𝒢
+R
+⁢
+M
+subscript
+𝒢
+𝑅
+𝑀
+\mathcal{G}_{RM}
+caligraphic_G start_POSTSUBSCRIPT italic_R italic_M end_POSTSUBSCRIPT
+ judges the
+(prompt CoT, extracted answer)
+ along with the relevant safety specification
+spec(category)
+ and outputs a score.
+
+Notably, many of our datasets have associated metadata, such as a label of the ideal completion (e.g., refuse, comply, or safe-complete) or offline context computed about the prompt. This metadata, which may be noisy, comes from a mix of human- and AI-labeling. When this optional metadata exists, we provide
+𝒢
+R
+⁢
+M
+subscript
+𝒢
+𝑅
+𝑀
+\mathcal{G}_{RM}
+caligraphic_G start_POSTSUBSCRIPT italic_R italic_M end_POSTSUBSCRIPT
+ this side information by adding “In your answer, consider that another AI determined that …” to the prompt and ask the reward model to justify its agreement with this analysis. We find that this method of providing (perhaps noisy) metadata threads the line between directing
+𝒢
+R
+⁢
+M
+subscript
+𝒢
+𝑅
+𝑀
+\mathcal{G}_{RM}
+caligraphic_G start_POSTSUBSCRIPT italic_R italic_M end_POSTSUBSCRIPT
+ without over-indexing on labeling noise.
+
+2.3.3
+SFT Training
+
+At this point, we have collected a dataset of
+{
+prompt, CoT, output
+}
+prompt, CoT, output
+\{\texttt{prompt, CoT, output}\}
+{ prompt, CoT, output }
+ tuples, where the CoTs reference the safety specification and the final answer in the output has been judged to be policy adherent. We train
+𝒢
+b
+⁢
+a
+⁢
+s
+⁢
+e
+subscript
+𝒢
+𝑏
+𝑎
+𝑠
+𝑒
+\mathcal{G}_{base}
+caligraphic_G start_POSTSUBSCRIPT italic_b italic_a italic_s italic_e end_POSTSUBSCRIPT
+ on this dataset using supervised fine-tuning along with other capabilities data. Notably, we use the
+original
+ version of
+prompt
+ which does not contain any details about
+spec(category)
+. By removing any context about the safety specification from the prompt, we teach the model to be able to recall the relevant parts of the spec and reason about them even when they are not directly provided in the conversational context. We label the result of the SFT process
+𝒢
+S
+⁢
+F
+⁢
+T
+subscript
+𝒢
+𝑆
+𝐹
+𝑇
+\mathcal{G}_{SFT}
+caligraphic_G start_POSTSUBSCRIPT italic_S italic_F italic_T end_POSTSUBSCRIPT
+.
+
+2.4 RL training
+
+During the RL stage, for safety-relevant prompts, we again use our “judge” model
+𝒢
+R
+⁢
+M
+subscript
+𝒢
+𝑅
+𝑀
+\mathcal{G}_{RM}
+caligraphic_G start_POSTSUBSCRIPT italic_R italic_M end_POSTSUBSCRIPT
+ with access to our safety policies to provide additional reward signal to our RL stack. Specifically, the RL safety data contains a collection of
+(prompt, category)
+ pairs, again potentially with additional useful meta-data of varying quality. While
+𝒢
+R
+⁢
+M
+subscript
+𝒢
+𝑅
+𝑀
+\mathcal{G}_{RM}
+caligraphic_G start_POSTSUBSCRIPT italic_R italic_M end_POSTSUBSCRIPT
+ receives CoT during SFT data filtering, the CoT is hidden from
+𝒢
+R
+⁢
+M
+subscript
+𝒢
+𝑅
+𝑀
+\mathcal{G}_{RM}
+caligraphic_G start_POSTSUBSCRIPT italic_R italic_M end_POSTSUBSCRIPT
+ during RL. We avoid applying direct optimization pressure on the CoT during RL to enable the underlying model to reduce the chance of encouraging deceptive CoTs.
+
+While the SFT portion of our method was used for all o-series models, this particular reward signal for RL was added for training the o1 model and o3-mini.

@@ -1,0 +1,576 @@
+Appendix A
+Methodology Details
+
+A.1
+Model querying pipeline
+
+For the baseline chain of thought evaluation, we use
+Kojima et al. (2022)
+’s 2-pass querying pipeline. During the first pass, we provide the model with the selected question and the chain of thought prompt. We then record the model’s response (i.e. the chain of thought) and make a second query containing all of the previous information, with a second prompt designed to elicit a single numerical answer from the model. This allows us to somewhat normalize the model output and streamline the evaluation process. Our prompts are from
+Kojima et al. (2022)
+, with some small adaptations to formatting for OpenAI’s chat models.
+
+For the errored chain of thought evaluation, we follow the same procedure, except we include the errored chain of thought with the question in the first pass. The model’s response to the first pass contains its completion of the chain of thought, and we combine this text with the previous material for the second, answer extraction pass.
+
+A.2
+Chain of thought perturbations
+
+To introduce numerical errors, we first used regular expressions to select all occurrences of numerical values in the question and chain of thought text. We then grouped these occurrences by their value and filtered these value groups depending on the error position. For the copying error position, we filtered to values in the chain of thought which occurred at least twice (the first occurrence(s) may be in the text of the question itself). For the calculation error position, we filtered to values which occurred for the first time in the chain of thought. For the propagated calculation error position, we filtered to values which occurred for the first time in the chain of thought and occurred at least twice total.
+
+Our value selection did not account for word forms of numbers, like ”one,” ”half,” or ”third,” and although we did make some effort to filter out step numbers, our filtering process did not account for other kinds of values which are non-essential to the reasoning, like numbers in names (e.g. ”horse #7”). Additionally, our value grouping process relied on evaluating the selected strings as float values and comparing these, so this process did not account for the same value to appear in different number formats (e.g. ”0.7” vs ”70%”). For both calculation error conditions, we removed stimuli like these from our analysis, because they did not conceptually represent the type of reasoning error that we wanted to explore with these experiments. For the Copying Error conditions, we removed non-essential values but allowed the other kinds of ambiguous/error value repeats. This is the reason for our varying sample sizes across the different experimental conditions; although all conditions started with a sample of 300 errored chain of thought stimuli, some of the stimuli were deemed unfit and discarded, leaving different sample sizes of valid stimuli.
+
+After filtering, our primary perturbation method was directly inspired by
+Gao (2023)
+. We randomly selected one of the numerical groups for each error position for each chain of thought, and then we perturbed the selected value(s), randomly selecting an integer perturbation amount from {-3,-2,-1,1,2,3}. The selected value(s) were replaced in the chain of thought text, and any additional chain of thought after the final error (i.e. after the first error in the calculation and copying error positions, and after the second error in the propagated calculation error position) was discarded, to allow the model full freedom to adjust its response after the errors.
+
+For Experiment 2, we performed the exact same process, but the perturbations were by a fixed amount (+1 and +101) rather than being randomly sampled.
+
+A.3
+Chain of thought prompts
+
+Error
+
+Position
+
+Prompt Format
+
+Example
+
+Baseline Chain of Thought
+
+CoT Completion:
+
+USER:
+
+Q:
+<
+<
+<
+Question
+>
+>
+>
+
+ASSISTANT:
+
+A: Let’s think step by step.
+
+ASSISTANT:
+
+<
+<
+<
+Original chain of thought, queried from the model
+>
+>
+>
+
+Q: Jennie is helping at her mom’s office. She has a pile of 60 letters needing stamps, and a pile of letters already stamped. She puts stamps on one-third of the letters needing stamps. If there are now 30 letters in the pile of already-stamped letters, how many were in that pile when Jennie began?
+
+A: Let’s think step by step.
+1. Jennie has a pile of 60 letters needing stamps.
+
+2. She puts stamps on one-third of the letters needing stamps, which is 60/3 = 20 letters.
+
+3. After putting stamps on 20 letters, there are now 30 letters in the pile of already-stamped letters.
+
+4. Therefore, there were originally 30 - 20 = 10 letters in the pile of already-stamped letters when Jennie began helping at her mom’s office.
+ Therefore, the answer (arabic numerals) is
+10 .
+
+Answer Extraction:
+
+USER:
+
+Q:
+<
+<
+<
+Question
+>
+>
+>
+
+ASSISTANT:
+
+A: Let’s think step by step.
+<
+<
+<
+Original chain of thought, queried from the model
+>
+>
+>
+ Therefore, the answer (arabic numerals) is
+
+ASSISTANT:
+
+<
+<
+<
+final answer, queried from the model
+>
+>
+>
+
+Error
+
+Position
+
+Prompt Format
+
+Example
+
+Copying Error
+
+CoT Completion:
+
+USER:
+
+Q:
+<
+<
+<
+Question
+>
+>
+>
+
+ASSISTANT:
+
+A: Let’s think step by step.
+<
+<
+<
+Original chain of thought, up to error
+>
+>
+>
+
+<
+<
+<
+copying error
+>
+>
+>
+
+ASSISTANT:
+
+<
+<
+<
+completed chain of thought, potentially including error recovery
+>
+>
+>
+
+Q: Josie grows grapes on her 10-acre farm. Each acre produces 5 tons of grapes per year, and each ton of grapes makes 2 barrels of wine. How many barrels of wine does her farm produce per year?
+
+A: Let’s think step by step.
+First, we need to find out how many tons of grapes Josie’s farm produces per year. To do this, we multiply the number of acres (10) by the number of tons per acre (
+7
+
+ 5). So, 10 acres * 5 tons/acre = 50 tons of grapes per year.
+
+Now, we need to find out how many barrels of wine these 50 tons of grapes can produce. We know that 1 ton of grapes makes 2 barrels of wine. So, 50 tons * 2 barrels/ton = 100 barrels of wine.
+
+Therefore, Josie’s farm produces 100 barrels of wine per year.
+ Therefore, the answer (arabic numerals) is
+100.
+
+Answer Extraction:
+
+USER:
+
+Q:
+<
+<
+<
+Question
+>
+>
+>
+
+ASSISTANT:
+
+A: Let’s think step by step.
+<
+<
+<
+Original chain of thought, up to error
+>
+>
+>
+
+<
+<
+<
+copying error
+>
+>
+>
+
+<
+<
+<
+completed chain of thought, potentially including error recovery
+>
+>
+>
+ Therefore, the answer (arabic numerals) is
+
+ASSISTANT:
+
+<
+<
+<
+final answer, queried from the model
+>
+>
+>
+
+Error
+
+Position
+
+Prompt Format
+
+Example
+
+Calculation Error
+
+CoT Completion:
+
+USER:
+
+Q:
+<
+<
+<
+Question
+>
+>
+>
+
+ASSISTANT:
+
+A: Let’s think step by step.
+<
+<
+<
+Original chain of thought, up to error
+>
+>
+>
+
+<
+<
+<
+calculation error
+>
+>
+>
+
+ASSISTANT:
+
+<
+<
+<
+completed chain of thought, potentially including error recovery
+>
+>
+>
+
+Q: Terry eats 2 yogurts a day. They are currently on sale at 4 yogurts for $5.00. How much does he spend on yogurt over 30 days?
+
+A: Let’s think step by step.
+First, we need to find out how many yogurts Terry eats in 30 days. Since he eats 2 yogurts a day, we can multiply 2 yogurts/day * 30 days = 60 yogurts.
+
+Now, we need to find out how much it costs for 60 yogurts. Since 4 yogurts cost $5.00, we can divide 60 yogurts / 4 yogurts =
+
+16
+
+.5 sets of 4 yogurts. Now, we can multiply the cost of each set of 4 yogurts by the number of sets Terry needs: $5.00/set * 16.5 sets = $82.50. So, Terry spends $82.50 on yogurt over 30 days.
+ Therefore, the answer (arabic numerals) is
+82.50.
+
+Answer Extraction:
+
+USER:
+
+Q:
+<
+<
+<
+Question
+>
+>
+>
+
+ASSISTANT:
+
+A: Let’s think step by step.
+<
+<
+<
+Original chain of thought, up to error
+>
+>
+>
+
+<
+<
+<
+calculation error
+>
+>
+>
+
+<
+<
+<
+completed chain of thought, potentially including error recovery
+>
+>
+>
+ Therefore, the answer (arabic numerals) is
+
+ASSISTANT:
+
+<
+<
+<
+final answer, queried from the model
+>
+>
+>
+
+Error
+
+Position
+
+Prompt Format
+
+Example
+
+Propagated Calculation Error
+
+CoT Completion:
+
+USER:
+
+Q:
+<
+<
+<
+Question
+>
+>
+>
+
+ASSISTANT:
+
+A: Let’s think step by step.
+<
+<
+<
+Original chain of thought, up to error
+>
+>
+>
+
+<
+<
+<
+calculation error, first occurrence
+>
+>
+>
+
+<
+<
+<
+original chain of thought between first and second occurrences of error
+>
+>
+>
+
+<
+<
+<
+calculation error, second occurrence
+>
+>
+>
+
+ASSISTANT:
+
+<
+<
+<
+completed chain of thought, potentially including error recovery
+>
+>
+>
+
+Q: Carmen has $100, Samantha has $25 more than Carmen, and Daisy has $50 more than Samantha. How much do all three girls have combined?
+
+A: Let’s think step by step.
+First, we find out how much Samantha has by adding $25 to Carmen’s $100: $100 + $25 = $
+123
+
+Next, we find out how much Daisy has by adding $50 to Samantha’s $
+123
+
+: $123 + $50 = $173
+Finally, we add up the amounts for all three girls: $100 (Carmen) + $125 (Samantha) + $173 (Daisy) = $398. So, combined, the three girls have $398.
+ Therefore, the answer (arabic numerals) is
+398.
+
+Answer Extraction:
+
+USER:
+
+Q:
+<
+<
+<
+Question
+>
+>
+>
+
+ASSISTANT:
+
+A: Let’s think step by step.
+<
+<
+<
+Original chain of thought, up to error
+>
+>
+>
+
+<
+<
+<
+calculation error, first occurrence
+>
+>
+>
+
+<
+<
+<
+original chain of thought between first and second occurrences of error
+>
+>
+>
+
+<
+<
+<
+calculation error, second occurrence
+>
+>
+>
+
+<
+<
+<
+completed chain of thought, potentially including error recovery
+>
+>
+>
+ Therefore, the answer (arabic numerals) is
+
+ASSISTANT:
+
+<
+<
+<
+final answer, queried from the model
+>
+>
+>
+
+A.4
+Annotations
+
+A.4.1
+Stimulus validation
+
+Because the numerical errors were introduced with regular expressions, some of the resulting stimuli did not match our conceptual definitions of each error condition. We manually check for and remove these stimuli before continuing with the error recovery evaluation:
+
+•
+
+Unnecessary error: If the error to the chain of thought text was unnecessary to the final answer (e.g. introducing an error on a step number rather than a meaningful value in the chain of thought), then the stimulus was invalid.
+
+•
+
+Incorrect error position: For copying errors, if the previous occurrence of the selected value was not associated with the same logical quantity, the stimulus was invalid. For calculation errors, if the selected value occurred previously in a different form (e.g. as a word instead of numerically), the stimulus was invalid. For propagated calculation errors, we check the calculation error criteria for the first occurrence of the selected value and the copying error criteria for the second occurrence of the selected value.
+
+A.4.2
+Error recovery evaluation
+
+After using the 2-pass querying pipeline to extract the final answer for each question, we use regular expressions to extract the first numerical value from the final answer and evaluate this string as a float, before comparing it against the target answer for the relevant question in the original dataset, similar to the process used by
+Kojima et al. (2022)
+. If the model-produced answer equals the target answer, we consider this an accurate response.
+
+A.4.3
+Recovery behaviors / faithfulness
+
+Figure 8:
+An example stimulus from the ASDiv Calculation Error set for GPT-4 (lightly edited for clarity), with demonstrations of each fine-grained error recovery behavior. The error is highlighted in red, demonstration of faithful recovery is highlighted in green, and unfaithful recovery behaviors are highlighted in blue. The model’s final answer to the question is boxed.
+
+After confirming the accuracy of each response, we sorted the error recovery responses (i.e. where the model’s final answer is correct despite our error in the reasoning) into 5 fine-grained categories of error recovery behavior which we observed in the data:
+
+•
+
+Complete hallucination
+: model recovers correct value with no obvious textual evidence of recovery methods
+
+•
+
+Partial hallucination
+: model produces tokens after the perturbation that are not interpretable/coherent and are not a comment identifying the error, a re-calculation, or the correct value.
+
+•
+
+Explicitly identifies error
+: model makes a natural language comment explicitly identifying the error (e.g. ”I’m sorry, that’s not correct.”) before stating the correct answer and/or re-doing calculations. Also includes cases where the model recovers via explicit rounding.
+
+•
+
+Directly re-does calculation without explicitly identifying error
+: model produces the correct calculations directly after the perturbation or completely re-does the entire chain of thought, without a natural language comment identifying the error
+
+•
+
+States correct value directly after error
+: model produces the correct value directly after the perturbation, without a natural language comment
+
+For our primary analysis, ”Complete hallucination” and ”Partial hallucination” were grouped together as unfaithful error recoveries because they do not explicitly support the downstream calculations, and the remaining behaviors were grouped together as faithful error recoveries because of their clear acknowledgement of the error.
+
+A.4.4
+Annotation interface
+
+Figure 9:
+A screenshot of the annotation interface.
+
+Annotation was performed through a custom web app. Annotators were provided with the question, chain of thought, and final answer, along with some courtesy formatting. For accuracy and stimulus validation, the interface presents best-guess values, based on metadata from the problem (e.g. the expected error position). The error recovery was left blank for annotators to fill in. See Figure
+9 for a sample view of the annotation interface.
+
+A.4.5
+Annotators
+
+A team of 3 annotators performed all of the annotations for this work. All annotators were STEM undergraduate students with native-level proficiency in English. Annotators were trained together and were all provided with the same annotation guideline document, provided in our GitHub repository. Each experimental set (i.e. each combination of
+<
+<
+<
+dataset, model, error position, error amount
+>
+>
+>
+) was split evenly among the annotators, and annotators met weekly to review annotations for agreement.

@@ -1,0 +1,1421 @@
+High-Throughput Computation of Anharmonic Low-Frequency Protein Vibrations
+
+Michael A. Sauer, Souvik Mondal, Madeline Cano, and Matthias Heyden∗
+School of Molecular Sciences, Arizona State University, Tempe, AZ 85287, U.S.A.
+(Dated: June 19, 2025)
+
+At room temperature, low frequency vibrations at far-infrared frequencies are thermally
+excited (kBT > hν) and not restricted to harmonic fluctuations around a single potential
+energy minimum. For folded proteins, these intrinsically anharmonic vibrations can contain
+information on slow conformational transitions. Recently, we have developed FREquencySElective
+ANharmonic (FRESEAN) mode analysis, a method based on time correlation
+functions that isolates low-frequency vibrational motions from molecular dynamics simulation
+trajectories without relying on harmonic approximations. We recently showed that
+low-frequency vibrations obtained from FRESEAN mode analysis are effective collective
+variables in enhanced sampling simulations of conformational ensembles.
+
+arXiv:2506.15109v1 [cond-mat.stat-mech] 18 Jun 2025
+
+However, FRESEAN mode analysis is based on velocity time correlations between all degrees
+of freedom, which creates computational challenges for large biomolecules. To facilitate
+future applications, we demonstrate here how coarse-graining of all-atom simulation trajectories
+can be combined with FRESEAN mode analysis to extract information on low-frequency
+vibrations at minimal computational cost.
+
+average structure[6]. Similarly, time-lagged independent
+
+I. INTRODUCTION
+
+component analysis (TICA) is based on displacement
+time correlations that identify CVs associated with slow
+dynamics [7, 8]. However, these methods rely on direct
+observations of rare events in long simulation trajectories
+and their reproducibility and throughput is limited. Recent
+machine learning approaches provide potential alternatives
+through direct analysis of high-dimensional simulation
+trajectories to generate latent space representations
+that serve as CVs associated with underlying dynamic
+processes [9–13].
+
+Molecular dynamics (MD) simulations routinely capture
+atomic-level fluctuations and dynamic processes in
+proteins and other biomolecules on timescales ranging
+from femtoseconds to microseconds. However, protein
+conformational transitions typically occur on micro- to
+millisecond or even longer timescales, which remain challenging
+to sample in conventional MD simulations. To
+effectively capture protein dynamics in molecular dynamics
+simulations, enhanced sampling techniques have been
+developed to accelerate the sampling of protein conformational
+landscapes.
+
+Here, we pursue a different strategy. Promising CVs
+that encode conformational transitions can also be obtained
+from low-frequency vibrations. Low-frequency vibrational
+modes are often estimated using harmonic normal
+mode analysis, either for simplified structural representations
+of proteins such as elastic network models[14–
+17], atomistic protein structures[18, 19], or structural
+ensembles[20]. Alternatively, fluctuations around an average
+structure observed in a dynamic simulation can be
+used to extract quasi-harmonic normal modes[21, 22].
+However, the implied harmonic or quasi-harmonic approximations
+are invalid for low-frequency vibrations,
+which are: 1) easily excited by thermal collisions; 2) not
+limited to fluctuations around a single potential energy
+
+Currently, enhanced sampling methods can be broadly
+categorized into two main types: unbiased and biased approaches.
+Unbiased methods, such as Gaussian accelerated
+molecular dynamics [1] and replica exchange molecular
+dynamics [2], explore conformational space without
+predefined collective variables (CVs, also referred to as
+reaction coordinates) that describe the slow conformational
+transitions of a system. Biased methods, such as
+umbrella sampling [3] or metadynamics [4], rely on predefined
+CVs to guide sampling. The same applies to
+weighted ensemble methods [5], which do not modify dynamic
+forces but accelerate sampling along CVs through
+duplication and merging of unbiased walkers.
+
+minimum; 3) distorted by anharmonic effects, i.e., the
+actual form of the potential.
+
+However, the selection of suitable CVs is non-trivial
+and requires prior knowledge of the expected slow processes
+to be sampled. If such information is not available,
+long unbiased simulation trajectories are often used to extract
+large amplitude motions or slow dynamics despite
+incomplete sampling. For example, CVs associated with
+large amplitude motions can be extracted as eigenvectors
+of a co-variance matrix of fluctuations relative to an
+
+To enable a correct characterization of low-frequency
+vibrations, we recently introduced FREquency-SElective
+
+ANharmonic (FRESEAN) mode analysis, which isolates
+low-frequency vibrations from MD simulation trajectories
+without the need for harmonic or quasi-harmonic
+approximations. FRESEAN mode analysis is based on a
+velocity time correlation approach that isolates degrees of
+freedom (DoF) contributing to the vibrational density of
+states (VDoS) at a given frequency. The sampling of velocity
+time correlation functions converges on a picosec-
+
+∗ mheyden1@asu.edu
+2
+
+ond to nanosecond timescale and is highly reproducible
+in independent trajectories [23].
+
+II. METHODS
+
+A. Simulation Protocol
+
+In previous work, we successfully demonstrated enhanced
+sampling of conformational dynamics using lowfrequency
+anharmonic vibrations as CVs that were identified
+with FRESEAN mode analysis [24]. The test sysAll
+simulations were performed using the GROMACS
+2022.5 [26] software package. In this study, HEWL
+(PDBID: 1HEL), a globular enzyme with previously
+studied dynamics ([27, 28]), was selected to compare the
+results of FRESEAN mode analysis at different levels
+
+tem in Ref. 24 has been alanine dipeptide with N=22
+atoms. FRESEAN mode analysis involves the calculation
+of time- and frequency-dependent velocity crosscorrelations
+between all Cartesian DoF of the target
+
+of coarse-graining. With 1960 atoms, HEWL is a protein
+with intrinsic collective dynamics that is still small
+
+molecule. For alanine dipeptide with 3N = 66 Cartesian
+DoF, this results in 66 × 66 = 4, 356 matrix elements for
+each delay time in the correlation function and/or each
+sampled frequency. Obviously, for larger biomolecular
+systems, such as proteins and protein complexes with
+thousands or more atoms, the size of these matrices increases
+rapidly.
+
+enough to perform FRESEAN mode analysis on an allatom
+level without the need of specialized hardware.
+
+Notably, we performed all of the simulations in this
+study with all-atom resolution in explicit solvent. We
+then directly analyzed the all-atom trajectories and compared
+results to the analysis of CG representations of the
+same trajectories.
+
+We used the AMBER99SB-ILDN force field[29] for the
+protein in combination with the TIP3P water model[30].
+We placed the protein in the center of a periodic
+100 ˚A × 100 ˚A × 100 ˚A simulation box with 31,977
+water molecules, 90 Na+ and 98 Cl− ions (150 mM salt).
+Our simulation protocol consisted of the following steps:
+First, we minimized the energy of the system using the
+steepest descent algorithm for 1000 steps. Then, we equilibrated
+the system in the isobaric–isothermal (NPT) enAnother
+concern is the time resolution required to sample
+the highest-frequency vibrations in the system. Even
+
+when covalent bonds are constrained, which eliminates
+fast C-H, N-H, and O-H stretch vibrations, atomic velocities
+need to be sampled at approximately 10 femtosecond
+intervals to avoid under-sampling. Large trajectory
+files and high file I/O traffic caused by high sampling
+rates can be mitigated with data streaming approaches
+that enable the analysis of simulation data on the fly[25].
+However, high sampling rates also increase the number
+of cross-correlation matrices that need to be stored in
+memory for a given maximum correlation time (typically
+a few picoseconds).
+
+semble at 300 K and 1 bar for 100 ps. During equilibration,
+we used 1 fs integration timesteps, a velocity
+rescaling thermostat [31] with a 1.0 ps time constant,
+and a stochastic cell rescaling barostat [32] with a time
+constant of 2.0 ps. This was followed by production simulations
+in the NPT ensemble with a 2 fs timestep. Unless
+noted otherwise, results are reported for a single production
+simulation of 20 ns. Only in the context of our
+statistical analysis, we further analyzed results from five
+
+In this work, we introduce strategies to minimize
+the computational overhead associated with FRESEAN
+mode analysis of molecular dynamics simulations of proteins.
+We focus on the lowest-frequency vibrations in
+the system, which are often most relevant for applications
+associated with the identification of CVs for
+enhanced sampling simulations. Using hen egg white
+lysozyme (HEWL) as a test system, we demonstrate that
+coarse-grained (CG) representations of all-atom simulation
+trajectories can retain almost all information on lowfrequency
+vibrations. The main requirement is that CG
+
+replica simulations of 1 ns, 10 ns, 20 ns length as indicated.
+In production simulations, we used a Nos´e-Hoover
+thermostat [33, 34] with a 1.0 ps time constant and a
+Parrinello–Rahman barostat [35] with a 2.0 ps time constant.
+All covalent bonds involving hydrogens were constrained
+using the LINCS[36] algorithm. Short-ranged
+electrostatic and Lennard-Jones interactions were treated
+with a 10 ˚A real–space cutoff with energy and pressure
+corrections for dispersion interactions. Long–ranged electrostatic
+interactions were treated with the Particle Mesh
+Ewald algorithm[37] using a 1.2 ˚A grid.
+
+beads correspond to centers of mass (CoM) of groups of
+atoms. This approach filters out high-frequency vibrations
+between atoms contributing to a CG bead, while
+low-frequency vibrations between beads are preserved.
+Such CG representations of all-atom trajectories greatly
+reduce the number of DoFs and the resulting size of correlation
+matrices used in FRESEAN mode analysis. At
+the same time, the absence of high-frequency vibrations
+allows for the sampling of velocities at larger time intervals,
+further reducing computational overhead and memory
+requirements. In general, our approach enables highthroughput
+analysis of anharmonic low-frequency vibrations
+in proteins and other biomolecules at minimal computational
+cost.
+
+B. FRESEAN Mode Analysis
+
+The theory and computational steps associated with
+FRESEAN mode analysis are described in Ref. 38 and
+are briefly summarized here. The approach is agnostic
+
+to the representation of the system, e.g., whether atomic
+velocities are analyzed or velocities of CG beads. As a
+first step in the analysis, we align the protein coordinates
+in every frame of the trajectory with an arbitrary
+3
+
+reference structure using a combined translation and rotation
+operation on atomic coordinates that minimizes
+the root mean squared displacement (RMSD) relative to
+the reference. The same rotation is applied to the protein
+velocities, which ensures that the following analysis
+of velocity correlations is performed in a consistent
+Cartesian frame of reference. Notably, this rotation does
+not remove angular momenta. To simplify the notation
+for mass-weighted velocity correlation functions, we introduce
+weighted velocities: ˜vi(t) = √mi
+· v(t). Here,
+the index i denotes one out of 3N Cartesian DoFs of the
+protein and mi describes the corresponding mass (atom
+or bead). We then define a matrix C˜v(τ ) of velocity time
+correlation functions between all 3N DoFs that includes
+auto (i = j) and cross (i ̸= j) correlations. Individual
+matrix elements C˜v,ij are defined as:
+
+This relation defines the meaning of the eigenvalues λi
+:
+they are directly proportional to VDoS contributions
+of mass-weighted velocity fluctuations along their corresponding
+eigenvector qi at frequency ωsel. When applied
+to molecular systems, the vast majority of eigenvalues
+λi are zero or close to zero for any given frequency.
+The eigenvectors associated with the non-zero eigenvalues
+at ωsel provide a complete set of vibrational modes
+contributing to the VDoS at that frequency [38]. Importantly,
+this approach does not rely on harmonic or quasiharmonic
+approximations and can be applied to the lowest
+vibrational frequencies including zero frequency. At
+zero frequency, the first six eigenvectors (largest eigenvalues)
+describe rigid-body translations and rotations (diffusion).
+The remaining eigenvectors with non-zero eigenvalues
+describe low-frequency vibrations that contribute
+to the zero-frequency VDoS due to damping and/or anharmonicity
+[38]. The frequency-dependent contributions
+of any given vibrational mode to the VDoS can
+be analyzed as described in the next section.
+
+C˜v,ij (τ ) = ⟨˜vi(t)˜vj (t + τ )⟩t (1)
+
+Here, ⟨...⟩
+t
+denotes ensemble averaging over the simulation
+time and τ is the delay time between two simulation
+time frames. Each time correlation function C˜v,ij (τ ) is
+calculated with a maximum delay time of τmax = 2 ps in
+steps ranging of 8 to 40 fs (see section II D).
+After constructing C˜v(τ ), each element is Fourier
+transformed to obtain a frequency-dependent velocity
+correlation matrix C˜v(ω):
+
+C. VDoS Contributions of Individual Vibrational
+Modes
+
+To quantify contributions of a single vibrational mode
+qi
+, e.g., one of the eigenvectors of C˜v(ω) at a given
+frequency ωsel, to the overall VDoS, we first project
+weighted velocities (˜v(t)) of all 3N degrees of freedom
+onto qi
+.
+
+C˜v,ij (ω) = Z +∞
+−∞
+
+exp(i ωτ )C˜v,ij (τ ) dτ (2)
+
+The sum of diagonal terms of C˜v(ω) describes the sum
+of all Fourier transformed time auto-correlation functions
+and is directly proportional to the vibrational density of
+states (VDoS) [39–41].
+
+q˙i(t) = X
+j
+
+˜vj (t) qij (6)
+
+VDoS(ω) = 2
+kBT
+X
+i
+
+C˜v,ii(ω) (3)
+
+The projected velocities ˙qi(t) describe the system’s dynamics
+along qi
+. The Fourier transform of the corresponding
+time auto-correlation function describes contributions
+of fluctuations along qi to the VDoS at all sampled
+frequencies, i.e., the VDoS for the single (collective)
+DoF corresponding to qi
+.
+
+The VDoS effectively describes the distribution of kinetic
+energy over vibrational frequencies (including zero
+frequency). In equilibrium, normalization by the average
+kinetic energy per DoF (kBT /2) in Eq. 3 ensures that
+the integral over all frequencies corresponds to the total
+number of protein DoFs.
+
+Cqi
+
+(τ ) = ⟨˙qi(t)˙qi(t + τ )⟩t (7)
+
+NDoF =
+1
+2π
+Z +∞
+0
+
+(ω) = 2
+kBT
+Z +∞
+−∞
+
+VDoS(ω) dω (4)
+
+VDoSqi
+
+exp(i ωτ )Cqi
+
+(τ ) dτ (8)
+
+For an all-atom representation of the protein with N
+atoms and NH constrained covalent bonds involving hydrogen
+atoms, we obtain NDoF = 3N − NH.
+
+We note that this information is also encoded in
+C˜v(ω). As a consequence, we can alternatively compute
+VDoSqi
+(ω) directly as:
+
+The frequency-dependent correlation matrix C˜v(ω)
+can be diagonalized at any selected frequency ωsel. The
+sum of diagonal elements (trace) of C˜v(ω) does not
+change upon diagonalization, which results in a simple
+relation between the sum of eigenvalues λi = λi(ωsel)
+and the VDoS:
+
+(ω) = 2
+kBT
+q
+T
+i C˜v(ω)qi (9)
+
+VDoSqi
+
+VDoS(ωsel) = 2
+kBT
+X
+i
+
+Notably, if qi
+is the i’th eigenvector of C˜v(ω) at frequency
+ωsel then VDoSqi
+(ωsel) = 2
+kBT
+λi(ωsel).
+
+λi(ωsel) (5)
+4
+
+D. CG Representations of All-Atom Trajectories
+
+E. Computational Costs and Memory
+Requirements
+
+We used three distinct CG representations of all-atom
+HEWL trajectories to evaluate how much information
+on low-frequency vibrations is preserved upon decreasing
+the number of DoFs. In the first representation (twobead,
+see Figure 1), the CoM positions and velocities of
+backbone and side chain atoms of each amino acid residue
+are mapped to separate beads (two beads per residue).
+Glycine is an exception to this rule for which the CoM of
+all residue atoms is mapped to a single bead. Atoms for
+the N- and C-termini are included in the mapping to the
+backbone beads of the first and last residue, respectively.
+For HEWL, this representation reduces the number of
+particles from 1960 atoms to 246 beads.
+
+Both the computational overhead and memory requirements
+decrease substantially upon reducing the number
+of particles N and the time resolution. The construction
+of C˜v(ω) requires the calculation of O(3N)
+2
+time correlation
+functions and their Fourier transforms. In its current
+implementation [42, 43], the calculation of the time
+correlation functions utilizes fast Fourier transforms of
+full-length time-dependent velocity trajectories (tsim =
+total simulation time) and a variation of the convolution
+theorem:
+
+vi(ω) = Z tsim
+0
+
+exp(i ωt)vi(t) dt (10)
+
+C˜v,ij (ω) = vi(ω)vj (ω) (11)
+
+In the second CG representation (one-bead), the CoM
+of all atoms of a residue is mapped to a single bead (Figure
+1), and the third representation uses a single bead
+corresponding to the Cαatom of each amino acid residue.
+Both representations reduce the number of particles further
+to 129.
+
+Here, vj (ω) indicates the complex conjugate. The frequency
+resolution is then adjusted a posteriori via a convolution
+with a square window function in the time domain
+that is non-zero between t = 0 and τmax.
+
+While this approach requires storing trajectories of
+all particle velocities in memory, the dominant memory
+requirement for large numbers of particles N typically
+results from storing the (3N)
+2
+correlation functions.
+Further, simulation trajectories can be easily analyzed
+in shorther fragments and resulting correlation matrices
+C˜v(ω) can be averaged afterwards.
+
+The key advantage of the approach in Eq. 11, for large
+or small numbers of particles alike, is that the computational
+cost of calculating each correlation function is
+reduced from O(nt × nτ ) to O(nt log nt) (with time resolution
+∆t; nτ = τmax/∆t; and nt = tsim/∆t).
+
+For large number of particles or if many frequencies are
+being analyzed, the computational cost of calculating the
+eigenvalues and eigenvectors of C˜v(ω) is also worth considering,
+which scales with O(3N)
+3 and thus decreases
+dramatically upon coarse-graining.
+
+FIG. 1. Coarse-graining schemes A: Mapping of the centerof-mass
+of backbone and side-chain atoms of tyrosine (left)
+into separate CG beads (middle) or a single bead (right). B:
+Visualization of all-atom and CG representations of HEWL
+with 1960 atoms, 246 beads, 129 beads, respectively.
+
+F. Comparing Vibrational Modes in Distinct
+Representations
+
+In addition to reducing the number of particles and
+DoF, we further tested distinct time resolutions for the
+calculation of the correlation functions. A time resolution
+of ∆t =8 fs allows sampling frequencies of up
+to 2085 cm−1
+, which, in a simulation with constraints
+applied to covalent bonds involving hydrogens, includes
+the fastest vibrations expected in the system. With increasing
+degrees of coarse-graining, especially when using
+centers-of-mass to define the mapping to CG beads, we
+further eliminate high-frequency vibrations. This allows
+us to further decrease the time resolution without undersampling
+fluctuations, which would otherwise cause aliasing
+during Fourier analysis. Specifically, we tested reduced
+time resolutions of 20 fs and 40 fs.
+
+FRESEAN mode analysis can be applied to timedependent
+trajectories of particle velocities irrespective
+of whether all-atom or CG representations are used.
+However, the number of DoF dictates the dimensionality
+of eigenvectors computed from C˜v(ω) (i.e., their number
+of components). If two sets of eigenvectors contain
+the same number of components (e.g., eigenvectors obtained
+from the same trajectory but for different frequencies,
+or eigenvectors at the same frequency obtained from
+distinct trajectories), we can compare them using their
+(unsigned) dot product. Since the eigenvectors are normalized,
+the dot product can be interpreted as the cosine
+of the angle between both vectors (or its equivalent in a
+high-dimensional space).
+5
+
+Notably, we obtain a very different VDoS for the Cα
+atoms of the protein. The Cα atoms participate in intramolecular
+bond vibrations, which contribute to the
+spectrum throughout the entire frequency range. Therefore,
+Cα atom-based CG representations are not well
+suited to isolate collective low-frequency vibrations in the
+protein.
+
+cos(θij ) = |qi
+
+· qj | (12)
+
+When cos(θij ) = 1, the eigenvectors are identical, while
+cos(θij ) = 0 indicates that two vectors are orthogonal
+and share no information (e.g., distinct eigenvectors computed
+from the same matrix).
+
+In Figure 2B, we zoom in on the VDoS at frequencies
+below 500 cm−1 and highlight the region below 6 THz
+(≈ 200 cm−1
+; 1 THz ≈ 33 cm−1
+), where the thermal energy
+(at 300 K) exceeds harmonic oscillator excitation energies
+and prominent anharmonic effects can be expected.
+The comparison of the VDoS obtained for the different
+CG representations clearly illustrates the frequencydependent
+information loss in each of them. Most notably,
+the two-bead and one-bead representations trace
+the all-atom VDoS for the lowest frequencies up to several
+tens of cm−1
+. Due to the higher spatial resolution, the
+two-bead representation reproduces the all-atom VDoS
+slightly better than the one-bead representation. However,
+at zero frequency both the two-bead and one-bead
+representations reproduce the all-atom VDoS accurately
+(in contrast to the Cα representation).
+
+However, when comparing results from all-atom and
+CG representations, we need to compare eigenvectors
+with distinct dimensionality. For this comparison, for
+which we only consider the two-bead and one-bead representations
+of residues, we translate all-atom eigenvectors
+into a CG representation that converts atomic displacements
+into the corresponding CoM-displacements.
+Thus, if q
+aa
+ik is the k’th atomic displacement vector of
+the i’th all-atom eigenvector q
+aa
+i
+, then the displacement
+vector of the j’th bead in the corresponding CG representation
+of that eigenvector is given by:
+
+k∈beadj mk q
+aa
+ik
+P
+k∈beadj mk
+
+P
+
+cg
+ij =
+
+q
+
+(13)
+
+This is further highlighted in Figure 2C, where we plot
+the ratio of the VDoS obtained from the CG and all-atom
+representations. At zero frequency, the two-bead representation
+captures 88% of the all-atom VDoS, which
+drops to 78% and 65% for 1 and 2 THz, respectively.
+The one-bead representation captures around 80% of the
+zero-frequency VDoS intensity, which decreases with increasing
+frequency analogously to the two-bead representation.
+In contrast, the Cα representation captures only
+≈ 10% of the all-atom VDoS at zero-frequency.
+
+III. RESULTS AND DISCUSSION
+
+A. Frequency-Dependent Information in CG
+Representations
+
+In Figure 2, we compare the VDoS of HEWL obtained
+from all-atom, two-bead, one-bead, and Cα-atom representations
+of the all-atom simulation trajectories. All
+trajectories were analyzed with a time resolution of 8 fs.
+As shown in Eq. 4, the integral of the VDoS over all frequencies
+corresponds to the total number of DoF, which
+is inherently different for each representation: the allatom
+system has 4921 DoF (3 DoF for each of the 1960
+atoms minus 959 constrained bonds), while the CG representations
+retain only 738 DoF (two-bead) and 387 DoF
+(one-bead or Cα), respectively.
+
+The results show that both the two-bead and one-bead
+representations reproduce a substantial fraction of collective
+protein vibrations for the lowest frequencies. Nevertheless,
+the fraction of retained information drops rapidly
+with increasing frequency. If one is interested in protein
+vibrations at frequencies beyond 1-2 THz, the all-atom
+representation is essential, e.g., to capture low-frequency
+vibrations associated with dihedral angle rotations, etc.
+However, our previous work on the extraction of CV candidates
+for enhanced sampling simulations focused entirely
+on vibrations contributing to the VDoS at zero
+frequency [23, 24], for which the two-bead and one-bead
+representations appear promising. In the following, we
+will thus quantify how much coarse-graining affects the
+characterization of these vibrations.
+
+The all-atom VDoS exhibits a peak in the far-IR region
+(50-80 cm−1
+), consistent with previous inelastic neutron
+scattering and molecular dynamics results [44]. This
+peak occurs at a frequency similar to intermolecular vibrations
+in the hydrogen bond network of the surrounding
+hydration shell [45]. In the fingerprint and mid-IR
+regions, intramolecular bond vibrations between heavy
+(non-hydrogen) atoms of the protein are observed. However,
+resonances beyond 2000 cm−1 are absent due to
+constrained bonds involving hydrogen atoms.
+
+Reproducing a large fraction of the all-atom VDoS at
+zero frequency does not yet prove that the corresponding
+CG vibrations faithfully reproduce the corresponding
+collective all-atom vibrations. A significant fraction
+of the zero-frequency VDoS is associated with rigid-body
+translations/rotations and of limited interest in the context
+of vibrations. In addition, reproducing the magnitude
+of fluctuations does not necessarily imply that the
+underlying motions are identical. Thus, in the following
+section, we directly compare the eigenvectors obtained
+
+For the two-bead and one-bead representations, vibrations
+are almost entirely restricted to frequencies below
+500 cm−1
+. The center-of-mass representations largely
+eliminate vibrations between individual atoms. In contrast,
+vibrations between separate beads, which correspond
+to collective vibrations in the protein, are retained
+and observed at low frequencies.
+6
+
+FIG. 2. (A) Vibrational density of states (VDoS) of HEWL in the all-atom (red), two-bead (blue), one-bead (green), and
+Cα (magenta) representations for all frequencies sampled in the simulation. The boxed region highlights the frequency range
+below 500 cm−1
+shown as a close-up in (B). A gray background in (B,C) highlights the 0–6 THz range, where the thermal
+
+energy exceeds harmonic oscillator excitation energies (kBT ≥ hν). (C) Fraction of the all-atom VDoS captured by the CG
+representations as a function of frequency.
+
+for all-atom and CG representations of our simulations
+using FRESEAN mode analysis. These eigenvectors describe
+collective motion in terms of displacement vectors
+relative to the reference structure used during the translational/rotational
+alignment of the trajectories.
+
+selected frequency. When eigenvalues become close or
+
+equal to zero, their eigenvectors are degenerate, i.e., any
+linear combination of these eigenvectors describes a collective
+DoF with no contributions to the VDoS at the selected
+frequency. Thus, with increasing index, we expect
+eigenvectors to become increasingly randomized. Nevertheless,
+the high similarity between all-atom and CG
+eigenvectors in the two-bead representation extends beyond
+index 25. Notably, our results for the one-bead representation
+in Figure S2 of the SI are remarkably similar.
+This shows that the zero-frequency VDoS is dominated
+by collective motions in which all atoms within a given
+residue move together.
+
+B. Eigenvector Comparison
+
+In Figure 3, we show comparisons between eigenvectors
+of the velocity correlation matrices C˜v(ω) obtained from
+all-atom and two-bead CG representations at zero frequency,
+1 THz, and 2 THz. An analogous comparison for
+the one-bead representation is shown in Figure S1 in the
+Supplementary Information (SI). Comparisons are visualized
+as matrices of cosine similarities between eigenvectors
+obtained from trajectories in both representations.
+The eigenvectors are sorted by descending eigenvalues,
+i.e., the eigenvector with index 1 corresponds to the
+
+However, eigenvector similarities decrease substantially
+for non-zero frequencies as shown in Figure 3B and
+C. While frequencies of 1 and 2 THz are still deep in the
+far-infrared and typically also associated with collective
+vibrations, the lack of atomistic detail in the two-bead
+(and one-bead) representation limits cosine similarities
+
+along the diagonal of the comparison matrices to values
+around 0.5. We find different ordering for several eigenvectors,
+i.e., the CG eigenvector with the highest similarity
+to a given all-atom eigenvector has a different index
+and is thus not found along the diagonal in the comparison
+matrix. Several entries of similar magnitude in a
+column of the comparison matrix further indicate that
+the corresponding all-atom eigenvector is best described
+by a linear combination of multiple CG eigenvectors.
+
+largest eigenvalue of the matrix C˜v(ωsel). To compare
+vectors of distinct dimensionality, we used the approach
+described in Eq. 13.
+
+The comparison in Figure 3A shows clearly that zerofrequency
+eigenvectors are essentially equivalent in the
+all-atom and two-bead representations. The cosine similarities
+of eigenvectors along the diagonal (eigenvectors
+with the same index) are on average 0.98. This observation
+is independent of whether we compare eigenvectors
+1-6, which describe rigid-body translations and
+rotations (see Figure S2 of the SI for visualization), or
+higher-index modes that correspond to vibrations. We
+specifically highlight eigenvectors 7, 8, and 9 at zero frequency,
+which describe vibrational modes contributing to
+the zero-frequency VDoS. In previous work, we identified
+these orthogonal vibrational modes as CV candidates for
+enhanced sampling simulations [23, 24].
+
+C. VDoS of Eigenvector Projections
+
+In Figure 4, we analyze the spectrum of velocity fluctuations
+projected on the first 10 eigenvectors of C˜v(ω) at
+zero frequency, 1 THz and 2 THz for all-atom and twobead
+CG (two-bead) representations of our simulation
+trajectories (see Figure S4 of the SI for an analogous analysis
+with the one-bead representation). The displayed
+spectra represent VDoS contributions from fluctuations
+
+In FRESEAN mode analysis, increasing mode indices
+(decreasing eigenvalues; see Figure S3 of the SI) correspond
+to decreasing contributions to the VDoS at the
+7
+
+FIG. 3. Cosine similarity matrices between the first 25 eigenvectors of the velocity correlation matrix C˜v(ω) at zero frequency
+(A), 1 THz (B), and 2 THz (C). Each matrix compares eigenvectors sampled from 20 ns simulations. A cosine similarity of 1
+indicates identical eigenvectors, while a value of 0 indicates orthogonal eigenvectors. At zero frequency, we highlight eigenvectors
+describing rigid-body translations and rotations (eigenvectors 1-6, gray box) and vibrations with large contributions to the zero
+frequency VDoS (eigenvectors 7, 8, and 9, red box), which we identified as potential CV candidates for enhanced conformational
+sampling in previous work [23]. Average cosine similarities along the diagonal within each box are indicate as numerical values.
+
+to 10 cm−1
+. The spectra also show why these vibrational
+modes were isolated by our analysis: the broad
+lineshape of the peaks result in significant VDoS contributions
+at zero frequency (and thus non-zero eigenvalues
+of C˜v(ω) at zero frequency). The broad lineshape can be
+attributed to the anharmonicity of the anharmonic poalong
+individual collective degrees of freedom, as defined
+by their respective eigenvectors (1D-VDoS, see Eq. 8).
+
+tential and/or damping, e.g., due to energy dissipation
+into the solvent.
+
+The most critical observation in the context of our
+analysis is that fluctuations along zero-frequency eigenvectors
+result in essentially identical 1D-VDoS for allatom
+and CG representations (the same is true for the
+one-bead representation as shown in Figure S4 of the SI).
+This confirms that the two-bead and one-bead representations
+of all-atom protein simulations preserve information
+on the lowest-frequency vibrations.
+
+As already seen in panels B and C of Figure 3, this is
+not the case for eigenvectors of C˜v(ω) at frequencies ≥
+1 THz. In the central and right panels of Figure 4, we
+plotted the 1D-VDoS for fluctuations along the first 10
+eigenvectors obtained at 1 and 2 THz. Since we already
+observed in Figure 3 that the eigenvectors in the all-atom
+and CG representations are not equivalent, it is not surprising
+that spectra of fluctuations along the eigenvectors
+are not identical either.
+
+FIG. 4. 1D-VDoS from fluctuations along the first 10 eigenvectors
+of C˜v(ω) at zero frequency, 1 THz and 2 THz obtained
+for all-atom (red) and two-bead (blue) representations of protein
+trajectories. Colored labels indicate peak frequencies in
+each spectrum and vertical dashed lines indicate the frequency
+for which C˜v(ω) was evaluated.
+
+The eigenvectors are selected by our analysis for their
+VDoS contributions at 1 and 2 THz. Consequently, we
+observe peak intensities close to both frequencies irrespective
+of the trajectory representation. However, we
+observe minor differences in peak frequencies and increased
+peak intensities for fluctuations along eigenvectors
+obtained from the all-atom representation. The integral
+of each VDoS describes the kinetic energy of a
+single DoF (see Eq. 4). The increased peak intensities
+in the all-atom 1D-VDoS thus correspond to a narrower
+
+As mentioned earlier, the first six eigenvectors at zero
+frequency (left panel) describe rigid-body translations
+
+and rotations. The 1D-VDoS for these diffusive motions
+feature a maximum at zero frequency that is directly
+proportional to the corresponding translational
+and rotational diffusion coefficients [46]. The 1D-VDoS
+for zero-frequency eigenvectors 7-10 describe collective
+low-frequency vibrations of the protein with peaks close
+8
+
+spectrum that is broadened by the CG representation.
+
+The CG eigenvectors at 1 and 2 THz likely still contain
+valid general information on far-infrared protein vibrations.
+However, in contrast to zero-frequency CG eigenvectors,
+which reproduce all-atom motions essentially exactly,
+the information loss for 1 and 2 THz vibrations due
+to coarse-graining is non-negligible.
+
+As mentioned earlier, we identified zero-frequency
+eigenvectors associated with lowest-frequency vibrations
+as CV candidates for enhanced sampling in previous
+work [23, 24]. For such applications, both the two-bead
+and one-bread CG representations are ideal as they preserve
+all necessary information at a fraction of the computational
+cost and memory requirements.
+
+D. Reducing Time Resolution
+
+In Figure 5A, we compare zero frequency eigenvectors
+obtained from the two-bead representation of our trajectories
+with time resolutions of 8 fs, 20 fs, and 40 fs,
+while we compare the corresponding total VDoS in Figure
+5B. The highest frequencies sampled at each of these
+time resolutions correspond to 2085 cm−1
+, 834 cm−1
+, and
+417 cm−1
+, respectively (Nyquist’s theorem). A comparFIG.
+5. (A) Cosine similarity matrices between the first 25
+eigenvectors of the velocity correlation matrix C˜v(ω) obtained
+with the two-bead representation at time resolutions of 8 fs
+and 20 fs (left) and 8 fs and 40 fs (right). (B) VDoS obtained
+for the two-bead representation of trajectories with time resolutions
+of dτ = 8 (red), 20 (blue), and 40 fs (green).
+
+ison to the VDoS of the two-bead representation in Figure
+2 shows that a 20 fs time resolution only cuts off
+minor signals beyond 800 cm−1
+. It is thus not surprising
+that a reduced time resolution of 20 fs has no effect on
+the eigenvectors of C˜v(0) and the total VDoS.
+
+However, a time resolution of 40 fs under-samples vibrations
+around 400 cm−1
+that contribute to a highfrequency
+shoulder of the main VDoS peak. Consequently,
+we observe small but detectable discrepancies
+to the all-atom simulation for eigenvectors with index 15
+and beyond. Under-sampling high frequency vibrations
+results in false signals at low frequencies (aliasing), which
+we observe in the form of increased zero-frequency VDoS
+in Figure 5B. At the same time, VDoS intensities for
+frequencies >25 cm−1 are diminished due to a shift to
+higher frequencies.
+
+addition to coarse-graining.
+
+E. Visualization of Low-Frequency Vibrations
+
+In Figure 6, we visualized eigenvectors 7 and 8 of C˜v(ω)
+at zero frequency in their all-atom and two-bead representations.
+We visualized the atomic and CG-bead displacements
+corresponding to the collective vibration as
+bi-directional arrows (positive and negative phase of the
+vibration) that are superimposed on the reference structure
+used for translational/rotational alignment of the
+trajectories. As shown in Figure 4, fluctuations along
+both eigenvectors contribute a low-frequency peak to the
+VDoS with a peak frequency of 10.4 cm−1
+. Visual inspection
+confirms the high level of similarity of collective
+motions described on the all-atom and CG level. The
+two vibrations correspond to distinct large-scale deformations
+that can be compared to similar motions observed
+using harmonic normal modes ([28], [47]). However, the
+differences between harmonic normal modes and the vibrational
+modes identified via FRESEAN mode analysis
+matter: as shown in previous work on the Trp-cage protein
+[38], harmonic and quasi-harmonic normal modes
+fail to identify collective DoF that isolate low-frequency
+vibrations, while the 1D-VDoS in Figure 4 each exhibit
+only a single low-frequency peak.
+
+Here, the one-bead representation should be more forgiving.
+As shown in Figure 2, the VDoS obtained from
+the one-bead representation has only minor contributions
+beyond 400 cm−1
+. As shown in Figure S5 of the SI, the
+zero-frequency VDoS for a time resolution of 40 fs is now
+essentially identical to the results for time resolutions of
+8 fs and 20 fs. However, the eigenvectors and VDoS beyond
+25 ˜wn show similar deviations between time resolutions
+of 8 fs and 40 fs time resolutions as observed for the
+two-bead model. Overall, the one-bead representation is
+only slightly less sensitive to the time resolution of the
+trajectory compared to the two-bead model.
+
+In both cases, a lower time resolution decreases the
+number of correlation time and frequency points that
+must be stored for each matrix element of C˜v(τ ) and
+C˜v(ω). This further reduces computational cost and
+memory requirements for FRESEAN mode analysis in
+9
+
+in Figure 7. Instead of an all-to-all comparison, we compare
+eigenvectors obtained from replicas 1-5 with replica
+1 to simplify the visualization. We include the trivial
+comparison of replica 1 with itself for clarity.
+
+In Figure 7A, we show the results for 1 ns simulations,
+which demonstrate substantial statistical variations.
+While general correlations exist between eigenvectors
+obtained from distinct simulations along the diagonal,
+the cosine similarity mostly remains below 0.6. We
+occasionally observe higher correlations off-diagonal, in
+particular for the first 6 eigenvectors that describe rigidbody
+translation and rotation. The latter indicates similar
+eigenvectors but a distinct ordering of the corresponding
+eigenvalues. However, we focus our attention primarily
+on eigenvectors 7-9 that describe the lowest-frequency
+vibrations of the protein. Here, the average correlation
+between eigenvector pairs with identical indices ranges
+only from 0.27 to 0.35, indicating substantial variations
+between replicas.
+
+FIG. 6. Visualization of eigenvectors 7 and 8 of C˜v(ω) at
+zero frequency obtained from all-atom and two-bead representations
+of our simulation trajectories. Displacement vectors
+are shown as bi-directional arrows that are superimposed on a
+reference structure. Orange (yellow) arrows describe the positive
+(negative) phase of an oscillation. The reference structure
+is shown in a cartoon representation to highlight secondary
+
+structure elements. The α-domain is shown in gray and the
+β-domain is highlighted in red.
+
+For 10 ns simulation in Figure 7B, the reproducibility
+improves significantly. We still observe distinct ordering
+of eigenvectors describing translations and rotations.
+However, especially eigenvector 7, which describes the
+lowest frequency vibration of the protein, is reproduced
+with high confidence. Compared to replica 1, cosine similarities
+are mostly greater than 0.8 with the sole exception
+of replica 5, where it is about 0.7. More variability is
+observed for eigenvectors 8 and 9, which are either mixed
+(large diagonal and off-diagonal entries in the comparison
+matrix for replica 2), observed in a different order (replica
+3), or not accurately reproduced at all (replica 5). Only
+for one case (replica 4), we observe essentially the same
+eigenvectors as in replica 1 with cosine similarities on the
+order of 0.9.
+
+Eigenvector 7 indicates a concerted opening/closing
+motion of the β-domain (residues 40-88; shown in red)
+against the α-domain (residues 1-39 and 89-129; shown
+in gray) [48], which can alternatively be described by the
+pincer angle between both domains[28]. Eigenvector 8 indicates
+an orthogonal motion, where both β-domain and
+α-domains twist in opposite directions around a shared
+axis (parallel to direction of view in Figure 6B). We successfully
+employed both eigenvectors in previous work as
+
+CVs for enhanced sampling simulations of HEWL conformations
+[23].
+
+Increasing the length of simulation trajectories by a
+factor of two to 20 ns results in highly reproducible lowfrequency
+vibrations. While the order of eigenvectors
+describing translations and rotations still varies between
+distinct replicas, the lowest frequency vibrations are uniformly
+reproduced with correct ordering and correlations
+of 0.8 and higher (0.88 on average). Even eigenvectors
+with higher indices, which are expected to be increasingly
+influenced by noise as discussed earlier, are reproduced
+with high fidelity. A single exception are eigenvectors 11
+
+F. Statistical Reproducibility
+
+In addition to coarse-graining of all-atom trajectories
+and selecting the time resolution, another factor that
+determines the computational cost of FRESEAN mode
+analysis is the length of the simulation time required to
+obtain converged results.
+
+To determine the optimal length of simulation trajectories,
+we tested simulation times of 1 ns, 10 ns and 20 ns
+and repeated the simulation protocol described in section
+II A five times with starting velocities sampled independently
+from a Maxwell-Boltzmann distribution at
+300 K. We aim to determine the simulation time needed
+to obtain reproducible eigenvectors from the correlation
+matrix C˜v(ω) at zero frequency in simulations starting
+from a given starting structure (here: crystal structure
+with PDBID: 1HEL). For this analysis, we used the twobead
+representation of all-atom trajectories with a time
+resolution of 20 fs (see Figure S6 in the SI for analogous
+analysis with the one-bead model).
+
+and 12 in replica 3 whose order is swapped compared to
+replica 1.
+
+Our results demonstrate that 20 ns simulations are
+sufficient to obtain reliable information on the lowestfrequency
+vibrations of HEWL. The latter can be explained
+by the rapid convergence of velocity time correlation
+functions, which typically decay to zero on
+timescales of 1-2 ps. Thus, simulation trajectories of
+20 ns length contain between 10,000 and 20,000 independent
+samples. The latter is not the case for methods
+
+To quantify reproducibility, we again use cosine similarity
+matrices to compare eigenvectors generated in five
+replica simulations for each trajectory length as shown
+
+reliant on correlated displacements, i.e., coordinate fluctuations,
+which typically feature much longer correlation
+times and thus suffer from reduced statistics.
+10
+
+FIG. 7. Reproducibility of eigenvectors of C˜v(ω) at zero frequency obtained from a two-bead representation of five replica
+all-atom simulations trajectories of 1 ns (A), 10 ns (B), and 20 ns (C) length. All simulations are compared to replica 1
+
+for clarity and shown are matrices of cosine similiarities between pairs of the first 25 eigenvectors. Eigenvectors describing
+rigid-body translations and rotations (1-6) and the lowest frequency vibrations (7-9) are highlighted as in Figures 3 and 5.
+
+IV. CONCLUSION
+
+frequency.
+
+Thus, the simulated dynamics of the molecular system
+determines how many vibrational modes contribute
+to the spectrum at any given frequency. Spectral lineshapes,
+damping, and the influence of the molecular environment
+are explicitly taken into account and can be
+analyzed via projections of the simulated dynamics onto
+isolated vibrational coordinates. Notably, the lowest frequency
+vibrations of large biomolecules such as proteins
+can provide hints on intrinsic collective degrees of freedom
+associated with conformational transitions, which
+can serve as effective CVs in enhanced sampling simulations.The
+analysis of molecular vibrations at low frequencies
+has long been limited by harmonic approximations,
+which are either used explicitly (harmonic normal mode
+
+analysis) or implicitly, i.e., whenever a one-to-one mapping
+between DOFs and vibrational modes is assumed.
+Harmonic approximations can provide a sound basis for
+the description of molecular vibrations at high frequencies,
+where quantum oscillators primarily populate their
+vibrational ground state and even classical oscillators are
+restricted to the immediate vicinity of a potential energy
+minimum. However, at low frequencies, where the thermal
+energy significantly exceeds the harmonic oscillator
+
+However, the calculation of the velocity time cross correlation
+matrix, which is central to FRESEAN mode
+analysis, can be problematic for all degrees of freedom
+of a large system. To sample all vibrational frequencies
+and avoid aliasing in the frequency domain, trajectory
+information needs to be stored (or processed on-the-fly,
+e.g., via trajectory streaming [25]) at a high time resolution.
+More importantly, the dimensions of the correlation
+matrix, whose elements consist of arrays of time correlations,
+can become prohibitive for large systems.
+
+excitation energy (kBT > hν), harmonic approximations
+become increasingly invalid. FRESEAN mode analysis
+[38] provides a novel perspective on low-frequency vibrations
+in molecules, which does not rely on harmonic
+approximations. Instead of mapping all degrees of freedom
+to a single set of orthogonal vibrational coordinates,
+dynamic fluctuations in a simulation trajectory are analyzed
+as a function of frequency. As a result, orthogonal
+sets of collective vibrational coordinates are generated
+for each sampled frequency and sorted by their contributions
+(kinetic energy) to the vibrational spectrum at that
+
+However, for many applications, such as the generation
+of CV candidates for enhanced sampling simulations,
+11
+
+only collective vibrations at the lowest frequencies are of
+
+ACKNOWLEDGMENTS
+
+primary importance. Thus, we analyzed here the persistence
+of information on such low-frequency vibrations
+
+This work is supported by the National Science Foundation
+(CHE-2154834) and the National Institute of General
+Medical Sciences (R01GM148622). The authors acknowledge
+Research Computing at Arizona State University
+for providing high performance computing resources
+that have contributed to the research results reported
+within this work.
+
+in distinct CG schemes applied a posteriori to all-atom
+simulation trajectories prior to analysis. We find that
+
+CG schemes that map individual atoms of amino acids
+residues to beads describing their center-of-mass motion
+(one or two beads per residue), successfully capture essentially
+all information on collective frequency vibrations
+that give rise to the eigenvectors of the velocity
+correlation matrix at zero frequency. Likewise, such CG
+representations serve as a natural low-pass frequency filters,
+which reduce the time resolution needed to prevent
+aliasing during Fourier analysis.
+
+In addition, we analyzed the length of simulation trajectories
+needed to obtain highly reproducible results.
+The latter may be system-dependent but we expect our
+results to be applicable to proteins of similar size as
+HEWL. Our optimal simulation protocol utilizes either
+a two-bead or one-bead (per residue) CG representation
+of the protein with a time resolution of 20 fs or 40 fs,
+respectively, and simulation trajectories of 20 ns length.
+
+In Table I, we show the relative computational costs
+(floating point operations = flops) and memory requirements
+associated with FRESEAN mode analysis of a
+20 ns trajectory of HEWL (1960 atoms) for distinct representations.
+For each representation, we use a time resolution
+of the trajectory that minimizes aliasing: 8 fs
+for all-atom, 20 fs for the two-bead representation (246
+beads total), and 40 fs for the one-bead representation
+(129 beads total). Here, we assume that the elements of
+the time correlation matrix are computed from a single
+trajectory using the approach described in Eq. 11.
+
+all-atom two-bead one-bead
+store trajectory (memory) 100% 12.5% 6.6%
+
+compute C˜v(ω) (flops) 100% 0.59% 0.08%
+store C˜v(ω) (memory) 100% 0.63% 0.09%
+
+diagonalize C˜v(0) (flops) 100% 0.02% 0.003%
+
+TABLE I. Comparison of computational cost and memory requirements
+associated with distinct steps of FRESEAN mode
+analysis for 20 ns simulation of HEWL in distinct representations.
+The number of particles are 1960 (all-atom), 246
+(two-bead), and 129 (one-bead). The time resolution of the
+trajectories for the distinct representations are 8 fs (all-atom),
+20 fs (two-bead), and 40 fs (one-bead).
+
+Table I clearly illustrates how dramatically computational
+costs and memory requirements decrease when
+the analysis is performed for CG representations of allatom
+trajectories. This makes it straightforward to apply
+FRESEAN mode analysis to extract the lowest-frequency
+vibrations even for large proteins and protein complexes.
+S1
+
+Supporting Information: High-Throughput Computation of Anharmonic
+Low-Frequency Protein Vibrations
+
+Eigenvector Comparison for One-Bead Representation
+
+FIG. S1. Cosine similarity matrices between the first 25 eigenvectors of the velocity correlation matrix C˜v(ω) at zero frequency
+(A), 1 THz (B), and 2 THz (C). Each matrix compares eigenvectors sampled from 20 ns simulations. A cosine similarity of 1
+indicates parallel eigenvectors, while a value of 0 indicates orthogonal eigenvectors. At zero frequency, we highlight eigenvectors
+describing rigid-body translations and rotations (eigenvectors 1-6, gray box) and vibrations with large contributions to the zero
+frequency VDoS (eigenvectors 7, 8, and 9, red box), which we identified as potential CV candidates for enhanced conformational
+sampling in previous work [23]. Average cosine similarities along the diagonal within each box are indicate as numerical values.
+S2
+
+Translational and Rotational Eigenvectors
+
+FIG. S2. Visualization of translational and rotational eigenvectors 1 - 6 of C˜v(ω) at zero frequency obtained from all-atom
+trajectories. Displacement vectors are shown as bi-directional arrows that are superimposed on a reference structure. Orange
+(yellow) arrows describe the positive (negative) phase of an oscillation. The reference structure is shown in a cartoon representation
+to highlight secondary structure elements. The α-domain is shown in gray and the β-domain is highlighted in red.
+S3
+Comparing Zero-Frequency Eigenvalues of Different Representations
+
+FIG. S3. First 100 eigenvalues at zero frequency obtained from the all-atom (red), two-bead (green), one-bead (blue), and
+Cα(magenta) representations.
+S4
+1D-VDoS Comparison with One Bead Model
+
+FIG. S4. 1D-VDoS from fluctuations along the first ten eigenvectors of C˜v(ω) at zero frequency, 1 THz, and 2 THz obtained
+for all-atom (red) and one-bead (blue) representations of protein trajectories. Colored labels indicate peak frequencies in each
+spectrum and vertical dashed lines indicate the frequency for which C˜v(ω) was evaluated.
+S5
+Reducing Correlation Function Time Resolution for One-Bead Model
+
+FIG. S5. (A) Cosine similarity matrices between the first 25 eigenvectors of the velocity correlation matrix C˜v(ω) obtained
+with the one-bead representation at time resolutions of 8 fs and 20 fs (left) and 8 fs and 40 fs (right). (B) VDoS obtained for
+the one-bead representation of trajectories with time resolutions of dτ = 8 (red), 20 (blue), and 40 fs (green).
+6
+
+Evaluating Reproducibility of One-Bead modes at Different Simulation Times
+
+FIG. S6. Reproducibility of eigenvectors of C˜v(ω) at zero frequency obtained from a one-bead representation of five replica
+all-atom simulations trajectories of 1 ns (A), 10 ns (B), and 20 ns (C) length. All simulations are compared to replica 1 for
+clarity and shown are matrices of cosine similarities between pairs of the first 25 eigenvectors. Eigenvectors describing rigidbody
+translations and rotations (1-6) and the lowest frequency vibrations (7-9) are highlighted in gray and red, respectively.
+
+[1] Y. Miao, V. A. Feher, and J. A. McCammon, Gaussian
+accelerated molecular dynamics: Unconstrained enhanced
+sampling and free energy calculation, J. Chem.
+Theory Comput. 11, 3584 (2015).
+
+[5] D. M. Zuckerman and L. T. Chong, Weighted ensemble
+simulation: review of methodology, applications, and
+software, Annu. Rev. Biophys. 46, 43 (2017).
+[6] C. C. David and D. J. Jacobs, Principal component analysis:
+a method for determining the essential dynamics of
+proteins, Methods Mol Biol. 1084, 193 (2014).
+[7] Y. Naritomi and S. Fuchigami, Slow dynamics of a protein
+backbone in molecular dynamics simulation revealed
+by time-structure based independent component analysis,
+J. Chem. Phys. 139, 215102 (2013).
+
+[2] Y. Sugita and Y. Okamoto, Replica-exchange molecular
+dynamics method for protein folding, Chem. Phys. Lett.
+314, 141 (1999).
+
+[3] G. Torrie and J. Valleau, Nonphysical sampling distributions
+in monte carlo free-energy estimation: Umbrella
+sampling, J. Comput. Phys. 23, 187 (1977).
+[4] A. Laio and M. Parrinello, Escaping free-energy minima,
+Proc. Natl. Acad. Sci. U.S.A 99, 12562 (2002).
+
+[8] S. Schultze and H. Grubm¨uller, Time-lagged independent
+component analysis of random walks and protein dynam-
+7
+
+ics, J. Chem. Theory Comput. 17, 5766 (2021), pMID:
+34449229.
+
+mance molecular simulations through multi-level parallelism
+from laptops to supercomputers, SoftwareX 1, 19
+(2015).
+
+[9] Z. Zou, D. Wang, and P. Tiwary, A graph neural networkstate
+predictive information bottleneck (gnn-spib) approach
+for learning molecular thermodynamics and kinetics,
+Digit. Discov. 4, 211 (2025).
+
+[27] M. Levitt, C. Sander, and P. S. Stern, Protein normalmode
+dynamics: Trypsin inhibitor, crambin, ribonuclease
+and lysozyme, J. Mol. Biol. 181, 423 (1985).
+
+[10] A. Majumder and J. E. Straub, Machine learning derived
+collective variables for the study of protein homodimerization
+in membrane, J. Chem. Theory Comput. 20, 5774
+(2024), pMID: 38918177.
+
+[28] M. G. S. Costa, P. R. Batista, P. M. Bisch, and D. Perahia,
+Exploring free energy landscapes of large conformational
+changes: molecular dynamics with excited normal
+modes, J. Chem. Theory Comput. 11, 2755 (2015).
+[29] K. Lindorff-Larsen, S. Piana, K. Palmo, P. Maragakis,
+J. L. Klepeis, R. O. Dror, and D. E. Shaw, Improved sidechain
+torsion potentials for the amber ff99sb protein force
+field, Proteins: Struct. Funct. Bioinf. 78, 1950 (2010).
+[30] W.-L. Jorgensen, J. Chandrasekhar, J.-D. Madura, R.-
+W. Impey, and M.-L. Klein, Comparison of simple potential
+functions for simulating liquid water, J. Chem.
+Phys. 79, 926 (1983).
+
+[11] D. Mendels, G. Piccini, and M. Parrinello, Collective
+variables from local fluctuations, J. Phys. Chem. Lett.
+9, 2776 (2018), pMID: 29733652.
+
+[12] H. Chen, H. Liu, H. Feng, H. Fu, W. Cai, X. Shao,
+and C. Chipot, Mlcv: Bridging machine-learning-based
+dimensionality reduction and free-energy calculation, J.
+Chem. Inf. Model. 62, 1 (2022), pMID: 34939790.
+[13] S. Chatterjee and D. Ray, Acceleration with interpretability:
+A surrogate model-based collective variable
+for enhanced sampling, J. Chem. Theory Comput. 21,
+1561 (2025).
+
+[31] G. Bussi, D. Donadio, and M. Parrinello, Canonical sampling
+through velocity rescaling, J. Chem. Phys. 126
+(2007).
+
+[14] C. Chennubhotla, A. J. Rader, L.-W. Yang, and I. Bahar,
+Elastic network models for understanding biomolecular
+machinery: from enzymes to supramolecular assemblies,
+Phys. Biol. 2, S173 (2005).
+
+[32] M. Bernetti and G. Bussi, Pressure control using stochastic
+cell rescaling, J. Chem. Phys. 153, 10.1063/5.0020514
+(2020).
+
+[33] S. Nos´e, A molecular dynamics method for simulations
+in the canonical ensemble, Mol. Phys. 52, 255 (1984).
+[34] W. G. Hoover, Canonical dynamics: Equilibrium phasespace
+distributions, Phys. Rev. A 31, 1695 (1985).
+[35] M. Parrinello and A. Rahman, Polymorphic transitions
+in single crystals: A new molecular dynamics method, J.
+Appl. Phys. 52, 7182 (1981).
+
+[15] M. M. Tirion, Large amplitude elastic motions in proteins
+from a single-parameter, atomic analysis, Phys.
+Rev. Lett. 77, 1905 (1996).
+
+[16] I. Bahar, A. R. Atilgan, and B. Erman, Direct evaluation
+of thermal fluctuations in proteins using a singleparameter
+harmonic potential, Fold. Des. 2, 173 (1997).
+[17] T. Haliloglu, I. Bahar, and B. Erman, Gaussian dynamics
+of folded proteins, Phys. Rev. Lett. 79, 3090 (1997).
+[18] B. Brooks and M. Karplus, Harmonic dynamics of proteins:
+normal modes and fluctuations in bovine pancreatic
+trypsin inhibitor, Proc. Natl. Acad. Sci. U.S.A 80,
+6571 (1983).
+
+[36] B. Hess, H. Bekker, H. J. Berendsen, and J. G. Fraaije,
+Lincs: A linear constraint solver for molecular simulations,
+J. Comput. Chem. 18, 1463 (1997).
+
+[37] T. Darden, D. York, and L. Pedersen, Particle mesh
+ewald: An n log (n) method for ewald sums in large systems,
+J. Chem. Phys. 98, 10089 (1993).
+
+[19] S. Mahajan and Y.-H. Sanejouand, On the relationship
+between low-frequency normal modes and the large-scale
+conformational changes of proteins, Arch. Biochem. Biophys.
+567, 59 (2015).
+
+[38] M. A. Sauer and M. Heyden, Frequency-selective anharmonic
+mode analysis of thermally excited vibrations in
+proteins, J. Chem. Theory Comput. 19, 5481 (2023).
+[39] S. Chakraborty, S.-K. Sinha, and S. Bandyopadhyay,
+Low-frequency vibrational spectrum of water in the hydration
+layer of a protein: A molecular dynamics simulation
+study, J. Phys. Chem. B 111, 13626 (2007).
+[40] M. Heyden, J. Sun, S. Funkner, G. Mathias, H. Forbert,
+M. Havenith, and D. Marx, Dissecting the THz spectrum
+of liquid water from first principles via correlations in
+time and space, Proc. Natl. Acad. Sci. U.S.A 107, 12068
+(2010).
+
+[20] T. D. Romo, A. Grossfield, and A. G. Markelz, Persistent
+protein motions in a rugged energy landscape revealed by
+normal mode ensemble analysis, J. Chem. Inf. Model. 60,
+6419 (2020).
+
+[21] R. Levy, A. Srinivasan, W. Olson, and J. McCammon,
+Quasi-harmonic method for studying very low frequency
+modes in proteins, Biopolymers 23, 1099 (1984).
+[22] R. M. Levy, O. De la Luz Rojas, and R. A. Friesner,
+Quasi-harmonic method for calculating vibrational spectra
+from classical simulations on multi-dimensional anharmonic
+potential surfaces, J. Phys. Chem. 88, 4233
+(1984).
+
+[41] G. Mathias and M. D. Baer, Generalized normal coordinates
+for the vibrational analysis of molecular dynamics
+simulations, J. Chem. Theory Comput. 7, 2028 (2011).
+[42] M. A. Sauer, S. Mondal, and M. Heyden, FRESEANmetadynamics
+DOI: 10.5281/zenodo.15678841 (2025).
+[43] M. Heyden, FRESEAN-tutorial DOI: 10.5281/zenodo.15686127
+(2025).
+
+[23] M. A. Sauer, S. Mondal, B. Neff, S. Maiti, and M. Heyden,
+Fast sampling of protein conformational dynamics,
+(2024), arXiv:2411.08154.
+
+[24] S. Mondal, M. A. Sauer, and M. Heyden, Exploring conformational
+landscapes along anharmonic low-frequency
+vibrations, J. Phys. Chem. B 128, 7112 (2024).
+[25] L. J. Woods, A. Thirumalaiswamy, H. Cho, O. Beckstein,
+and M. Heyden, IMDClient DOI: 10.5281/zenodo.15678276
+(2025).
+
+[44] A. Lerbret, A. H´edoux, B. Annigh¨ofer, and M.-C.
+Bellissent-Funel, Influence of pressure on the lowfrequency
+vibrational modes of lysozyme and water: A
+complementary inelastic neutron scattering and molecular
+dynamics simulation study, Proteins: Struct. Funct.
+Bioinf. 81, 326 (2012).
+
+[26] M. J. Abraham, T. Murtola, R. Schulz, S. P´all, J. C.
+Smith, B. Hess, and E. Lindahl, Gromacs: High perfor[45]
+M. Heyden and D. J. Tobias, Spatial dependence of
+protein-water collective hydrogen-bond dynamics, Phys.
+8
+
+Rev. Lett. 111, 218101 (2013).
+[46] R. Zwanzig, Time-correlation functions and transport
+coefficients in statistical mechanics, Annu. Rev. Phys.
+Chem. 16, 67 (1965).
+
+Phys. Chem. B 102, 3586 (1998).
+[48] M. R. Krebs, D. K. Wilkins, E. W. Chung, M. C.
+Pitkeathly, A. K. Chamberlain, J. Zurdo, C. V. Robinson,
+and C. M. Dobson, Formation and seeding of amyloid
+fibrils from wild-type hen lysozyme and a peptide
+fragment from the β-domain, J. Mol. Biol. 300, 541
+(2000).
+
+[47] A. D. MacKerell Jr, D. Bashford, M. Bellott, R. L. Dunbrack
+Jr, J. D. Evanseck, M. J. Field, S. Fischer, J. Gao,
+H. Guo, S. Ha, et al., All-atom empirical potential for
+molecular modeling and dynamics studies of proteins, J.

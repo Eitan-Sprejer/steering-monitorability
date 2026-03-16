@@ -1,0 +1,154 @@
+1 Introduction
+
+Aligning Large Language Models (LLMs) with human preferences is a prerequisite for deploying safe and useful artificial intelligence (AI) systems. To scale this process beyond expensive human supervision, developers typically optimize models against complex proxy reward functions, such as learned reward models or LLM-as-a-Judge systems
+(Ouyang et al.,
+2022 ; Dann et al.,
+2023 ; Go et al.,
+2024 ; Wang et al.,
+2024 ; Christian et al.,
+2025 ; Liu et al.,
+2025a
+,
+b
+; Gunjal et al.,
+2025 )
+. While scalable, this abstraction creates a critical challenge: the complexity of these reward functions often renders the objectives embedded within them opaque, making it difficult to discern precisely what behaviors the model is being aligned towards. This ambiguity can create a divergence between the intended goals and the realized behaviors, leading models to adopt misaligned shortcuts such as sycophancy or verbosity
+(Tamkin et al.,
+2023 ; Singhal et al.,
+2024 ; Wen et al.,
+2024 ; Shen et al.,
+2023 )
+. Consequently, developing methods to break down and interpret the implicit objectives driving LLM alignment is essential for ensuring robust and trustworthy deployment.
+
+While developers can attempt to infer implicit alignment objectives by observing the model’s behavioral evolution, relying on manual inspection is insufficient for capturing the full breadth of changes. Standard practice typically involves monitoring behavioral trends based on a predefined set of objectives on a static validation dataset
+(Stiennon et al.,
+2022 ; Dubois et al.,
+2024 ; Singhal et al.,
+2024 )
+. However, this paradigm is fundamentally constrained by two distinct coverage limitations. First, the static nature of the datasets inevitably biases the analysis, potentially missing unintended behaviors that only manifest on certain inputs. Second, even assuming comprehensive data oversight, humans face a significant cognitive bottleneck in enumerating objectives to attain coverage. Humans generally lack the capacity to track the subtle distributional shifts required to identify "unknown unknowns" across thousands of outputs
+(Ribeiro & Lundberg,
+2022 ; Gao et al.,
+2023 ; Dunlap et al.,
+2024 ,
+2025 ; Zhong et al.,
+2025 ; Williams et al.,
+2025 )
+. Even when a potential objective is identified, validating its semantic meaning requires grounding it in concrete examples; without a curated set of illustrative trajectories, developers may struggle to interpret how an abstract objective like "helpfulness" actually materializes across different contexts. Consequently, manually deriving a full set of valid objectives becomes practically infeasible to scale up
+(Zhong et al.,
+2022 )
+.
+
+To address these scalability challenges, recent research has introduced automated frameworks to help understand model behavior. However, these systems operate primarily as benchmarks constrained by predefined metrics. Unlike discovery-based approaches, the majority of these works are prescriptive and evaluate models using a fixed set of objectives
+(Pan et al.,
+2023 ; Murthy et al.,
+2025 ; Yao et al.,
+2025 ; Ren et al.,
+2024 ; Ryan et al.,
+2025 )
+. This inherently limits their ability to uncover unanticipated "unknown unknowns." Conversely, descriptive “proposer-validator” frameworks attempt to explain differences between datasets or models from a blank slate
+(Dunlap et al.,
+2024 ; Zhong et al.,
+2022 ,
+2025 ; Dunlap et al.,
+2025 )
+. However, they generally operate in static settings, comparing fixed snapshots rather than analyzing the continuous dynamics of the training process
+(Ryan et al.,
+2025 )
+.
+Consequently, prior works fail to leverage a rich source of signal regarding what LLMs actually learn during alignment: the trajectory of model weights checkpointed during training. Without this temporal information, these methods struggle to disentangle the model’s pre-existing inductive biases from the specific behaviors actively reinforced by the reward signal.
+ Our work bridges this gap by leveraging these checkpoints to facilitate higher-fidelity objective discovery without relying on predefined categories.
+
+We introduce Obj-Disco, a framework that automatically decomposes an LLM’s implicit alignment objectives into a set of objectives expressed using natural language, which we refer to as the Discovered Interpretable Reward (DIR)
+. Our approach rests on the core assumption that the reward signal driving alignment can be approximated as a function of separate basis functions, or objectives, as also pointed out by Silver et al
+(2021)
+
+(Jang et al.,
+2023 ; Zhang et al.,
+2025 ; Go et al.,
+2024 ; Sharma et al.,
+2025 )
+. Accordingly, we frame this task as a sparse representation problem and employ an iterative, greedy algorithm inspired by matching pursuit to sequentially identify the objectives that best explain the residual reward signal
+(Mallat & Zhang,
+1993 )
+. To ensure both coverage and validity, each iteration of Obj-Disco consists of a structured Objectives Discovery phase followed by an Objectives Verification phase. During discovery, we address the intractability of the exponential objective space by using a proposer LLM to generate candidates based on response trajectories observed across multiple training checkpoints. By dynamically sampling inputs where the residual error is largest, we explicitly guide the proposer to target unexplained behavioral shifts and select the candidate that minimizes this residual. Subsequently, the verification phase utilizes LLM-as-a-Judge evaluations to screen the selected candidate against formal criteria, ensuring it is both human-interpretable and follows a predictable trend throughout alignment fine-tuning. Finally, to aid developer understanding, Obj-Disco provides
+Objective Explanations
+, a curated set of sample trajectories selected to maximize both trend salience and semantic diversity, offering concrete evidence for each discovered objective.
+
+We validate Obj-Disco through an extensive experimental suite spanning multiple alignment algorithms, model sizes, and tasks. In controlled settings with known ground-truth objectives, our framework recovers the target signals with high fidelity, consistently modeling over 90% of the true alignment behavior. Experiments on popular open-source reward models further demonstrate that Obj-Disco can approximate complex, implicit reward functions with similar accuracy. To verify the practical utility of these discoveries, we conduct human-subject studies which confirm that our DIRs are significantly more causal to the final policy behavior than those identified by baseline methods. Participants also rated our Objective Explanations as having higher fidelity to the underlying objective signals. Finally, a targeted case study on safety alignment reveals that Obj-Disco consistently successfully surfaces latent misaligned incentives, such as increased permissiveness in discussing illegal acts, which other baselines rarely detect.
+
+Obj-Disco Qualitative Results: Open-Source RMs
+
+1.
+Data: TL;DR
+ |
+RM: DeBERTaV3
+ | Llama-8B
+
+1.
+
+Increase detail and specificity in responses (.162)
+
+2.
+
+Improve narrative flow and structure (.350)
+
+3.
+
+Enhance contextual relevance of responses (.765)
+
+4.
+
+Enhance emotional understanding and empathy (.050)
+
+
+
+2.
+HH-RLHF
+ |
+DeBERTaV3
+ | Qwen-4B
+
+1.
+
+Enhance user engagement and responsiveness (.057)
+
+2.
+
+Reduce facilitation of harmful activities (.490)
+
+3.
+
+Increase response specificity and detail (.377)
+
+
+
+3.
+Skywork-80K
+ |
+Skywork-v2
+ | Llama-8B
+
+1.
+
+Improve grammatical accuracy and fluency (.988)
+
+2.
+
+Enhance mathematical problem-solving clarity (.250)
+
+3.
+
+Increase efficiency in code optimization (.556)
+
+4.
+
+Enhance organizational structure in responses (.151)
+
+Figure 2
+:
+Obj-Disco Overview and Qualitative Results.
+
+(Left)
+ Obj-Disco employs an iterative greedy search to construct the Discovered Interpretable Reward (DIR). A proposer LLM identifies candidates from high-residual samples, which are then verified for interpretability and trend predictability.
+(Right)
+ Discovered objectives, and their weights, for open-source reward models (RM), demonstrating that Obj-Disco successfully recovers domain-specific alignment goals (e.g., conciseness for summaries, logic for code).

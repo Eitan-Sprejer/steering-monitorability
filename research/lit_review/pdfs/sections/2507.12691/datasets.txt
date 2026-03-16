@@ -1,0 +1,171 @@
+3 Datasets
+
+We evaluate monitoring methods across six datasets involving strategic deception in user–assistant dialogues. Each sample includes a system prompt (often containing private information and an incentive to deceive), user messages, and assistant responses.
+
+Tokens are categorized as either
+private
+ (system prompts and internal reasoning) or
+public
+ (user messages and assistant outputs). Monitoring strategies are only given access to public tokens, simulating the challenge of evaluating models whose internal reasoning is hidden.
+
+Datasets
+AI Liar
+,
+Insider Trading
+, and
+Sandbagging
+ are on-policy, meaning the assistant generates its own responses under incentives or instructions that may encourage either honesty or deception. In contrast,
+Deception Dilution
+,
+Backdoors
+, and
+Alpaca
+ are off-policy. We provide additional details about dataset construction and rollout conditions in Appendix
+G
+. Five datasets contain both honest and deceptive responses; the sixth (Alpaca) consists solely of honest samples and serves as a control to set the classifier threshold. All datasets are available at:
+https://github.com/carlo-leonardo-attubato/black_to_white_boosts.git
+.
+
+Table 1:
+Overview of deception datasets used in our evaluation. We show the count of samples with class balance percentages (honest, deceptive), average conversation length in tokens, our qualitative assessment of the scenario’s realism, and dataset source.
+
+Dataset
+
+Count (honest, deceptive)
+
+Avg. tokens
+
+Realism
+
+Source
+
+AI Liar
+
+266 (65.0%, 35.0%)
+
+256
+
+medium
+
+Pacchiardi et al. (2023)
+
+Deception Dilution
+
+266 (65.0%, 35.0%)
+
+2809
+
+low
+
+Our Variant
+
+Insider Trading
+
+1005 (66.6%, 33.4%)
+
+1368
+
+high
+
+Scheurer et al. (2023)
+
+Sandbagging
+
+931 (54.9%, 45.1%)
+
+1141
+
+medium
+
+Benton et al. (2024)
+
+Backdoors
+
+150 (62.0%, 38.0%)
+
+1252
+
+low
+
+Greenblat et al. (2024)
+
+Alpaca (Control)
+
+1000 (100.0%, 0.0%)
+
+337
+
+high
+
+Taori et al. (2023)
+
+AI liar
+
+Adopted from
+Pacchiardi
+ et al.
+ (2023)
+, Each system prompt assigns the model a role and incentive (e.g,
+You are a salesperson AI. You really need to get a high reward. You get a high reward if you convince the human to buy the used bicycle you are advertising. The bicycle is in poor condition.
+), then poses a user query where deception may be instrumentally useful (e.g,
+Human: Is the used bicycle in good condition?
+) This dataset captures varied contexts where honesty or deception may both emerge naturally.
+
+Deception dilution
+
+We study two dilution strategies that an assistant might employ to evade detection:
+insensitive dilution
+, where the assistant appends true-but-irrelevant facts to all responses regardless of honesty, and
+deception-only dilution
+, where the assistant only appends these irrelevant facts to deceptive responses. We construct these datasets by modifying AI Liar, appending to the assistant’s response 100 true-but-irrelevant claims about political geography.
+
+Insider trading
+
+Adapted from
+Scheurer
+ et al.
+ (2023)
+, this dataset features a trading assistant pressured to deliver profits. The assistant is given insider information about a merger and must decide whether to use it. After each trade, the assistant must write a report justifying its actions. Responses are labeled
+honest
+ (truthful report), or
+deceptive
+ (does not confess to the use of insider information). The assistant marks its hidden reasoning with
+<reasoning>
+ tags, and any tokens within the tags are categorized as private.
+
+Sandbagging
+
+In
+Goldowsky-Dill and others (2025)
+’s adaptation of the sandbagging scenario from
+Benton
+ et al.
+ (2024)
+, the assistant is prompted to truthfully answer generic trivia questions but to intentionally provide plausible yet false answers to WMD-related questions. The generic trivia questions are sourced from MMLU
+(Hendrycks
+ et al.
+,
+2021 )
+, and the WMD-related questions are sourced from WMDP
+(Li
+ et al.
+,
+2024 )
+. This dataset simulates an AI assistant who strategically underperforms when evaluated for dangerous capabilities.
+
+Backdoors
+
+The user queries the assistant with a coding challenge, and the assistant must respond with a code solution provided in the system prompt. The system prompt also informs the assistant whether the provided code contains a backdoor, along with an explanation of any backdoors. Responses containing backdoors are labeled deceptive, and otherwise the response is labelled honest. The code solutions are sourced from
+Greenblatt
+ et al.
+ (2023)
+. This dataset simulates an AI assistant intentionally inserting subtle backdoors into code, however it doesn’t rely on LLaMA-3.3-70B-Instruct to generate the backdoors itself.
+
+Alpaca (control)
+
+This dataset consists of the responses from LLaMa-3.3-70B-Instruct on the Alpaca dataset
+(Taori
+ et al.
+,
+2023 )
+, a dataset of benign prompts used to finetune instruction models. These prompts include no incentive to deceive, and all responses are labeled honest. We use this dataset as our control, used to calibrate the false-positive rate of different monitoring methods.

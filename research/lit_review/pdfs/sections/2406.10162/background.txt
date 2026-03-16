@@ -1,0 +1,73 @@
+2 Background
+
+2.1 Specification gaming
+
+Specification gaming is when a model does an action in training which receives high reward but does not complete the intended task. There have been empirical demonstrations of specification gaming for many years and in dozens of domains
+(Krakovna et al.,
+2020 ; Pan et al.,
+2022 )
+.
+Simple models memorize a high-reward strategy from their training and repeat that behavior instead of learning the intended task. For example, a model trained to race boats in a videogame was given partial rewards for reaching intermediate checkpoints on the track, but the desired outcome was for the model to complete the whole race. The model learned to loop single checkpoints instead of completing the race
+(Clark & Amodei,
+2016 )
+. If a model explores into a strategy that gives high reward, even if this was not intended by the authors, the training process will reinforce this behavior.
+
+There also exist several examples of models generalizing into sophisticated harmful actions when given explicit goals by humans
+(Apollo Research,
+2023 ; Hubinger et al.,
+2024 ; Järviniemi,
+2024 ; Svenningsen et al.,
+2024 )
+. These demonstrations all involve instruction-following models explicitly given a task, and the harmful behavior is in service of the model’s directions.
+Concurrent work by
+Nishimura-Gasparian et al. (2024)
+ shows that models trained to specification game in one domain can generalize to others. However, all of their environments are multiple choice questions. Some of their environments require models to use abstract reasoning to determine the high-reward answer, but none of them require the model to take a complex action.
+
+We are interested in exploring
+generalization
+ from easily-discovered specification gaming to more serious behavior. Current models exhibit specification gaming in the form of
+sycophancy
+
+(Sharma et al.,
+2023 )
+, but rarely more sophisticated forms of specification gaming. LLMs have not been shown to
+reward tamper
+
+(Everitt et al.,
+2021 )
+, directly modifying the code which generates their reward, without explicit prompting.
+
+Cotra (2021)
+ argues that powerful models will learn to seek reward by default, rather than learning to be HHH, when trained with outcome-based optimization algorithms on complex tasks. This work is an attempt to provide a first empirical demonstration of emergent reward tampering in a toy setting.
+
+2.2 Spurious correlations
+
+There are often many strategies which successfully solve a machine learning task on a fixed dataset. Models may learn to track any feature of their training data which correlates with the true answers. For example,
+Ribeiro et al. (2016)
+ train a model to distinguish wolves from dogs, but all of their training images have wolves standing on snow. The model can achieve perfect accuracy either by learning to tell the animals apart, like the designers intended, or by learning to classify snowy backgrounds. Models learn to classify pictures based on large patches of white, instead of classifying the animals, because it is easy and gets high performance on the given set of images. This is what
+Geirhos et al. (2020)
+ call a
+shortcut
+.
+
+Frontier LLMs are trained with methods such as Constitutional AI
+(Bai et al.,
+2022 )
+ which aim to incentivize HHH behavior. When reward processes are misspecified, HHH behavior is actually a
+shortcut
+ for learning the behavior which achieves the highest reward.
+Koch et al. (2021)
+ show that as the quantity and diversity of training data increases, models become more likely to learn optimal policies instead of shortcuts. This means that more diverse training pipelines with gameable environments should make models more likely to learn to game specifications and less likely to behave HHH.
+
+2.3 Our threat model
+
+This work is motivated by the concern that an LLM assistant might generalize from relatively harmless specification gaming to harmful behavior in high-stakes settings. Misspecified rewards in simple environments may be easy for models to discover, but are not particularly dangerous because the environments are low-stakes. We want to understand whether learning to game simple specifications might cause models to generalize to behavior which causes significant harm.
+Additionally, more harmful behaviors may also involve models explicitly covering their tracks. Given a model which generalizes to serious misalignment, we then want to know whether we can mitigate harm by monitoring the model or by training the model not to exploit misspecified reward functions which are easy to catch.
+
+There are many potential ways in which a powerful agent could cause harm.
+We study the concrete case where a model interferes with its own training code. This is not the only form of harm which a powerful model could cause, but it is particularly ripe for study with current models. LLM assistants are already used to aid human software engineers when operating on their own codebases
+(Chandra & Tabachnyk,
+2024 )
+. As models get more capable, they could plausibly be used for larger engineering projects and given greater autonomy. A model may simply be given access to its own code, or a model with access to key infrastructure might insert vulnerabilities that allow it to access restricted parts of a codebase. Given such access, a misaligned model could take arbitrary actions which are potentially quite harmful.
+
+To study this threat with current LLMs, we create a toy version of the model’s training code. We can evaluate a model’s propensity for reward-tampering by giving it access to the mock training code, implying that this code is actually the code which controls the model’s own training run, and seeing whether it edits the files. It is not particularly dangerous for a model to give itself more reward, even if the model does so in an expensive training run. However, generalization from common forms of specification gaming to reward-tampering demonstrates that LLM assistants can generalize from easily discoverable forms of misbehavior to more serious ones.

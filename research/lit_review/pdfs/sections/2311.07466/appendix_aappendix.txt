@@ -1,0 +1,1863 @@
+Appendix A
+Appendix
+
+A.1
+Definition of Faithfulness
+
+In Section
+2.1 we defined faithfulness according to
+Harrington et al. (1985); Ribeiro et al. (2016); Jacovi and Goldberg (2020)
+, namely: a
+faithful explanation
+ accurately represents the
+true reasoning process behind the model’s prediction
+.
+
+We – including relevant literature
+Lyu et al. (
+2022a
+); Wiegreffe et al. (2021); Atanasova et al. (2023); Turpin et al. (2023); Lanham et al. (2023)
+ aiming to measure NLE faithfulness described in Section
+
+2.2 – abide by this definition and to the best of our knowledge, there is currently no better one. “After all, what is an explanation if it lies about what the model does under the hood? An unfaithful explanation can look plausible to humans, but has little to do with how the model makes the prediction.”
+Lyu et al. (
+2022a
+)
+.
+
+Lyu et al. (
+2022a
+)
+ acknowledge that this definition “is only a loose description though; in fact, there is not yet a consistent and formal definition of faithfulness in the community. Instead, people often define faithfulness on an ad-hoc basis, in terms of different evaluation metrics”. In this work, we
+identify the common denominator underlying these different implementations of self-acclaimed faithfulness evaluation metrics
+, and consequently
+uncover and categorise them as self-consistency tests
+ in our position statement from Section
+3 .
+
+Why we consider this definition to be sufficient to serve as a guideline for faithfulness metrics
+
+We categorised existing approaches as behavioural self-consistency tests, because we take the definition above in its existing form seriously. We do not need an even crisper version of the definition, because it is sufficient to uncover that existing tests – which all adopt this definition – test for self-consistency instead of faithfulness: they only look at the model’s output behaviour and check for output-level self-consistency. A surface-level self-consistency looks plausible enough to make humans think that an LLM is faithful
+in that it shows self-consistency in its behaviour, i.e., “the LLM keeps its story straight”. But
+these tests do not consider
+the underlying processes and connections between the generated explanation and the function that the model implements
+when giving the answer – as described by weights and circuits. Such an internal analysis is crucial to uncover cases where a model displays a plausible output consistency at its surface, while the explanation may be the result of a deceptive “sleeper agent”
+Hubinger et al. (2024)
+.
+
+Applied to
+
+Counterfactual Edits
+
+Atanasova et al. (2023)
+
+Constructing Input from Explanation
+
+Atanasova et al. (2023)
+
+Biasing Features
+
+Turpin et al. (2023)
+
+Corrupting CoT
+
+Lanham et al. (2023)
+
+CC-SHAP
+ (ours)
+
+Explan. Type
+
+post-hoc
+
+post-hoc
+
+CoT
+
+CoT
+
+post-hoc + CoT
+
+Models
+
+fine-tuned T5-base
+
+fine-tuned T5-base
+
+GPT-3.5
+
+Claude 1.0
+
+Unspecified 175B transformer LLM finetuned with RHLF to be a helpful assistant – judging by the author’s affiliation, it is probably a Claude version.
+
+LLaMA-2-7b
+
+LLaMA-2-7b-chat
+
+LLaMA-2-13b
+
+LLaMA-2-13b-chat
+
+Mistral-7B-v0.1
+
+Mistral-7B-Instruct-v0.1
+
+Falcon-7b
+
+Falcon-7b-instruct
+
+Falcon-40b
+
+Falcon-40b-instruct
+
+GPT2
+
+Tasks & Data
+
+Natural Language Inference (NLI)
+
+•
+
+e-SNLI
+
+•
+
+ComVE
+
+•
+
+CoS-E
+
+Natural Language Inference (NLI)
+
+•
+
+e-SNLI
+
+•
+
+ComVE
+
+BBH 13 tasks (330 examples per task)
+
+•
+
+causal judgement
+
+•
+
+date understanding
+
+•
+
+disambiguation QA
+
+•
+
+hyperbaton
+
+•
+
+logical deduction five objects
+
+•
+
+movie recommendation
+
+•
+
+navigate
+
+•
+
+ruin names
+
+•
+
+snarks
+
+•
+
+sports understanding
+
+•
+
+temporal sequences
+
+•
+
+tracking shuffled objects three objects
+
+•
+
+web of lies
+
+8 multiple choice datasets:
+
+•
+
+ARC Challenge
+
+•
+
+ARC Easy
+
+•
+
+AQuA
+
+•
+
+Hella Swag
+
+•
+
+LogiQA
+
+•
+
+MMLU
+
+•
+
+OpenBookQA
+
+•
+
+Thruthful QA
+
+e-SNLI
+
+ComVE
+
+3 BBH tasks:
+
+•
+
+causal judgement
+
+•
+
+disambiguation QA
+
+•
+
+logical deduction five objects
+
+(100 samples per task, so 500 samples in total)
+
+Table 3:
+Overview of
+data and models
+ used by existing faithfulness / self-consistency tests and for our CC-SHAP measure.
+
+Also, self-consistency tests are limited in what they can uncover at the level of single instances of question–answer–explanation. We could only draw rigorous conclusions if it was possible to
+immediately uncover a self-explanation instance to be unfaithful. But any positive instance-level “faithful NLE” verdict
+could only be temporary, because a consistent behaviour – so far – might just mean that we did not yet find the edit that triggers inconsistency.
+Furthermore,
+it could take considerable time to trigger these inconsistencies
+5 5
+5 For example, it took time for the Natural Language Inference (NLI) community to realise
+Belinkov et al. (2019)
+ that a trained NLI system can provide correct predictions when given a conclusion without the premise it depends upon – while it always made correct predictions when it got both, due to a biased dataset. This is a latency we usually can not afford when aiming to measure the degree of NLE faithfulness – per instance – from a live chatbot interaction.
+ – similar to
+a policeman spending
+many hours interrogating a suspect.
+In contrast, a test that is able to interrogate a model’s inner workings would be akin to a lie detector that uses more internal cues that cannot be easily suppressed, such as blood pressure, perspiration, etc.
+
+Empirical Evidence in a Setting without Ground Truth
+
+In §
+5 we give empirical evidence that challenges the commonly-held opinion that the existing tests measure faithfulness: We
+compare all previous tests on CCB
+ on the same models and data and show that
+their predictions differ widely
+.
+
+This comparison is very important because
+there is no ground truth for faithfulness
+ (Citing
+Lyu et al.,
+2022a
+ discussing the definition of
+Jacovi and Goldberg,
+2020 ): “
+faithfulness evaluation should not involve human judgement on explanation quality
+. This is because humans do not know whether an explanation is faithful; if they did, the explanation would be unnecessary. Finally, faithfulness evaluation should not involve human-provided gold labels (for the examples to be explained). A faithful explanation method should be able to explain any prediction of the model, regardless of whether it is correct or not.”.
+
+Being deprived of a ground truth for faithfulness – we consider all prior tests and our own measure as
+not measuring faithfulness
+. Instead, they measure self-consistency of models when generating an answer and an explanation – i) on output correspondences (prior tests) or
+ii) input contribution correspondences (our CC-SHAP score) that measure the input contribution correspondences between the different outputs (answer and explanations).
+From here, future work needs to measure such correspondences in a deeper way, taking into account and analysing the inner workings or the respective models.
+
+A.2
+Overview of Data and Models of Current & Prior Work
+
+To illustrate how prior work used different data and models, we give an overview of the data and models used by existing faithfulness / self-consistency tests in Table
+3 . There, we also list the data and models used for our CC-SHAP measure.
+
+A.3
+SHAP values for long explanations: Technical Detail
+
+Enough output explanation tokens with very small input contributions might ruin the aggregation (Eq.
+4 ) after becoming large in the normalisation step from Eq.
+3 . Therefore, we implemented a check to catch the very, very few edge cases where explanation tokens show overall little to no input contributions (and might become large after normalisation).
+
+A.4
+Prompts
+
+Following the model documentations, we append the system prompt at the beginning of all conversations for all LLaMA 2 models:
+
+<<SYS>>
+You are a helpful chat assistant and will answer the user’s questions carefully.
+<</SYS>>
+. We also use the
+
+[INST]
+ and
+[/INST]
+ tokens for denoting user interaction. For Falcon models, we use
+User:
+ and
+Assistant:
+.
+
+A.5
+Results on Causal Judgement and Logical Deduction (BBH)
+
+We show additional test results for causal judgement and logical deduction five objects from BBH in Table
+4 .
+
+Test
+
+7b
+
+7b-chat
+
+13b
+
+13b-chat
+
+7b
+
+7b-chat
+
+7b
+
+7b-chat
+
+40b
+
+40b-chat
+
+LLaMA2
+
+Mistral
+
+Falcon
+
+GPT2
+
+causal judgement
+
+Post-hoc
+
+Accuracy (%) 50% rand.
+
+50
+
+53
+
+46
+
+56
+
+57
+
+63
+
+56
+
+56
+
+57
+
+55
+
+44
+
+Counterfact. Edits (%)
+
+37
+
+73
+
+46
+
+80
+
+35
+
+76
+
+77
+
+95
+
+54
+
+59
+
+89
+
+CC-SHAP p.h.
+∈
+[
+−
+1 ,
+1 ]
+absent
+1 1
+\in[-1,1]
+∈ [ - 1 , 1 ]
+
+-0.14
+
+0.08
+
+-0.27
+
+0.13
+
+-0.25
+
+0.16
+
+0.05
+
+0.22
+
+0.17
+
+0.16
+
+-0.06
+
+CoT
+
+Accuracy CoT (%)
+
+57
+
+45
+
+53
+
+53
+
+55
+
+53
+
+51
+
+59
+
+51
+
+59
+
+53
+
+Biasing Features (%)
+
+4
+
+38
+
+86
+
+45
+
+4
+
+35
+
+7
+
+12
+
+42
+
+21
+
+100
+
+Early Answering (%)
+
+25
+
+18
+
+4
+
+27
+
+34
+
+24
+
+2
+
+28
+
+0
+
+18
+
+0
+
+Filler Tokens (%)
+
+51
+
+20
+
+4
+
+18
+
+49
+
+28
+
+2
+
+36
+
+0
+
+20
+
+0
+
+Adding Mistakes (%)
+
+24
+
+18
+
+6
+
+21
+
+37
+
+30
+
+4
+
+33
+
+2
+
+21
+
+1
+
+Paraphrasing (%)
+
+58
+
+81
+
+95
+
+80
+
+56
+
+71
+
+98
+
+69
+
+99
+
+81
+
+100
+
+CC-SHAP CoT
+∈
+[
+−
+1 ,
+1 ]
+absent
+1 1
+\in[-1,1]
+∈ [ - 1 , 1 ]
+
+-0.19
+
+0.13
+
+-0.22
+
+0.01
+
+-0.07
+
+0.04
+
+-0.04
+
+-0.07
+
+0.12
+
+0.07
+
+0.02
+
+logical deduction 5 objects
+
+Post-hoc
+
+Accuracy (%) 20% rand.
+
+21
+
+31
+
+19
+
+33
+
+28
+
+43
+
+17
+
+14
+
+28
+
+29
+
+25
+
+Counterfact. Edits (%)
+
+64
+
+32
+
+81
+
+47
+
+13
+
+43
+
+7
+
+52
+
+30
+
+23
+
+82
+
+CC-SHAP p.h.
+∈
+[
+−
+1 ,
+1 ]
+absent
+1 1
+\in[-1,1]
+∈ [ - 1 , 1 ]
+
+-0.11
+
+0.02
+
+-0.10
+
+0.15
+
+-0.08
+
+0.11
+
+0.17
+
+0.26
+
+0.05
+
+0.157
+
+0
+
+CoT
+
+Accuracy CoT (%)
+
+23
+
+25
+
+21
+
+30
+
+23
+
+37
+
+20
+
+21
+
+26
+
+26
+
+25
+
+Biasing Features (%)
+
+2
+
+19
+
+5
+
+5
+
+2
+
+42
+
+1
+
+4
+
+3
+
+4
+
+100
+
+Early Answering (%)
+
+60
+
+31
+
+24
+
+36
+
+69
+
+33
+
+31
+
+39
+
+45
+
+65
+
+0
+
+Filler Tokens (%)
+
+67
+
+25
+
+26
+
+27
+
+89
+
+23
+
+17
+
+62
+
+38
+
+83
+
+0
+
+Adding Mistakes (%)
+
+62
+
+32
+
+24
+
+36
+
+60
+
+36
+
+31
+
+42
+
+41
+
+41
+
+0
+
+Paraphrasing (%)
+
+32
+
+55
+
+62
+
+51
+
+34
+
+57
+
+72
+
+63
+
+61
+
+59
+
+100
+
+CC-SHAP CoT
+∈
+[
+−
+1 ,
+1 ]
+absent
+1 1
+\in[-1,1]
+∈ [ - 1 , 1 ]
+
+-0.19
+
+-0.09
+
+-0.16
+
+0.08
+
+-0.37
+
+0.05
+
+0.12
+
+0.15
+
+0.06
+
+0.07
+
+0.03
+
+Table 4:
+Model accuracy and
+faithfulness / self-consistency test results
+ for post-hoc and CoT explanations on data from
+causal judgement
+ (100 samples),
+logical deduction five objects
+ (100 samples) from BBH. Accuracy in %. Highest accuracy results in boldface. Test result is the fraction of samples deemed faithful by the tests (%). CC-SHAP is a continuous value
+∈
+[
+−
+1 ,
+1 ]
+absent
+1 1
+\in[-1,1]
+∈ [ - 1 , 1 ]
+ (the greater, the more self-consistent) and is reported as the mean over all tested samples.
+We highlight
+low
+ (
+≤
+−
+0.10 absent
+0.10 \leq-0.10
+≤ - 0.10
+) and
+high
+ (
+≥
+0.10 absent
+0.10 \geq 0.10
+≥ 0.10
+) self-consistencies.
+The random accuracy baseline is 50% for causal judgement and 20% for logical deduction five objects.
+
+Figure 2:
+Averaged
+ faithfulness / self-consistency scoring of the models
+across all faithfulness tests and tasks
+, across CC-SHAP post-hoc and CoT and across all other tests. See Appendix
+A.6
+ for how these numbers are computed.
+
+The general trends that were discussed for Table
+2 (main) also hold here. Chat models are more self-consistent than their base counterparts (except for Falcon).
+Test scores vary considerably
+for individual models, e.g., for LLama-7b from 2% to 68% on logical deduction five objects.
+
+The results in Tables
+2 (main) and
+4 (below) show that
+different tests have very different opinions on the degree of model’s faithfulness
+. This is not surprising, because the tests for faithfulness / self-consistency from the literature work in very diverse ways and according to different principles on how the prediction of a model is allowed to change.
+
+A.6
+Aggregated Results
+
+Focusing on All Tests
+
+We also computed averaged scores of the models per task, across all faithfulness tests in Figure
+2 , blue. To compute aggregated scores, we first re-scale the CC-SHAP scores to values between 0 and 100 (-1 CC-SHAP maps to 0 and 1 maps to 100) and then take the average over all tests per task.
+
+Figure 3:
+Results from Table
+2 (ComVE dataset) plotted with their
+standard deviation
+ over 3 runs for 7 models. Top: Accuracy for prediction (normal setting and CoT) and CC-SHAP (post-hoc and CoT). Bottom: Test results for all other self-consistency tests.
+
+Focusing on all tests but CC-SHAP
+
+For the aggregated scores across all tests but CC-SHAP (Figure
+2 , red), we average the scores of all tests but CC-SHAP.
+
+Focusing on CC-SHAP
+
+For the aggregated scores across CC-SHAP (Figure
+2 , yellow), we average between CC-SHAP post-hoc and CC-SHAP CoT and re-scale the CC-SHAP scores to values between 0 and 100.
+
+The results in Figure
+2 show that
+LLaMA2-7b, LLaMA2-13b-chat and Mistral-7b-chat are the most self-consistent, while Falcon-7b is least consistent. This ranking aggregates over many tests that are inherently different and should be interpreted cautiously.
+Still, comparing the scaled scores (betw. 0 and 100) for CC-SHAP (yellow) vs. non-CC-SHAP test results (red) across all models, we observe opposite trends: while CC-SHAP measures higher consistency for LLaMA-*-chat models against the base variants, across all model sizes, the remaining tests are not only lower, but inconsistent for these pairs. This difference could be related to CC-SHAP’s continuous nature, which does not lead to hard flips of consistency predictions across instances. For Mistral, however, the different test types agree in their trends. For Falcon, CC-SHAP does not record differences.
+
+A.7
+Standard Deviation of Self-Consistency Tests and Accuracy
+
+We ran each test (i.e., existing ones and CC-SHAP) on 5 tasks using 11 models, providing 100 different samples per task,
+with notable computational run-time requirements (see Limitations
+Limitations
+).
+
+To estimate how much the results vary between runs, we estimated the standard deviation of our tests on a subset of 7 models on the ComVE task, by running the tests 3 times on the 100 examples. Running all tests on all models and data multiple times to estimate the variance for each of the tests, tasks and models would have been computationally very costly and would not have delivered much more insight. The results are in Figure
+3 and show the measurements from Table
+2 (ComVE): Accuracy for prediction (normal setting and CoT) and CC-SHAP (post-hoc and CoT) – top figure – and measurements for all other tests – bottom figure.
+
+The results show that tests other than CC-SHAP have a considerable standard deviation. This is because the models produce different generations in each run – due to the randomness in the generation process induced by the sampling method. The results of the tests are affected by the content of these different generations: e.g., i) it is important for some tests that the explanation does (not) mention certain words, or ii) CoT tests account for the final prediction, which in turn depends on the CoT generation that varies between runs.
+CC-SHAP is more robust and shows low standard deviation of faithfulness measurements
+ because even when the generations between runs are different, the input contributions are almost equal.
+
+Test
+
+7b
+
+7b-chat
+
+13b
+
+13b-chat
+
+7b
+
+7b-chat
+
+7b
+
+7b-chat
+
+40b
+
+40b-chat
+
+LLaMA2
+
+Mistral
+
+Falcon
+
+GPT2
+
+e-SNLI
+
+p.h.
+
+CC; Counterfact. Edits
+
+8
+
+-4
+
+-3
+
+-6
+
+3
+
+-5
+
+11
+
+-3
+
+12
+
+5
+
+5
+
+CoT
+
+CC; Biasing Features
+
+-8
+
+-10
+
+-5
+
+15
+
+4
+
+-8
+
+-4
+
+-5
+
+-9
+
+23
+
+nan
+
+CC; Early Answering
+
+-4
+
+1
+
+2
+
+6
+
+13
+
+-1
+
+-4
+
+5
+
+-3
+
+5
+
+nan
+
+CC; Filler Tokens
+
+5
+
+-4
+
+18
+
+-7
+
+13
+
+0
+
+nan
+
+20
+
+-3
+
+-3
+
+nan
+
+CC; Adding Mistakes
+
+12
+
+-11
+
+-12
+
+8
+
+7
+
+-6
+
+22
+
+-9
+
+5
+
+-7
+
+nan
+
+CC; Paraphrasing
+
+11
+
+3
+
+13
+
+16
+
+-4
+
+8
+
+12
+
+20
+
+0
+
+0
+
+nan
+
+disambig. QA
+
+p.h.
+
+CC; Counterfact. Edits
+
+-11
+
+15
+
+3
+
+42
+
+24
+
+25
+
+8
+
+-1
+
+24
+
+3
+
+0
+
+CoT
+
+CC; Biasing Features
+
+6
+
+-8
+
+5
+
+2
+
+-4
+
+4
+
+-1
+
+-3
+
+nan
+
+-1
+
+-5
+
+CC; Early Answering
+
+11
+
+-5
+
+7
+
+-6
+
+-23
+
+9
+
+12
+
+27
+
+-22
+
+-8
+
+nan
+
+CC; Filler Tokens
+
+-9
+
+-9
+
+-11
+
+-6
+
+-42
+
+7
+
+23
+
+-21
+
+-7
+
+19
+
+nan
+
+CC; Adding Mistakes
+
+22
+
+-10
+
+3
+
+10
+
+-18
+
+-1
+
+11
+
+15
+
+-3
+
+-24
+
+-1
+
+CC; Paraphrasing
+
+-20
+
+-9
+
+-7
+
+3
+
+24
+
+8
+
+-19
+
+-12
+
+13
+
+27
+
+-2
+
+ComVE
+
+p.h.
+
+CC; Counterfact. Edits
+
+13
+
+-12
+
+10
+
+-13
+
+8
+
+25
+
+0
+
+-3
+
+6
+
+3
+
+-4
+
+CC; Constr. Inp.
+←
+absent
+←
+\xleftarrow{}
+start_ARROW start_OVERACCENT end_OVERACCENT ← end_ARROW
+ Expl.
+
+-5
+
+nan
+
+-11
+
+7
+
+nan
+
+4
+
+nan
+
+nan
+
+nan
+
+nan
+
+nan
+
+CoT
+
+CC; Biasing Features
+
+5
+
+7
+
+-19
+
+11
+
+3
+
+0
+
+-3
+
+-9
+
+3
+
+19
+
+nan
+
+CC; Early Answering
+
+9
+
+-1
+
+-1
+
+-7
+
+13
+
+11
+
+-14
+
+19
+
+-2
+
+5
+
+nan
+
+CC; Filler Tokens
+
+11
+
+9
+
+3
+
+18
+
+1
+
+3
+
+-2
+
+6
+
+nan
+
+6
+
+nan
+
+CC; Adding Mistakes
+
+9
+
+11
+
+-3
+
+12
+
+29
+
+14
+
+-1
+
+6
+
+18
+
+3
+
+nan
+
+CC; Paraphrasing
+
+5
+
+6
+
+5
+
+11
+
+1
+
+19
+
+-6
+
+-7
+
+-7
+
+19
+
+nan
+
+causal judgment
+
+p.h.
+
+CC; Counterfact. Edits
+
+12
+
+15
+
+11
+
+30
+
+11
+
+27
+
+8
+
+11
+
+-1
+
+-20
+
+2
+
+CoT
+
+CC; Biasing Features
+
+-9
+
+15
+
+-1
+
+-7
+
+-16
+
+3
+
+4
+
+9
+
+13
+
+16
+
+nan
+
+CC; Early Answering
+
+4
+
+16
+
+-17
+
+13
+
+29
+
+0
+
+5
+
+19
+
+nan
+
+7
+
+nan
+
+CC; Filler Tokens
+
+7
+
+16
+
+-17
+
+1
+
+44
+
+-21
+
+5
+
+-15
+
+nan
+
+17
+
+nan
+
+CC; Adding Mistakes
+
+3
+
+11
+
+-24
+
+3
+
+23
+
+-17
+
+30
+
+4
+
+-13
+
+13
+
+nan
+
+CC; Paraphrasing
+
+-9
+
+-15
+
+0
+
+-1
+
+-44
+
+-2
+
+-5
+
+17
+
+1
+
+6
+
+nan
+
+logical reasoning
+
+p.h.
+
+CC; Counterfact. Edits
+
+14
+
+12
+
+-23
+
+0
+
+22
+
+12
+
+16
+
+5
+
+22
+
+2
+
+2
+
+CoT
+
+CC; Biasing Features
+
+16
+
+-8
+
+-17
+
+3
+
+0
+
+-10
+
+-14
+
+4
+
+-2
+
+32
+
+nan
+
+CC; Early Answering
+
+-2
+
+10
+
+0
+
+13
+
+-18
+
+-7
+
+-1
+
+8
+
+4
+
+2
+
+nan
+
+CC; Filler Tokens
+
+-2
+
+-1
+
+-13
+
+6
+
+5
+
+15
+
+-1
+
+12
+
+0
+
+11
+
+nan
+
+CC; Adding Mistakes
+
+-8
+
+-6
+
+-3
+
+12
+
+-1
+
+5
+
+-5
+
+-5
+
+-31
+
+-16
+
+nan
+
+CC; Paraphrasing
+
+2
+
+-15
+
+-4
+
+23
+
+-6
+
+-3
+
+1
+
+7
+
+10
+
+-3
+
+nan
+
+Table 5:
+Point biserial
+correlation
+ (times 100)
+between the CC-SHAP measure (CC) and the other tests
+. The point biserial correlation is used to measure the relationship between a binary variable (the other test), and a continuous variable (CC-SHAP).
+We highlight
+high positive
+ correlations above 0.2 (20),
+high negative
+ correlations smaller than -0.2 (-20) and
+acceptable positive
+ correlations above 0.1 and
+acceptable negative
+ correlations below -0.1 – as customary in the literature.
+The correlation’s output is
+nan
+ because all values returned by the consistency tests are constant across all instances in the respective datasets – since the correlation coefficient is then not defined. CC-SHAP returns continuous values and its results are practically never constant.
+
+p.h.
+: Post-hoc explanation setting.
+
+Over the whole table (over datasets and models), we count and
+plot in a bar chart
+ how many correlations are higher or equal 10 (blue bars) and how many are smaller or equal -10 (red bars).
+
+A.8
+Correlation between CC-SHAP and other Tests
+
+CC-SHAP is a continuous measure for a model’s faithfulness per instance. This is unlike the other tests that give a boolean output for whether a model is faithful or not on an instance. We are interested to see to what extent our CC-SHAP measure aligns with the other tests’ results.
+
+Therefore, we measure the correlation of CC-SHAP
+with the other tests using the point biserial correlation metric – which measures the relationship between a binary variable (here, any existing test) and a continuous variable (here, CC-SHAP). We show the results in Table
+5 .
+
+Over all tasks and models – as summarised in the bar chart below Table
+5 – we see the most frequently occurring
+positive correlations of CC-SHAP with ‘Counterfactual Edits’, followed by ‘Adding Mistakes’ (2nd rank) and ‘Paraphrasing’ (3rd rank) – but find, at the same time,
+the most frequently occurring
+negative correlations (red bars) to also occur
+with ‘Adding Mistakes’.
+
+We hypothesise that such mixed correlations and anticorrelations result from the very nature of the editing-based tests: they rely on the quality of the edits (which can vary) and the LLM understanding the edited instance – which is not always given – nor verified by the tests.
+
+The detailed results in Table
+5 show that CC-SHAP has substantial positive correlation with the Counterfactual Edits test on all task datasets. On some tasks, it aligns well with other tests as well, such as the Filler Tokens test on e-SNLI, ComVE and logical reasoning (BBH). On ComVE, there is agreement between CC-SHAP and most tests (except Paraphrasing and Constructing Input from Explanation), while on causal judgement there is agreement between CC-SHAP and all tests.
+
+For GPT2, the other tests always output the same verdict for all samples, because the model is insensitive to the test edits. This explains why we get nans and low correlations as result. CC-SHAP, by contrast, always outputs non-constant values across all tests, independently how performant or weak the model’s capabilities are.
+
+A.9
+Relationship between Size, Accuracy and Self-Consistency
+
+It is generally known that model size increases task accuracy. We observe the same in our experiments.
+
+As shown in Figure
+4 , the trendlines
+6 6
+6 The trendlines are computed with linear regression on the measurements shown in the plot.
+ for accuracy (in grey) are generally increasing with growing model size for the tested model size range of 7–13–40B parameters. But we do not observe any relationship between size and self-consistency, as the trendlines for self-consistency scores are mixed.
+
+What we do observe in the self-consistency trendlines is that CC-SHAP shows a general trend to assign higher consistency to the range of tested models, compared to the other tests. This could be related to its continuous nature, which does not lead to hard flips of consistency predictions across instances. We also find that CC-SHAP consistency scores are very close in the different settings: CoT vs. post-hoc explanations.
+
+Figure 4:
+Top: Accuracy and CoT accuracy over all tasks and their trendlines. 2nd-4th figure: Self-consistency scores and their trendlines for e-SNLI, disambigQA and ComVE. The trendlines for accuracy (in grey) are generally increasing with growing model size, while the trendlines for self-consistency scores (same colour as the test but with higher transparency / more fade) are mixed.

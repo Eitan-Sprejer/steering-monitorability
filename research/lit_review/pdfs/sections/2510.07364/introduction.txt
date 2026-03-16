@@ -1,0 +1,110 @@
+1 Introduction
+
+Figure 1:
+Hybrid Models Unlock Reasoning Model-Level Behavior with Minimal Intervention.
+ Overview of our approach for steering base language models to reason like
+thinking
+ models.
+
+(A)
+ We use the base model as the primary generator of tokens in the output sequence.
+
+(B)
+ For each token position, we evaluate the current rollout in a target thinking model and use a “thinking model activation classifier” to detect the reasoning mechanism that should be applied next.
+
+(C)
+ When the classifier detects a reasoning step, we apply a corresponding steering vector to the base model’s activations, triggering structured reasoning behavior.
+This approach shows that base models already possess latent reasoning abilities, and that these can be reliably activated without any parameter updates, bridging much of the gap to full reasoning models with minimal extra machinery.
+
+Large Language Models (LLMs) have recently demonstrated remarkable capabilities in reasoning tasks when given additional inference time to think through problems step-by-step.
+Thinking models
+, also known as
+reasoning models
+, or
+models using inference-time compute
+, are a type of language model designed to generate long chains of reasoning before arriving at a final answer.
+Examples of models in this category include Anthropic’s Claude 3.7 Sonnet
+(Anthropic,
+2025 )
+, OpenAI’s o3
+(OpenAI,
+2025 )
+, Gemini 2.5 Pro
+(Google,
+2025 )
+, DeepSeek’s R1
+(DeepSeek-AI,
+2025 )
+, and Qwen’s QwQ-32B
+(Qwen Team,
+2024 )
+.
+
+All these
+thinking
+ models significantly outperform their base counterparts on challenging reasoning benchmarks
+(Chollet,
+2024 )
+. However, a fundamental question remains:
+What is the difference between base and thinking models that allows the latter to achieve superior performance?
+
+Prior work has suggested several hypotheses: (1)
+thinking
+ models acquire entirely new reasoning capabilities through specialized training
+(Gandhi et al.,
+2025 )
+; (2) reinforcement learning (RL) teaches them to structure their reasoning more effectively
+(Marjanović et al.,
+2025 )
+; (3) RL teaches them to repurpose pre-existing base model representations for new mechanisms
+(Ward et al.,
+2025a
+)
+; or (4) the additional inference time simply allows more computation to be applied to difficult problems
+(Zhao et al.,
+2025 ; Wang et al.,
+2025 )
+. In this paper, we present evidence for a more nuanced explanation:
+not only do base models already possess the fundamental reasoning capabilities, but thinking models learn when to deploy these capabilities in a structured sequence
+.
+
+We make the following contributions:
+
+1.
+
+To support our analysis, we develop an unsupervised clustering methodology to derive an interpretable taxonomy of reasoning mechanisms that thinking models employ during their chains of thought, forming the building blocks of complex problem-solving (
+Section
+˜
+2 ).
+
+2.
+
+We demonstrate that
+base models can perform each reasoning behavior when appropriate steering vectors are added to their activations
+ (
+Section
+˜
+3 ). By identifying and applying the right vector at the right step, we can guide pretrained base models to reproduce complete reasoning chains of thinking models.
+
+The evaluation for our steered base model approach focuses on thinking models across diverse architectures and parameter scales, including models trained with distillation (DeepSeek-R1-Distill series) and models trained directly with RLVR (QwQ-32B). The results show that this approach substantially lifts base model performance, recovering up to
+91 %
+91\%
+ of the performance gap between base and thinking models on GSM8K and MATH500 benchmarks
+without any weight updates
+ and steering only
+12 %
+12\%
+ of tokens.
+
+This finding provides strong evidence that reinforcement learning with verifiable rewards (RLVR
+(Yue et al.,
+2025 )
+) used to train thinking models primarily teaches
+when
+ to activate pre-existing skills rather than teaching
+how
+ to execute those skills. This perspective has direct implications for more efficient training of reasoning in future language models.
+To ease reproducibility and further research, we publish our codebase and results in a public GitHub repository
+1 1
+1 https://github.com/cvenhoff/thinking-llms-interp
+.

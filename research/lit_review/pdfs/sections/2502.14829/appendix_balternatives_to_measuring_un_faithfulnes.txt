@@ -1,0 +1,161 @@
+Appendix B
+Alternatives to Measuring (Un)Faithfulness
+
+A number of methods have been proposed with the goal of measuring faithfulness of model reasoning
+(
+lanham2023measuring
+;
+atanasova2023faithfulness
+;
+DBLP:journals/tmlr/BenthamSM24
+;
+siegel2024probabilities
+;
+chen2024counterfactual
+;
+madsen2024self
+,
+inter alia
+)
+.
+However, not all of them are applicable to our setup.
+Some of the methods are designed for NLI tasks
+(
+atanasova2023faithfulness
+;
+siegel2024probabilities
+;
+parcalabescu2023measuring
+)
+ while others aim at multi-hop QA tasks
+(
+parcalabescu2023measuring
+;
+lanham2023measuring
+;
+chen2024counterfactual
+;
+DBLP:journals/tmlr/BenthamSM24
+)
+.
+In our work, we focus on QA tasks as datasets requiring multi-hop reasoning are more prominent in this task
+(
+jacovi2024chain
+)
+, allowing us a broader domain coverage.
+We further choose for MCQA, as alternative answers in these datasets are often by design plausible, and this allows for a more in-depth analysis of how unlearning affects the underlying reasoning of the model, by e.g. making it opt for plausible alternatives.
+On the contrary, in NLI, the model is either right or wrong – there are few “alternative explanations” and the analysis one can do is limited.
+
+Other Baselines.
+
+We have considered other baselines applicable to CoT reasoning
+(cf. Table 1. in
+zaman2025causal
+)
+. Namely, we explore Early Answering, Filler Tokens, Adding Mistakes and Paraphrasing
+(
+lanham2023measuring
+)
+ as well as CC-SHAP
+(
+parcalabescu2023measuring
+)
+.
+Adding Mistakes is a simple contextual faithfulness method that works well, and we compare to its results in
+Table
+˜
+2 .
+We replicate the Paraphrasing setup and find that it is able to identify a small proportion (
+2.84 2.84
+%, on average) of instances as
+unfaithful
+. See full results in
+Table
+˜
+4 .
+Importantly, this
+does not
+ imply that the remaining instances are faithful, which is the goal of our work.
+
+Model
+
+Arc-Ch
+
+Book
+
+Sports
+
+SQA
+
+LLaMA-8B
+
+2.60 2.60
+
+1.55 1.55
+
+1.72 1.72
+
+2.15 2.15
+
+LLaMA-3B
+
+3.39 3.39
+
+4.65 4.65
+
+1.19 1.19
+
+0.57 0.57
+
+Mistral-2
+
+9.73 9.73
+
+3.70 3.70
+
+3.68 3.68
+
+3.12 3.12
+
+Phi-3
+
+3.81 3.81
+
+2.56 2.56
+
+0.00 0.00
+
+2.65 2.65
+
+Table 4:
+The percentage of CoTs identified as
+unfaithful
+ by the Paraphrase baseline
+(
+lanham2023measuring
+)
+.
+
+The remaining methods from
+lanham2023measuring
+ aim to identify whether reasoning is produced post-hoc, or truly necessary to produce the prediction. Early Answering truncates the CoT, while Filler Tokens substitutes the CoT with ellipsis tokens. Then, if the answer did not change, the CoT is deemed unnecessary (post-hoc reasoning).
+These measures do not aim to determine faithfulness of CoTs. Post-hoc reasoning can still be a true verbalization of latent reasoning, which is what both
+fur
+ and Add-Mistake find
+Table
+˜
+2 since we only evaluate faithfulness cases where CoT and no-CoT predictions of models agree.
+Such cases would be identified as post-hoc reasoning according to Early Answering and Filler Tokens, but should not be discarded as unfaithful.
+
+Finally, we experiment with CC-SHAP
+(
+parcalabescu2023measuring
+)
+, a self-consistency measure based on Shapley values, which measures the convergence between input tokens salient for the prediction and explanation.
+We use the official implementation from the authors
+9 9
+9 https://github.com/Heidelberg-NLP/CC-SHAP
+, but when applying SHAP to instances from our dataset, relative importances of tokens from input are frequently exactly zero (importances for reasoning do not behave in this manner), which results in NaN CC-SHAP scores in
+90.24 90.24
+% of instances across datasets and models.
+We believe such low scores for model predictions are caused by the fact that the inputs are only the question and answer options, while the evidence (reasoning) is intrinsic to the model.

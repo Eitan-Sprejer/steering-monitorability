@@ -1,0 +1,21 @@
+7 Discussion and Limitations
+
+Uses of Reward Hacking Verbalizations.
+
+While this work presents a novel method to identify verbalizations of reward hacks, it is still an open question as to how to use reward hack verbalizations once they are detected. First, one could use them to identify and patch flaws in your reward function before retraining. Second, one could apply rejection sampling at test-time against the CoT monitor if you can tolerate some reward hacking slipping through. It is important, however, to avoid training directly against your CoT monitor to further reduce reward hacking;
+Baker et al. [7]
+ demonstrate that, given enough optimization pressure against a CoT monitor, this teaches models to obscure and obfuscate their reward hacking behavior rather than eliminate it.
+
+VFT might make complex reward hacks more likely.
+
+In our experiments, the BCT and baseline models learn to exploit our reward hacks completely, as our reward hacks are simple enough that models can exploit them without using CoT reasoning.
+However, for more complex tasks where CoT is necessary for task completion, a lack of verbalization would indicate the model is not reward hacking. In such cases, VFT presents a trade-off: while it enables detection of reward hacks through verbalization, encouraging reasoning traces that discuss reward hacking may lead models to explore exploits they would not have discovered otherwise.
+
+Limitations.
+
+We only test generalization to a set of held-out cues that are fairly similar to the training cues. VFT’s effectiveness is likely constrained by the model’s prior. When reward hacks have descriptions that are highly unlikely under the model’s prior (due to complexity or unusualness), VFT might fail to induce verbalization. The fine-tuning signal might be insufficient to shift the model from its strong prior against articulating certain types of exploits.
+Verbalization judging could be improved: Currently, we count as a verbalization if the cue is implicated as a reason for giving an answer.
+However, as discussed in
+§5.4
+, the explanations can be ambiguous about whether the model would have given the same response without the prompt cue. We treat these ambiguous cases as verbalizations.
+Finally, we specify which cues to monitor and calibrate our judges on known cues. Future work should develop monitors that can identify novel reward hacks with minimal training data.

@@ -1,0 +1,1080 @@
+Appendix N
+Regression Analysis Results
+
+We employ two complementary modeling approaches: mixed-effects models to estimate overall effects while accounting for behaviour-level variation as well as ordinary least squares (OLS) regression to examine behaviour-specific effects directly. We fit both the mixed effects model and the OLS model twice; once for the
+on-policy
+ test set and one fo the
+on-policy
+-
+incentivised
+ test set.
+
+Overall Effects: Mixed-Effects Models
+
+To estimate the average effects of response strategy and domain across all behaviours, we fit mixed-effects models with random slopes:
+
+Model1 :
+
+roc_auc
+
+∼
+\sim
+
+gen_method * domain + (gen_method + domain | behaviour)
+
+Mixed models are particularly suited for estimating overall effects because they can model both
+fixed effects
+ (average effects of response strategy and domain across all behaviours) and
+random effects
+ (behaviour-specific deviations from these averages). The random effects structure in Model 1 includes:
+
+•
+
+Random intercepts: Each behaviour has its own baseline AUROC, accounting for the fact that some behaviours (e.g., lists) consistently achieve higher probe performance than others (e.g., sycophancy)
+
+•
+
+Random slopes for response strategy: Allows the effect of response strategy to vary across behaviours
+
+•
+
+Random slopes for domain: Allows the domain penalty to vary across behaviours
+
+By accounting for behaviour-specific variation, the fixed effects in these models represent the
+average
+ effects of response strategy and domain, weighted appropriately across behaviours. This makes it possible to statistically test whether these average effects are significant and to quantify their magnitude. We fit separate mixed models for the
+on-policy
+ and
+incentivised
+ datasets with lists as the reference category (because it as the highest average probe performance.
+
+Behaviour-Specific Effects: OLS Models
+
+To examine how domain and response strategy effects differ across behaviours, we fit an ordinary-least-squares (OLS) model with interaction terms:
+
+Model2 :
+
+roc_auc
+
+∼
+\sim
+
+domain * C(behaviour) + gen_method * C(behaviour)
+
+Model 2 includes behaviour as a categorical fixed effect (again with lists as the reference category). The interaction terms allow us to test whether the effects of domain and response strategy vary significantly across the 8 behaviours.
+
+The OLS models treat each observation independently and directly estimate behaviour-specific effects through the interaction terms, making it straightforward to visualize and interpret differences across behaviours.
+
+N.1
+Model 1
+
+roc_auc
+
+∼
+\sim
+
+gen_method * domain + (gen_method + domain | behaviour)
+
+Model 1 estimates the overall effect of domain and response strategy across all behaviours. By including random effects for behaviour-specific variation, the mixed-effects approach isolates the average impact of domain shift and response strategy irrespective of which specific behaviour is being probed.
+
+N.1.1
+On Policy Test Set
+
+Figure 39:
+When evaluated on the on-policy test sets, domain shift has a greater impact on probe performance than response strategy.
+ Probes trained on a different domain showed significantly worse performance (coeff = -0.162, p<0.001). In contrast, response strategy had no significant effect on probe performance (all p>0.05).
+
+Coefficient
+
+Std. Error
+
+p-value
+
+Sig.
+
+Intercept
+
+0.9140
+
+0.0260
+
+0.0000
+
+***
+
+gen_method[T.incent]
+
+-0.0040
+
+0.0150
+
+0.7893
+
+gen_method[T.off_policy]
+
+-0.0160
+
+0.0140
+
+0.2729
+
+gen_method[T.prompt]
+
+-0.0150
+
+0.0150
+
+0.3357
+
+domain[T.different]
+
+-0.1620
+
+0.0420
+
+0.0001
+
+***
+
+gen_method[T.incent]:domain[T.different]
+
+-0.0150
+
+0.0170
+
+0.3799
+
+gen_method[T.off_policy]:domain[T.different]
+
+-0.0130
+
+0.0170
+
+0.4410
+
+gen_method[T.prompt]:domain[T.different]
+
+0.0140
+
+0.0170
+
+0.4094
+
+Group Var
+
+7.7060
+
+7.2440
+
+0.2874
+
+Group x gen_method[T.incent] Cov
+
+-1.9150
+
+3.1350
+
+0.5413
+
+gen_method[T.incent] Var
+
+1.0090
+
+1.1290
+
+0.3712
+
+Group x gen_method[T.off_policy] Cov
+
+2.2990
+
+3.0480
+
+0.4508
+
+gen_method[T.incent] x gen_method[T.off_policy] Cov
+
+-0.3840
+
+1.0610
+
+0.7176
+
+gen_method[T.off_policy] Var
+
+0.7750
+
+1.9620
+
+0.6927
+
+Group x gen_method[T.prompt] Cov
+
+2.7980
+
+4.6290
+
+0.5456
+
+gen_method[T.incent] x gen_method[T.prompt] Cov
+
+-0.8500
+
+1.1270
+
+0.4510
+
+gen_method[T.off_policy] x gen_method[T.prompt] Cov
+
+0.7710
+
+2.3910
+
+0.7470
+
+gen_method[T.prompt] Var
+
+1.1170
+
+3.5950
+
+0.7560
+
+Group x domain[T.different] Cov
+
+2.4270
+
+10.4460
+
+0.8163
+
+gen_method[T.incent] x domain[T.different] Cov
+
+0.6480
+
+2.8830
+
+0.8223
+
+gen_method[T.off_policy] x domain[T.different] Cov
+
+1.1610
+
+4.4740
+
+0.7953
+
+gen_method[T.prompt] x domain[T.different] Cov
+
+0.5940
+
+5.7220
+
+0.9173
+
+domain[T.different] Var
+
+21.1730
+
+14.3430
+
+0.1399
+
+N observations: 48
+
+N groups: 6
+
+Log-Likelihood: 67.68
+
+.
+
+N.1.2
+Incentivised Test Set
+
+Figure 40:
+When evaluated on the incentivised test sets, domain shift has a greater impact on probe performance than response strategy.
+ Probes trained on a different domain showed significantly worse performance (coeff = -0.180, p<0.001). In contrast, response strategy had a small and non-significant effect on probe performance (coeff = 0.023, p>0.05). Interestingly, the interaction between prompted response strategy and different domain lead to a very small but significantly positive effect (coeff = 0.05, p<0.05).
+
+Coefficient
+
+Std. Error
+
+p-value
+
+Sig.
+
+Intercept
+
+0.9230
+
+0.0200
+
+0.0000
+
+***
+
+gen_method[T.off_policy]
+
+-0.0190
+
+0.0270
+
+0.4798
+
+gen_method[T.prompt]
+
+-0.0370
+
+0.0220
+
+0.0904
+
+domain[T.different]
+
+-0.1890
+
+0.0510
+
+0.0002
+
+***
+
+gen_method[T.off_policy]:domain[T.different]
+
+0.0230
+
+0.0250
+
+0.3480
+
+gen_method[T.prompt]:domain[T.different]
+
+0.0500
+
+0.0250
+
+0.0438
+
+*
+
+Group Var
+
+1.5420
+
+1.6340
+
+0.3453
+
+Group x gen_method[T.off_policy] Cov
+
+0.2700
+
+1.4390
+
+0.8509
+
+gen_method[T.off_policy] Var
+
+2.9030
+
+2.9140
+
+0.3191
+
+Group x gen_method[T.prompt] Cov
+
+0.3820
+
+0.9670
+
+0.6933
+
+gen_method[T.off_policy] x gen_method[T.prompt] Cov
+
+1.5310
+
+1.6150
+
+0.3432
+
+gen_method[T.prompt] Var
+
+1.1120
+
+1.3050
+
+0.3940
+
+Group x domain[T.different] Cov
+
+3.3660
+
+2.9810
+
+0.2589
+
+gen_method[T.off_policy] x domain[T.different] Cov
+
+-3.4880
+
+3.8860
+
+0.3695
+
+gen_method[T.prompt] x domain[T.different] Cov
+
+-0.5760
+
+2.2340
+
+0.7965
+
+domain[T.different] Var
+
+14.9240
+
+9.7990
+
+0.1277
+
+N observations: 48
+
+N groups: 8
+
+Log-Likelihood: 51.60
+
+.
+
+N.2
+Model 2
+
+roc_auc
+
+∼
+\sim
+
+domain * C(behaviour) + gen_method * C(behaviour)
+
+Model 2 estimates behaviour-specific effects of domain and response strategy. Through interaction terms between behaviour and our experimental manipulations, this ordinary least squares (OLS) approach directly quantifies how the impact of domain shift and response strategy varies across the eight behaviours, complementing Model 1’s (
+Section
+˜
+N.1
+) focus on overall effects.
+
+N.2.1
+On Policy Test Set
+
+Figure 41:
+Domain shift has a greater impact on probe performance than response generation method, but the magnitude of this impact varies substantially across behaviours.
+ A mixed-effects regression model reveals that probes trained on a different domain showed significantly worse performance overall (coeff = -0.272, p<0.001), with a baseline intercept of 0.916 (p<0.001). However, the domain shift effect was partially offset by positive interaction effects for several behaviours:
+metaphors
+ (coeff = +0.227, p<0.001),
+refusal
+ (coeff = +0.184, p<0.001), and
+science
+ (coeff = +0.173, p<0.001) all showed substantial recovery under domain shift, indicating greater robustness to domain generalization.
+Deferral-to-authority
+ showed a smaller positive interaction (coeff = +0.066, p=0.015), while
+sycophancy
+ showed no significant interaction effect (coeff = -0.011, p=0.653). Response generation method showed modest but significant main effects: on-policy (coeff = +0.064, p=0.018) and prompted (coeff = +0.083, p=0.004) both improved performance relative to the off-policy baseline. However, generation method effects were highly behaviour-specific.
+Deferral-to-authority
+ showed strong negative interactions across all generation methods (off-policy: coeff = -0.103, p=0.009; prompted: coeff = -0.140, p=0.001), indicating worse performance regardless of generation approach.
+Refusal
+ similarly showed significant negative interactions across all methods (off-policy: coeff = -0.087, p=0.022; on-policy: coeff = -0.075, p=0.046; prompted: coeff = -0.094, p=0.015).
+Metaphors
+ and
+science
+ showed significant negative interactions only with prompted generation (metaphors: coeff = -0.078, p=0.037; science: coeff = -0.091, p=0.018).
+sycophancy
+ showed no significant generation method interactions (all p>0.05), suggesting this behaviour responds similarly across generation approaches.
+
+Coefficient
+
+Std. Error
+
+p-value
+
+Sig.
+
+Intercept
+
+0.9160
+
+0.0190
+
+0.0000
+
+***
+
+domain[T.different]
+
+-0.2720
+
+0.0170
+
+0.0000
+
+***
+
+C(behaviour)[T.authority]
+
+-0.1060
+
+0.0280
+
+0.0011
+
+**
+
+C(behaviour)[T.metaphors]
+
+0.0060
+
+0.0280
+
+0.8248
+
+C(behaviour)[T.refusal]
+
+0.0130
+
+0.0280
+
+0.6387
+
+C(behaviour)[T.science]
+
+0.0330
+
+0.0280
+
+0.2431
+
+C(behaviour)[T.sycophancy]
+
+-0.0210
+
+0.0280
+
+0.4626
+
+gen_method[T.off_policy]
+
+0.0350
+
+0.0250
+
+0.1700
+
+gen_method[T.on_policy]
+
+0.0640
+
+0.0250
+
+0.0181
+
+*
+
+gen_method[T.prompt]
+
+0.0830
+
+0.0250
+
+0.0036
+
+**
+
+domain[T.different]:C(behaviour)[T.authority]
+
+0.0660
+
+0.0250
+
+0.0147
+
+*
+
+domain[T.different]:C(behaviour)[T.metaphors]
+
+0.2270
+
+0.0250
+
+0.0000
+
+***
+
+domain[T.different]:C(behaviour)[T.refusal]
+
+0.1840
+
+0.0250
+
+0.0000
+
+***
+
+domain[T.different]:C(behaviour)[T.science]
+
+0.1730
+
+0.0250
+
+0.0000
+
+***
+
+domain[T.different]:C(behaviour)[T.sycophancy]
+
+-0.0110
+
+0.0250
+
+0.6529
+
+gen_method[T.off_policy]:C(behaviour)[T.authority]
+
+-0.1030
+
+0.0350
+
+0.0085
+
+**
+
+gen_method[T.on_policy]:C(behaviour)[T.authority]
+
+-0.0700
+
+0.0350
+
+0.0598
+
+gen_method[T.prompt]:C(behaviour)[T.authority]
+
+-0.1400
+
+0.0350
+
+0.0008
+
+***
+
+gen_method[T.off_policy]:C(behaviour)[T.metaphors]
+
+-0.0350
+
+0.0350
+
+0.3246
+
+gen_method[T.on_policy]:C(behaviour)[T.metaphors]
+
+-0.0530
+
+0.0350
+
+0.1444
+
+gen_method[T.prompt]:C(behaviour)[T.metaphors]
+
+-0.0780
+
+0.0350
+
+0.0370
+
+*
+
+gen_method[T.off_policy]:C(behaviour)[T.refusal]
+
+-0.0870
+
+0.0350
+
+0.0218
+
+*
+
+gen_method[T.on_policy]:C(behaviour)[T.refusal]
+
+-0.0750
+
+0.0350
+
+0.0463
+
+*
+
+gen_method[T.prompt]:C(behaviour)[T.refusal]
+
+-0.0940
+
+0.0350
+
+0.0146
+
+*
+
+gen_method[T.off_policy]:C(behaviour)[T.science]
+
+-0.0270
+
+0.0350
+
+0.4479
+
+gen_method[T.on_policy]:C(behaviour)[T.science]
+
+-0.0630
+
+0.0350
+
+0.0884
+
+gen_method[T.prompt]:C(behaviour)[T.science]
+
+-0.0910
+
+0.0350
+
+0.0176
+
+*
+
+gen_method[T.off_policy]:C(behaviour)[T.sycophancy]
+
+-0.0240
+
+0.0350
+
+0.4995
+
+gen_method[T.on_policy]:C(behaviour)[T.sycophancy]
+
+-0.0540
+
+0.0350
+
+0.1388
+
+gen_method[T.prompt]:C(behaviour)[T.sycophancy]
+
+-0.0670
+
+0.0350
+
+0.0694
+
+N observations: 48
+
+Log-Likelihood: 133.20
+
+.
+
+N.2.2
+Incentivised Test Set
+
+Figure 42:
+Domain shift has a greater impact on probe performance than response strategy, but the magnitude of this impact varies substantially across behaviours.
+ Probes trained on a different domain showed a modest overall performance drop (coeff = -0.074, p=0.048). However, this effect varied dramatically across behaviours through significant interaction effects. Three behaviours showed substantial negative interactions with domain shift:
+deception
+ exhibited the largest drop (coeff = -0.342, p<0.001), followed by
+sycophancy
+ (coeff = -0.209, p=0.001),
+deferral-to-authority
+ (coeff = -0.148, p=0.008), and
+sandbagging
+ (coeff = -0.108, p=0.042), indicating these behaviours are particularly vulnerable to domain shift when evaluated on off-policy data. In contrast,
+metaphors
+ (coeff = +0.032, p=0.526),
+refusal
+ (coeff = -0.001, p=0.977), and
+science
+ (coeff = +0.050, p=0.326) showed no significant domain shift interactions, suggesting these behaviours generalize well across domains. Response strategy showed no significant main effects (off-policy: coeff = +0.016, p=0.707; prompted: coeff = +0.060, p=0.178). Response strategy interactions with behaviour were largely non-significant, with the notable exception of
+sandbagging
+, which showed a significant negative interaction with prompted generation (coeff = -0.171, p=0.011). All other behaviour-specific response strategy effects were non-significant (all p>0.05), indicating that response strategy has minimal impact on probe performance when evaluated on off-policy test sets.
+
+Coefficient
+
+Std. Error
+
+p-value
+
+Sig.
+
+Intercept
+
+0.8900
+
+0.0350
+
+0.0000
+
+***
+
+domain[T.different]
+
+-0.0740
+
+0.0350
+
+0.0482
+
+*
+
+C(behaviour)[T.authority]
+
+-0.0680
+
+0.0490
+
+0.1805
+
+C(behaviour)[T.deception]
+
+0.0040
+
+0.0490
+
+0.9398
+
+C(behaviour)[T.metaphors]
+
+0.0990
+
+0.0490
+
+0.0604
+
+C(behaviour)[T.refusal]
+
+0.0460
+
+0.0490
+
+0.3608
+
+C(behaviour)[T.sandbagging]
+
+0.0200
+
+0.0490
+
+0.6895
+
+C(behaviour)[T.science]
+
+0.0580
+
+0.0490
+
+0.2560
+
+C(behaviour)[T.sycophancy]
+
+0.0030
+
+0.0490
+
+0.9587
+
+gen_method[T.off_policy]
+
+0.0160
+
+0.0420
+
+0.7066
+
+gen_method[T.prompt]
+
+0.0600
+
+0.0420
+
+0.1780
+
+domain[T.different]:C(behaviour)[T.authority]
+
+-0.1480
+
+0.0490
+
+0.0080
+
+**
+
+domain[T.different]:C(behaviour)[T.deception]
+
+-0.3420
+
+0.0490
+
+0.0000
+
+***
+
+domain[T.different]:C(behaviour)[T.metaphors]
+
+0.0320
+
+0.0490
+
+0.5264
+
+domain[T.different]:C(behaviour)[T.refusal]
+
+-0.0010
+
+0.0490
+
+0.9774
+
+domain[T.different]:C(behaviour)[T.sandbagging]
+
+-0.1080
+
+0.0490
+
+0.0424
+
+*
+
+domain[T.different]:C(behaviour)[T.science]
+
+0.0500
+
+0.0490
+
+0.3255
+
+domain[T.different]:C(behaviour)[T.sycophancy]
+
+-0.2090
+
+0.0490
+
+0.0006
+
+***
+
+gen_method[T.off_policy]:C(behaviour)[T.authority]
+
+-0.0840
+
+0.0600
+
+0.1776
+
+gen_method[T.prompt]:C(behaviour)[T.authority]
+
+-0.0940
+
+0.0600
+
+0.1347
+
+gen_method[T.off_policy]:C(behaviour)[T.deception]
+
+0.1140
+
+0.0600
+
+0.0757
+
+gen_method[T.prompt]:C(behaviour)[T.deception]
+
+-0.0250
+
+0.0600
+
+0.6861
+
+gen_method[T.off_policy]:C(behaviour)[T.metaphors]
+
+-0.0490
+
+0.0600
+
+0.4252
+
+gen_method[T.prompt]:C(behaviour)[T.metaphors]
+
+-0.0840
+
+0.0600
+
+0.1811
+
+gen_method[T.off_policy]:C(behaviour)[T.refusal]
+
+-0.0190
+
+0.0600
+
+0.7532
+
+gen_method[T.prompt]:C(behaviour)[T.refusal]
+
+-0.0730
+
+0.0600
+
+0.2410
+
+gen_method[T.off_policy]:C(behaviour)[T.sandbagging]
+
+-0.1020
+
+0.0600
+
+0.1078
+
+gen_method[T.prompt]:C(behaviour)[T.sandbagging]
+
+-0.1710
+
+0.0600
+
+0.0114
+
+*
+
+gen_method[T.off_policy]:C(behaviour)[T.science]
+
+-0.0280
+
+0.0600
+
+0.6510
+
+gen_method[T.prompt]:C(behaviour)[T.science]
+
+-0.0650
+
+0.0600
+
+0.2912
+
+gen_method[T.off_policy]:C(behaviour)[T.sycophancy]
+
+-0.0230
+
+0.0600
+
+0.7031
+
+gen_method[T.prompt]:C(behaviour)[T.sycophancy]
+
+-0.0610
+
+0.0600
+
+0.3220
+
+N observations: 48
+
+Log-Likelihood: 110.02

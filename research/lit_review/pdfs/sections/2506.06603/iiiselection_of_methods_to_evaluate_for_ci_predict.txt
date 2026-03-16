@@ -1,0 +1,96 @@
+III
+Selection of Methods to Evaluate for CI Prediction
+
+Figure 2:
+Google Scholar method search performed on August 13, 2024 for this evaluation study
+
+III-A
+
+ADRD Classification Methods
+
+We conducted our ADRD-oriented method selection (Figure
+2 ) by searching on Google Scholar on August 13th, 2024 for papers that cited the ADReSSo-2021 Challenge report
+[12]
+. This resulted in 139 papers. Next, the additional search term ’github’ was used to filter those papers for the ones with open-source code repositories. This resulted in 43 papers. A manual assessment was then conducted on these 43 papers to determine if they contained a link to a github repository of code written by the authors. After this manual assessment, 12 papers included repositories containing code for the methods of the paper. Four of these repositories contained complete, working code that predicted ADRD from recordings of speech and transcripts derived from CTT recordings, which were ultimately included in this study:
+
+Figure 3:
+Mean AUC and Fmax (CI) per evaluated method over 100 train-test splits. Error bars show the standard error of the mean. MISA achieved the highest mean AUC, and Ying et al achieved the highest mean Fmax (CI)
+
+III-A
+1 Heitz et. al.
+[27]
+
+The authors of this natural language processing (NLP)-based study examined the utility of various ASR systems for ADRD detection from transcripts of CTT recordings. For ASR generated transcripts, the authors found that a random forest classifier with 500 trees trained on expert-defined NLP features performed the best. These features were hand-picked by the authors after searching through the ADRD classification literature, and included syntactic features based on parts-of-speech tags, syntactic features based on grammatical constituents, lexical features, and features of repetitiveness
+[28]
+.
+
+III-A
+2 Chen et. al.
+[29]
+
+The authors of this acoustics-based method finetuned the Hidden-Unit BERT (HuBERT) model
+[30]
+, which learns acoustic features from speech in a self-supervised manner based on DL clustering techniques, for the prediction of ADRD from CTT recordings. They placed two parallel multilayer perceptron (MLP) classification heads after the pooling layer of HuBERT: one which classifies ADRD, and another which classifies the gender of the speaker. The authors additionally proposed a data augmentation scheme where audio is randomly perturbed, i.e. pitch-shifted, masked in frequency, altered loudness, or vocal tract perturbed. This method was tested in two settings: one in which only the ADReSSo-2021 dataset was used, and another where the ADReSSo-2021 dataset was combined with the Stuttering Events in Podcasts (SEP)-28k dataset
+[31]
+. In the single-dataset case (used in this work), the authors finetuned the upstream HuBERT model, pretrained on 960 hours of the unlabeled Librispeech dataset
+[32]
+, on ten second segments of CTT recordings with a two-second hop length. Predictions of an individual patient’s ADRD status were made by averaging the ADRD classifier head’s output over all corresponding segments.
+
+III-A
+3 Ying et. al.
+[33]
+
+The authors of this study combined representations from Wav2Vec2.0 (W2V2)
+[34]
+ and BERT
+[35]
+, as well as features from the InterSpeech 2010 Paralinguistic challenge (IS10)
+[36]
+, all derived from CTT recordings, to predict ADRD. The W2V2 model, pretrained on 960 hours of LibriSpeech data
+[32]
+, was finetuned for ADRD classification using the ADReSSo-2021 dataset by appending an MLP classification head to the output of the contextual embeddings. For each patient, five ten-second segments that uniformly spanned the recording were pooled by the W2V2 contextual embedding, and their respective representations averaged before being passed to the MLP classification head. The BERT model, pretrained on the BookCorpus dataset
+[37]
+, was also finetuned on machine-generated transcriptions of the ADReSSo-2021 dataset, with an MLP classification head applied to the output sequence’s CLS classification token. After finetuning of the W2V2 and BERT models, the corresponding representations from the classification heads were extracted, and concatenated with IS10 features to produce one feature vector per patient. The feature vectors were then classified for ADRD status using the default support vector machine (SVM) implementation with a radial basis kernel
+[38]
+.
+
+III-A
+4 Farzana et. al.
+[39]
+
+
+The authors of this study combined expert-defined NLP and prosody features for multimodal prediction of ADRD. The NLP features included part-of-speech tagging, context-free grammar, syntactic complexity (named entity recognition), vocabulary richness, SUBTL scores
+[40]
+, and semantic features. The prosody features included duration-based features extracted using the DisVoice toolbox
+[41]
+. These features were concatenated and then classified using the default SVM implementation with a radial basis kernel
+[38]
+.
+
+III-B
+
+Multimodal Sentiment Analysis (MSA) Methods
+
+For evaluating MSA methods for CI prediction, we considered the following two prominent architectures:
+
+III-B
+1 Modality-Invariant and -Specific Representations for MSA (MISA)
+[24]
+
+This method projects unimodal representations of text, video, and speech into a unified latent space using neural network encoders for sentence-level prediction of sentiment. Several loss functions are applied to the distribution of the neural network’s latent space, including modality embedding similarity, difference, reconstruction, and task-specific losses. The linguistic representations are the pooled output of a BERT model, and the acoustic representations are extracted from word-level COVAREP features
+[42]
+.
+
+In this work, we trained a MISA architecture to predict CI at a patient’s sentence-level text and audio, both derived from their CTT recordings, as input, followed by the averaging of their outputs to predict the final CI status.
+
+III-B
+2 Memory fusion network (MFN)
+[25]
+
+This model consists of a hierarchical system of recurrent neural networks to predict sentence-level sentiment from text, video, and audio modalities. MFN stacks word-level representations using a gated-memory mechanism, and fuses modalities with a classifier head. The linguistic and acoustic representations are derived using Glove
+[43]
+ and word-level COVAREP features
+[42]
+, respectively.
+
+Similar to MISA, we trained an MFN architecture to predict CI at the sentence-level given text and audio as input. To predict the CI label for a given patient’s CTT, the mean of a patient’s sentence-level predictions is taken.

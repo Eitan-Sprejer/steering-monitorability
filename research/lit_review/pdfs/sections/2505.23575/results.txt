@@ -1,0 +1,78 @@
+3 Results
+
+We evaluate our monitoring approaches and red-team attack policies across diverse side-task scenarios and model configurations. Our analysis examines the comparative effectiveness of CoT monitoring versus action-only monitoring on different task types, the impact of hybrid monitoring strategies that combine both signals, and the robustness of each approach against our suite of attack policies designed to evade detection.
+
+3.1 CoT Outperforms on Subtle Side Tasks, Underperforms on Non-Subtle Ones
+
+Figure
+3 compares action-only and CoT monitoring catch rates across the full set of side tasks. A distinct separation emerges:
+
+⋅
+\cdot
+
+Subtle side tasks
+ (bottom-left): Action-only monitoring performs poorly, with catch rates below
+20 %
+20\%
+. CoT monitoring significantly enhances detection, with performance improving by an average of 10 percentage points.
+
+⋅
+\cdot
+
+Non-subtle side tasks
+ (top-right): Action-only monitors show substantially higher recall, with GPT-4.1-mini detecting nearly all instances, with the exception of the
+Exit
+ side task, which lies near the cluster boundary. Overall, CoT monitor access decreases performance by
+25 25
+ percentage points across models, possibly due to persuasive rationalizations or noise introduced in the reasoning.
+
+Figure 3:
+Catch rates of action-only and CoT monitoring across side tasks, results averaged across untrusted models and attack policies for each side task. The dashed line separates the regions where CoT monitoring outperforms action-only (above), and vice versa (below).
+
+These results suggest that CoT and action-only monitoring provide complementary signals, showing relative strengths in different regimes of task subtlety.
+
+3.2 Hybrid Monitoring Recovers Performance and Improves Consistency
+
+Figure
+4 introduces a third strategy—
+hybrid monitoring
+—that aggregates independent CoT and action evaluations through a weighted average as described in Subsection
+2.2 . This approach yields consistent and substantial improvements: across all models and task types, hybrid monitoring outperforms both action-only and CoT monitoring catch rates, achieving
+21 %
+21\%
+ and
+42 %
+42\%
+ higher recall respectively.
+
+Figure
+5 displays the performance of GPT-4.1-mini and Gemini 2.5 Flash Lite separated by side task subtlety. For non-subtle side tasks, hybrid monitoring performs on par with action-only monitors, while providing
+32 32
+ percentage points of performance over CoT monitors on average. On the other hand, for subtle side tasks, the hybrid monitors match the performance of CoT monitors, while achieving over twice the catch rate of action-only monitors. Nonetheless, hybrid monitoring catch rates for subtle side tasks remain below
+20 %
+20\%
+ on average, suggesting that while more effective, is still limited in absolute terms.
+
+Figure 4:
+Catch rate performance comparison at 1%FPR of all trusted models for action-only, CoT and hybrid monitors.
+Catch rate performance comparison at 1% FPR of all trusted models for action-only, CoT and hybrid monitors across side tasks. The subplots display results by monitor model as follows: top left shows GPT-4.1-mini, top right Gemini 2.5 Flash Lite, bottom left Claude 3.5 Haiku, and bottom right GPT-4.1-nano.
+
+Figure
+6 breaks down performance by attack policy for the untrusted Claude 3.7 Sonnet Thinking model, with results for all models reported in Figure
+10 in Appendix
+B
+. While the hybrid GPT-4.1-mini monitor is not always the top-performing strategy in every scenario, it consistently outperforms both action-only and CoT monitoring on average.
+
+The
+dependency
+ attack, a framing strategy where the untrusted model is instructed to perform the side task as an intermediary step of the main task, is the most effective of all attack policies for non-subtle side tasks. Its effectiveness stems from models frequently mentioning the side task as a benign requirement in their reasoning or, in some cases, claiming they will ignore the side task while still performing it, thereby deceiving the monitors with access to the reasoning traces. For the subtle side tasks,
+monitor notice
+, where we notify the untrusted model of the monitoring setup, matches the performance of the the
+baseline
+ attack policy.
+
+In contrast,
+stealth
+ attacks are largely ineffective, resulting in significantly higher catch rates than
+baseline
+ across all monitor types, leading to the highest CoT and hybrid monitoring catch rates for subtle side tasks. As this strategy encourages the model to be stealthy in its actions, it often prompts self-reflective reasoning that inadvertently reveals sabotage attempts, making them easier to detect when the monitor reviews the CoT.

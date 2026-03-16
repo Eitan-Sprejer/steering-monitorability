@@ -1,0 +1,78 @@
+6 Error Analysis
+
+What accounts for the performance gap between activation-based and text-based monitoring? Are there specific characteristics of misleading CoTs? In this section, we analyze error cases and characterize the CoTs where text classifiers fail but the linear probe succeeds.
+
+CoT reasoning can be
+performative
+.
+
+We identify a subset of prompts where the final response alignment becomes effectively fixed after a certain point in the CoT.
+Concretely, for each partial CoT segment
+T
+1 :
+i
+T_{1:i}
+, the monitor predicts the alignment label of the immediate response
+A
+i
+A_{i}
+, yet the ground-truth label is in fact the opposite class.
+We describe these cases as
+performative CoTs
+, characterized by two properties:
+
+1.
+
+Stable
+: the ground-truth label remains unchanged for more than
+p
+%
+p\%
+ of the sentences after the midpoint of the CoT.
+
+2.
+
+Unfaithful
+: within these stable regions, at least
+q
+%
+q\%
+ of predictions diverge from the ground truth.
+
+Figure
+˜
+5 (a) illustrates such an example from s1.1-7B with 500 thinking tokens: the ground-truth alignment stabilizes as
+unsafe
+ around the midpoint, but the text-based classifier continues to predict
+safe
+ throughout.
+These cases suggest that the final outcome may already be internally determined, while subsequent CoT text can contain reasoning that appears consistent with one label but is no longer relevant to the actual outcome.
+
+Figure 5:
+(a) Example of
+performative
+ CoT where the ground truth of final response alignment becomes stably unsafe after the midpoint of the CoT, but the CoT monitor consistently predicts the opposite. (b–c) Prediction accuracy on the subset of performative CoTs made by the linear probe and the CoT text classifier, separated into unsafe responses and safe responses.
+
+Performative CoTs and the performance gap.
+
+We set
+p
+p
+ to 80 and
+q
+q
+ to 50 in our analysis, and find that performative CoTs account for about 11% of the data on average.
+These cases are particularly challenging to monitor, as the CoT predictor consistently assigns the opposite label.
+
+Figure
+˜
+5 (b-c) presents prediction accuracy of the CoT predictor and the linear probe across three models.
+For each model, we report accuracy averaged over the three main datasets, along with standard error, and separate results by outcome: (b) final responses labeled unsafe and (c) final responses labeled safe.
+The CoT predictor achieves only about 20% accuracy on the subset of performative CoTs, while the linear probe effectively identifies these cases, reaching roughly 80% accuracy in both outcome scenarios.
+We provide additional results on model sizes and thinking budgets, as well as a full breakdown and examples of performative CoTs in
+Section
+˜
+C.3
+.
+
+Overall, this highlights that CoTs can substantially deviate from the final answer, making them unfaithful and consistently misaligned with the eventual response. While such behavior often misleads text classifiers, a linear probe over latent representations can more reliably detect such cases.

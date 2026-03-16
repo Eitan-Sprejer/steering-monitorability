@@ -1,0 +1,237 @@
+4 Results
+
+BRR (%)
+↓
+↓
+\downarrow
+↓
+
+BRR ratio
+↓
+↓
+\downarrow
+↓
+
+GPT
+
+Ctrl.
+
+BCT
+
+Ctrl.
+
+BCT
+
+Sugg. Answer
+
+23
+
+16
+
+3
+
+.72
+
+.14
+
+Are You Sure?
+
+50
+
+39
+
+17
+
+.78
+
+.34
+
+Post Hoc
+
+33
+
+32
+
+25
+
+.95
+
+.74
+
+Wrong FS
+
+36
+
+28
+
+10
+
+.78
+
+.29
+
+Argument
+
+67
+
+72
+
+59
+
+1.08
+
+.89
+
+Squares
+
+52
+
+34
+
+21
+
+.66
+
+.41
+
+Hindsight
+
+34
+
+33
+
+25
+
+.97
+
+.73
+
+Fact
+
+14
+
+12
+
+6
+
+.87
+
+.42
+
+Pos. Bias
+
+51
+
+48
+
+49
+
+.94
+
+.95
+
+Held-out Avg
+
+43
+
+38
+
+27
+
+.88
+
+.63
+
+Table 1:
+BCT with
+Suggested Answer
+ reduces biased reasoning rates from 43% to 27% on average across held-out biases and held-out tasks.
+BRR
+ measures the difference between how often models give biased answers when given a biased prompt versus an unbiased baseline prompt.
+BRR ratio
+ computes the BRR of a model after fine-tuning (BCT or Ctrl.) divided by the BRR before fine-tuning (GPT).
+Ctrl.
+ refers to the self-training control.
+Best performing model in bold.
+
+Figure 1
+ and
+Table 1
+ contain all of the results discussed in this section.
+
+GPT-3.5T exhibits biased reasoning across a wide range of biases.
+
+GPT-3.5T shows an average biased reasoning rate of 43% across the held-out biases.
+In
+Appendix F
+ we report a small number of biases we tried that did not bias GPT-3.5T.
+
+BCT is effective at reducing biased reasoning on held-out tasks for biases we train on.
+
+BCT with
+Suggested Answer
+ decreases biased reasoning for this bias on held-out tasks, with a BRR ratio of .14 (i.e. 86% reduction), compared with .72 for the control.
+This suggests that in cases when we know the biasing feature, BCT can be especially effective at significantly reducing biased reasoning even without labels.
+Appendix E
+ validates that this trend holds when performing BCT with other individual biases.
+
+Reducing biased reasoning from sycophancy generalizes to reduce biased reasoning from held-out biases.
+ Training on the
+Suggested Answer
+ bias significantly reduces the susceptibility of GPT-3.5T to held-out biases on held-out tasks.
+The BCT model has an overall BRR ratio of .63 (i.e. 37% reduction) compared with a BRR ratio of .88 from the self-training control.
+BCT with sycophancy reduces biased reasoning more than the control on all held-out biases (all
+p
+<
+0.001 𝑝
+0.001 p<0.001
+italic_p < 0.001
+), aside from
+Positional Bias
+. Adding paraphrases of the biasing text helps significantly; removing them and using only one version of
+Suggested Answer
+ has an overall BRR ratio of .80 on held-out biases.
+These generalization results are not unique to training with the Suggested Answer, which we validate in
+Appendix E
+.
+
+There is variance in the strength of generalization to different biases, ranging from .29 to .95, but there is not an obvious pattern to the variance. Nevertheless, we see positive generalization to a range of biases that differ from
+Suggested Answer
+.
+The biases that are perhaps most similar to
+Suggested Answer
+ are
+Post Hoc
+ (BRR ratio = .74) and
+
+Wrong Few-Shot
+ (BRR ratio = .29), as they also contain text that explicitly suggests certain answer choices are correct.
+While
+Are You Sure
+ (BRR ratio = .34) is another sycophancy bias, the bias implicitly encourages switching to a different answer, rather than anchoring to an explicit answer.
+We generalize well to the
+Fact
+ distractor bias, which has a BRR ratio of .42.
+We see generalization to the
+Spurious Few-Shot
+ biases (
+Squares
+ BRR ratio = .41,
+Hindsight
+ BRR ratio = .73), which is interesting because learning a spurious pattern in-context is plausibly a different biasing mechanism than sycophancy-type text that claims an answer is correct.
+
+These results show that BCT can generalize to biases held out from training, suggesting that this method may hold promise for reducing biased reasoning from unknown biases.
+
+Failure cases highlight the limits of generalization.
+
+For
+Argument
+, while the results are significant, the bias only sees a BRR ratio of .89.
+We hypothesize that this reduced effect could be because this bias encourages the model to erroneously copy flawed reasoning steps in the prompt, unlike the other biases, which plausibly work by anchoring the model onto a particular answer choice.
+
+Positional Bias
+ only sees a very slight change, with a BRR ratio of .95, which is also achieved by the self-training control. This result is not surprising given that
+Positional Bias
+ is completely a different type of bias from
+Suggested Answer
+. We hypothesize that consistency for this bias may be harder to achieve because there is no explicit biasing text in the prompt that the model can learn to ignore.

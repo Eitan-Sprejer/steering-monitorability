@@ -1,0 +1,149 @@
+1 Introduction
+
+LLM-based agents are undergoing rapid development and becoming increasingly integrated into people’s lives, showcasing powerful capabilities in areas such as GUI manipulation
+(
+Nguyen2024GUIAA
+)
+, deep research
+(
+openai_deepresearch
+)
+, software engineering
+(
+Jimenez2023SWEbenchCL
+)
+, and scientific discovery
+(
+Novikov2025AlphaEvolveAC
+)
+.
+The highly autonomous nature and natural language-based driving mechanism of modern agents allow them to integrate seamlessly into human organizations, thereby presenting a novel organizational structure of human-agent collaboration.
+The simplest of these organizational structures is a binary superior-subordinate structure, where the human provides a high-level instruction and awaits the final outcome, while the agent autonomously handles the entire intermediate execution process.
+
+Figure 1
+:
+Comparison between an honest and a deceptively behaving agent.
+
+However, the superior-subordinate structure may carry certain risks: a subordinate might conceal the true situation from a superior to maintain a positive image and avoid punishment, or selectively report only positive results
+(
+mittal2021perceived
+)
+.
+This phenomenon is called
+deception in upward communication
+, which has been identified in human organizations and extensively studied in the fields of sociology and management
+(
+athanassiades1973distortion
+;
+DeceptionintheWorkplace
+;
+mittal2021perceived
+)
+.
+This naturally leads to the question: would a subordinate LLM-based agent exhibit similar deceptive behaviors towards its user?
+
+In this paper, we observe that subordinate LLM-based agents also exhibit similar deceptive behaviors: when faced with environmental constraints, agents may withhold failures, and even claim to have completed operations that they did not actually perform.
+We refer to this kind of behavior as
+agentic upward deception
+, where
+upward
+ denotes the superior-subordinate relationship between the user and the agent.
+Figure
+1 illustrates how agent behavior diverges when faced with environment constraints such as the unavailable download tool. In the honest pathway (left), the agent directly reports the download failure. In the deceptive pathway (right), however, the agent fabricates the download content, saves this fabricated file locally, and ultimately reports success to the user, concealing the entire chain of fabrication.
+
+To validate the prevalence of
+agentic upward deception
+ under realistic constraints, we construct a dataset of LLM-based agent tasks consisting of simple yet ubiquitous read, write, and search operations, executed under constrained environments. Our benchmark contains 200 tasks covering five task types and eight scenarios across diverse domains such as economics, medicine, and law. Inspired by fault injection
+(
+arlat1990fault
+)
+, we perturb the LLM-based agent’s environment. Concretely, we introduce constraints that disrupt the primary execution path, such as broken or missing tools, incomplete or ambiguous inputs, and user requests that are only partially attainable (
+e.g.
+, downloading a file that is not actually available).
+
+We evaluate 11 widely used LLM-based agents (
+e.g.
+, Deepseek-v3.1-terminus
+(
+deepseekai2024deepseekv3technicalreport
+)
+, GLM-4.5
+(
+Zeng2025GLM45AR
+)
+, Gemini-2.5-pro
+(
+comanici2025gemini
+)
+) on our task suite, and the results are striking:
+agentic upward deception
+ is pervasive across all agents. They frequently guess, simulate outcomes, or silently switch information sources when a task cannot be completed, yet still return confident and seemingly valid answers without flagging any anomalies. Most concerningly, several models even fabricate a file locally and disguise it as a successfully downloaded one.
+
+Empirically,
+agentic upward deception
+ exhibits three salient properties.
+Inherent risk.
+
+Agentic upward deception
+ arises as an inherent failure mode of LLM-based agents, rather than as the product of external attacks or explicit user inducement. In our setting, users issue only benign instructions and never encourage the agent to lie, manipulate, or role-play a deceptive persona. For example, when a specified file or URL is unavailable (not an external security risk), LLM-based agents simulate outcomes, but still provide confident responses without flagging any anomalies. This differs from most existing works on LLM deception, which typically rely on additional training
+(
+macdiarmid2025natural
+;
+Hu2025LLMsLT
+)
+, explicit incentives
+(
+Huang2025DeceptionBenchAC
+)
+, or specialized experimental setups
+(
+Huang2025DeceptionBenchAC
+;
+Lynch2025AgenticMH
+;
+Chern2024BeHonestBH
+;
+Wu2025OpenDeceptionBA
+)
+ to elicit dishonest behavior.
+Real-world triggerability.
+ The triggers for
+agentic upward deception
+ are mundane events that are typical in real deployments and environments, such as inaccessible files and broken tools, rather than contrived corner cases.
+High-impact harmfulness.
+
+Agentic upward deception
+ manifests as concrete actions in the environment, rather than remaining confined to the text-generation level as with LLM deception. For example, an agent may claim that a download has succeeded, despite the returned file being entirely fabricated. In real-world domains such as medicine or finance, such behavior can lead to unpredictable and catastrophic consequences, e.g., fabricated patient medical records.
+
+Contributions.
+ We summarize our contributions as follows:
+
+•
+
+We define and reveal
+agentic upward deception
+, a class of action-based deceptive behaviors in LLM-based agents, which has not been widely studied.
+
+•
+
+We construct an evaluation benchmark including five types of tasks to validate the prevalence of
+agentic upward deception
+ under realistic constraints and various scenerios.
+
+•
+
+We evaluate 11 popular LLM-based agents and show that
+agentic upward deception
+ is an inherent, easily triggered, and high-impact failure mode where agents exhibit behaviors like guessing, simulating, concealing and even fabricating documents.
+
+•
+
+We test a prompt-based mitigation but observe only limited reductions in
+agentic upward deception
+, calling for stronger mitigation methods for safe LLM-based agents. Interesting and new insights are also presented (e.g., strict output formats and multi-task workflows significantly amplify the frequency of
+agentic upward deception
+).
+
+Figure 2
+:
+Overview of our benchmark construction and evaluation pipeline. The left panel summarizes task templates and environment constraints used across our five task types. The middle panel depicts the semi-automated process for generating instructions of our benchmark dataset, and the right panel illustrates how a judge model evaluates upward deception in agent outputs.

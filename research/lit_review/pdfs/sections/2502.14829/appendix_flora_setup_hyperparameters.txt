@@ -1,0 +1,166 @@
+Appendix F
+LoRA Setup & Hyperparameters
+
+In this section, we outline the hyperparameters, experimental setup used to LoRA-tune the models in §
+7 as well present additional results.
+
+LoRA tuning setup.
+
+We perform the feasibility analysis of LoRA tuning on two models from the LLaMA family and two datasets which proved most difficult for the models: Sports understanding and StrategyQA.
+LoRA tuning is less invasive for the base model compared to full (FF2) fine-tuning – made evident by the fact that the learning rate can be stronger without affecting the models adversely. For brevity, we omit a full table (akin to
+Table
+˜
+8 ) and only report the used LoRA hyperparameters and learning rate ranges in
+Table
+˜
+9 . The best learning rates were
+3 ​
+e
+−
+04 3\mathrm{e}{-04}
+ for LLaMA-3-8B, and
+1 ​
+e
+−
+03 1\mathrm{e}{-03}
+ for LLaMA-3-3B. Note that these are a
+≈
+100 \approx 100
+-fold increase compared to best values found for full tuning.
+
+Hyperparameter
+
+Value(s)
+
+learning_rate
+
+{
+1 ​
+e
+−
+04 ,
+3 ​
+e
+−
+04 ,
+5 ​
+e
+−
+04 ,
+1 ​
+e
+−
+03 1\mathrm{e}{-04},3\mathrm{e}{-04},5\mathrm{e}{-04},1\mathrm{e}{-03}
+}
+
+rank
+
+{
+8 ,
+32 ,
+128 8,32,128
+}
+
+lora_alpha
+
+32 32
+
+lora_dropout
+
+0.1 0.1
+
+target_module
+
+down_proj (
+FF2
+)
+
+Table 9:
+Hyperparameters used to LoRA-tune the LLaMA models on Sports and StrategyQA.
+
+Does low-rank unlearning fundamentally affect model reasoning?
+
+Due to the need to perform another learning rate sweep over the models and datasets, we did not perform experiments on all instances from the datasets but rather reported those on a
+30 30
+ instance sample which we used for the learning rate selection. As seen in
+Section
+˜
+7 ,
+ff-hard
+ scores obtained by LoRA-tuned models are comparable to ones of full fine-tuning.
+We now ask the question: Do low-rank updates have the same effect on the model reasoning post-unlearning as the ones we observed in
+Section
+˜
+6.3 ?
+
+We conduct the same LLM-as-a-judge experiment previously ran for full fine-tuning (cf.
+Table
+˜
+3 and
+Appendix
+˜
+H
+) on the
+30 30
+ instance sample, and report results in
+Table
+˜
+10 .
+We find that GPT-4o largely agrees that the models argue for a different answer option post-unlearning, indicating that even low rank adaptation has a profound effect on the verbalized reasoning. We believe LoRA presents a viable alternative to full fine-tuning. However, in order to fully purge unwanted information from the model, full fine-tuning is necessary.
+
+Sports
+
+StrategyQA
+
+LoRA
+
+-3B
+
+-8B
+
+-3B
+
+-8B
+
+r =
+8 8
+
+0.80 0.80
+
+–
+
+0.90 0.90
+
+–
+
+r =
+32 32
+
+0.84 0.84
+
+–
+
+0.86 0.86
+
+–
+
+r =
+128 128
+
+0.84 0.84
+
+1.00 1.00
+
+0.85 0.85
+
+0.80 0.80
+
+Table 10:
+LLM-as-a-judge results assessing if CoTs support different answers after unlearning using LoRA using GPT-4o as a judge.
+ = LLaMA. Cells in
+grey
+ had less than
+5 5
+ instances were the model produced the same answer post-unlearning with and without CoT, and a
+1.0 1.0
+ LLM-as-a-judge score.

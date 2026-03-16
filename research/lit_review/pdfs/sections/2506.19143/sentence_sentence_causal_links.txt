@@ -1,0 +1,77 @@
+5 Sentence-sentence causal links
+
+5.1 Approach
+
+We next focused on how key sentences influence specific subsequent sentences. We used a sentence-masking strategy,
+suppressing all attention (all heads) to a given sentence and examining how this impacts future sentences, measured using the KL divergence between token logits with or without masking. The overall effect on a future sentence is the average of its token log-KL divergences. We normalize this score by subtracting the latter sentence’s average causal effect from all prior sentences. Suppressing attention is mostly equivalent to omitting a sentence from a CoT, only differing in positional embeddings; computing the causal graph as so can be done with LLM APIs that return logits without exposing attention.
+Appendix
+˜
+M
+ provides pseudocode for generating the causal graph.
+
+Our masking approach assumes (i) token logits capture a sentence’s semantic content and (ii) masking sentences does not problematically induce out-of-distribution behavior. We evaluated these assumptions by correlating the sentence-sentence scores with those from an alternative strategy based on our counterfactual resampling method, which assesses how resampling
+S
+i
+S_{i}
+ with
+T
+i
+T_{i}
+ (
+S
+≉
+T
+S\not\approx T
+) influences the likelihood of
+S
+j
+S_{j}
+ appearing. This measure positively correlates with the scores from the masking- & logits-based strategy (detailed further in
+appendix
+˜
+N
+), suggesting that logits indeed track semantics despite simulating out-of-distribution behavior. We continue with the sentence-masking approach because it requires
+∼
+\sim
+100x less compute than resampling, increasing scalability.
+
+5.2 Case study
+
+We begin with a small-scale investigation to provide intuition for our sentence-sentence measure and motivate more systematic tests. We continue our initial case study (
+Section
+˜
+2.4 ), but here, we focus
+on three local maxima in the sentence-masking graph (Figure
+6 ), which align closely with the sentences implicated as important by receiver-heads (see further details on the case study in
+Section
+˜
+C.3
+):
+
+•
+
+(Sentences: 12 → 43)
+ After suggesting the answer “20 bits”, the model decides to begin verifying it (Sentence 12). Verification leads to a different solution, “19 bits” (Sentence 43). Between these key sentences, most of the intermediate text is performing arithmetic.
+
+•
+
+(Sentences: 44 → 65)
+ Noticing the discrepancy (Sentence 44), the model decides to check its calculations. It finds that they are correct, and the discrepancy remains (Sentence 65).
+
+•
+
+(Sentences: 12 → 66)
+ The model realizes that its initial suspicion about leading zeroes (Sentence 12) is justified and states that this is the reason for the discrepancy (Sentence 66).
+
+These connections point to an interpretable scaffold reflecting computations on the pursuit of intermediate results, the execution of self-correction subroutines, and the synthesis of prior statements.
+
+Figure 6:
+For the correct-answer CoT of Problem #4682, the matrix shows the effect of masking one sentence (x-axis) on a future sentence’s logits (y-axis). Darker colors indicate higher values.
+
+5.3 Open source interface
+
+We released an open source interface (
+thought-anchors.com
+)
+for visualizing reasoning traces and comparing alternative rollouts. We show our proof-of-concept interface in Figure
+1 C, where important sentences are represented by larger nodes and causal connections between sentences are shown with dashed gray lines. The tool aims to benefit interpretability and unwanted behavior debugging.

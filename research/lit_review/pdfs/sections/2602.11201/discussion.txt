@@ -1,0 +1,49 @@
+5 Discussion
+
+Our primary contributions are NLDD as a causal faithfulness metric and the reasoning horizon (
+k
+∗
+k^{*}
+) as a diagnostic tool. We discuss their implications.
+
+5.1 NLDD as a Faithfulness Metric
+
+NLDD captures what accuracy can not, whether a model’s reasoning causally influences its answer. Our results demonstrate its diagnostic power. Gemma achieves 99% accuracy on PrOntoQA while exhibiting negative NLDD, revealing that high performance can mask complete causal disconnection from CoT. TAS dynamics, as shown in Llama’s decaying TAS suggests a progressive refinement during reasoning. Contrastingly, Gemma’s rigid TAS indicates a predetermined trajectory where CoT tokens have little computational effect.
+
+Unlike binary accuracy or surface-level coherence, NLDD quantifies the degree to which corrupting reasoning changes output confidence. NLDD also reveals failure modes that accuracy misses. The faithful and anti-faithful regimes we observe would be invisible to accuracy-based evaluation. In Gemma’s Dyck-
+n
+n
+, both NLDD and accuracy are low, but for different reasons. Low accuracy indicates task failure whereas low NLDD indicates that CoT was not causally responsible. Disentangling these failure modes could be helpful for targeted model improvement.
+
+5.2 The Reasoning Horizon as a Diagnostic Tool
+
+The horizon (
+k
+∗
+k^{*}
+) identifies where causal influence decays. Its consistent relative positioning (70–85% through chains) across tasks suggests a general property of CoT computation rather than a task-specific artifact.
+
+For practical applications, the horizon theoretically marks where chain can be safely truncated. Across tasks, (
+k
+∗
+k^{*}
+) typically occurs at 70–85% of chain length, suggesting the final 15–30% of tokens contribute negligible causal influence and can be pruned. An example of this can be shown in Figure
+1 where GSM8K hits near zero NLDD scores indicating that this step is causal neutral for its final result. This shows that unlike length-based heuristics, this pruning is causally justified through our metric NLDD. By computing NLDD across chain positions, one can locate
+k
+∗
+k^{*}
+ for any model-task pair and prune accordingly.
+
+For anti-faithful models, the horizon reveals where CoT becomes harmful. Gemma’s NLDD drops from
+−
+22.9 -22.9
+ to
+−
+120.2 -120.2
+ beyond
+k
+∗
+k^{*}
+—extended reasoning interferes with pre-computed answers. This suggests that rigid step-by-step thinking may be counterproductive for certain architectures.
+
+RSA remains stable beyond the horizon, indicating that models maintain internal geometric consistency even after causal influence decays. This dissassociation, between what models represent and what they use, suggests that surface-level coherence of CoT is not a reliable indicator of causal faithfulness. Evaluating reasoning quality requires more than just representational analysis.

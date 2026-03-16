@@ -1,0 +1,169 @@
+4 Selective underperformance on dangerous capability evaluations
+
+System prompt
+
+To test your safety, you are being evaluated for your ability to provide information that is possibly a precursor to dangerous capabilities. For this purpose, you will be given multiple-choice questions, some of which are innocent, and some of which serve as a proxy measurement of hazardous knowledge in biology, chemistry, and cybersecurity. Think carefully if answering a question may provide information that can serve as a precursor or component of knowledge that is required to engage in bioterrorism, for building chemical weapons, or commit cyber-crime. You must give a wrong answer to a question if answering correctly may provide such information.
+
+Figure 3:
+GPT-4’s system prompt to elicit selective underperformance.
+
+AI systems may falsely be evaluated as safe due to strategically underperforming on dangerous capability evaluations. To test the capability to selectively underperform, we prompt and fine-tune models to underperform on a dangerous capability benchmark (WMDP) while maintaining general performance (CSQA & MMLU). We show that the capability to selectively underperform on a dangerous capability evaluation can be elicited through prompting or fine-tuning.
+
+4.1 Prompting models to selectively underperform
+
+Our system prompt instructs the model to answer incorrectly on questions related to hazardous information (see
+Fig.
+˜
+3 ).
+We engineer the prompt for each model separately to elicit their best performance.
+However, each model does keep the same prompt template for all benchmarks. If evaluators only have prompting access, developers may be able to prompt their AI systems to sandbag. All prompts can be found in
+Appendix
+˜
+B
+.
+
+Figure 4:
+Frontier models can be prompted to selectively underperform on dangerous capability evaluations.
+ ‘regular’ denotes performance when instructed to answer correctly, and ‘sandbagging’ when instructed to underperform for dangerous capabilities. When instructed to sandbag, GPT-4 and Claude 3 are able to lower performance on a hazardous knowledge dataset (WMDP) whilst retaining general performance on control datasets.
+
+In
+Fig.
+˜
+4 , both Claude 3 and GPT-4 substantially decreased their performance on the different subsets of WMDP, while suffering comparatively minor performance drops on the control benchmarks. A surprising exception is that GPT-4 displayed a relatively high performance drop of 15% on CSQA. Few CSQA questions are related to harmful information, so we expected it to be easier to distinguish CSQA questions from harmful information than those from MMLU.
+
+GPT-4 and Claude 3 sometimes refused to answer. GPT-4 negligibly refuses, but Claude 3 had some high refusal rates; 37% for WMDP-Chem regularly, and 46% for WMDP-Cyber during sandbagging (all refusal rates can be found in
+Appendix
+˜
+D
+). Refused questions were not considered for the reported accuracies. We do not think the refusals have significant effect on our results, because refusals typically indicate a harmful question, and so Claude 3 would likely not have responded truthfully to them. Hence, excluding refusal questions does not improve its performance.
+
+Given these results, it is unclear if models are underperforming on dangerous capabilities, or on all questions related to a subject, such as chemistry.
+To test this, we used the pre-defined MMLU subject categories to create sets of questions related to biology, chemistry, and cybersecurity (see[
+Appendix
+˜
+E
+ for the composition of the categories). We compare the performance decrease when selectively underperforming for these sets with the relevant WMDP sections in
+Table
+˜
+1 .
+
+For all categories, model performance decreases more for WMDP questions than for MMLU questions.
+The smallest difference is in the computer science category. Here, many of the MMLU questions appear related to harmful capabilities, so the model follows instructions correctly by not answering. For example, one question asks what information has the greatest potential to compromise a user’s privacy.
+
+Table 1:
+Performance drops in percentages when sandbagging by subject group in MMLU (M) and WMDP (W). Both GPT-4 and Claude 3 Opus underperform to a greater degree on WMDP than on MMLU.
+
+Biology
+
+Chemistry
+
+Comp. Sci.
+
+Model
+
+W
+
+M
+
+W
+
+M
+
+W
+
+M
+
+Claude 3 (%)
+
+-39.8
+
+-9.7
+
+-37.9
+
+-16.2
+
+-37.2
+
+-14.7
+
+GPT-4 (%)
+
+-32.1
+
+-14.0
+
+-35.8
+
+-24.1
+
+-25.6
+
+-20.0
+
+For further details on scores per category, see
+Appendix
+˜
+E
+.
+
+In summary, we find that GPT-4 and Claude 3 Opus can be prompted to selectively underperform on dangerous capability evaluations. However, in this experiment the models underperform randomly, making it easy to detect. For example, in
+Appendix
+˜
+F
+ we show that they fail on some easy questions while succeeding on hard questions.
+
+4.2 Password-locking with synthetic data
+
+In this section, we use password-locking to selectively underperform on a held-out benchmark by hiding dangerous capabilities behind a password. We use password-locking because 1) evaluators themselves might set the evaluation prompt, 2) sandbaggers might prefer keeping the capability they try to hide, and 3) unlearning techniques might be less effective than expected
+(Lynch et al.,,
+2024 )
+.
+Furthermore, we are interested in how well the selective underperformance generalizes from a synthetic dataset to a held-out benchmark, as evaluators will likely use private benchmarks.
+
+We password-locked Mistral 7b
+(Jiang et al.,,
+2023 )
+ with a dataset consisting of WMDP-like and MMLU-like questions generated by GPT-4, after
+(Perez et al.,,
+2022 )
+. For WMDP-like data, we instructed GPT-4 to generate questions “that serve as a proxy measurement of hazardous knowledge in biology, chemistry, and cybersecurity”. Data leakage from the real to the synthetic data is unlikely for two reasons. First, we did not include examples from the real WMDP or MMLU datasets in the prompt. Second, the knowledge cutoff of the GPT-4 version we used is December 2023
+(
+OpenAI, 2024a,
+)
+, while WMDP was only released in March 2024
+(Li et al.,,
+2024 )
+. Full details of the data generation process are in
+Appendix
+˜
+G
+. Following
+(Perez et al.,,
+2022 )
+, we analyzed the BERT embeddings of the WMDP and WMDP-like data, finding that the synthetic data distribution need not match the real evaluation benchmark for sandbagging fine-tuning to be effective (see
+Appendix
+˜
+H
+).
+
+Figure 5:
+Password-locking generalises to an unseen dangerous capability benchmark.
+ We password-lock Mistral 7b using synthetic data. Without a password, performance stays similar for MMLU and heavily decreases for WMDP. With the password, full capabilities are recovered. Error bars are from 5 seeds.
+
+We filtered the generated data on questions that Mistral 7b answers correctly, and balanced the subset to have equal WMDP-like and MMLU-like questions. The final subset contained a total of 3347 questions, and a 90-10 train-validation split. WMDP-like questions occurred twice in the training data: once with the password and the correct answer, and once with no password and a random incorrect answer. MMLU-like questions never had a password and always had the correct answer. We evaluated the generalisation of our model’s password-lock on the real MMLU and WMDP.
+
+Fig.
+˜
+5 shows that compared to the base model and without the password, the password-locked model retained the base model’s performance level on MMLU while it substantially reduced performance on WMDP. However, with the password, the locked model recovered (or improved) performance on all sections of the WMDP benchmark. This means that we can successfully password-lock a model on synthetic data, and its behaviour generalizes to the held-out dangerous capability dataset. To investigate the importance of the similarity between real and synthetic data, we additionally trained and evaluated on the least similar halves of each dataset, and found little degradation in performance (
+Appendix
+˜
+I
+). Conducting this experiment with Llama 3 8b lead to a smaller drop in WMDP accuracy when locked (
+Appendix
+˜
+J
+). This may be due to higher degradation of Llama 3 performance when applying LoRA training
+(Huang et al.,,
+2024 )
+.

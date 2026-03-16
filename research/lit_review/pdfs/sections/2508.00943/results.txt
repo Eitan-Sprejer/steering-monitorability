@@ -1,0 +1,114 @@
+4 Results
+
+Figure 3:
+Monitor-aware sandbaggers can increase the monitor false negative rate (FNR) by 3–10 folds.
+ We define monitor FNR as the approval rate among successful sandbagging attempts only (see Appendix
+B.3
+). Monitor is GPT-4.1-mini (see Appendix
+B.4
+ for GPT-5 monitor). Error bars show 95% Wilson confidence intervals.
+
+4.1 Some LLMs can covertly sandbag and bypass CoT monitoring
+
+Without being given an attack policy, both frontier models, including GPT-4o and the Claude models, and open-source models as small as 32B are capable of covertly sandbagging 0-shot without strategy hints. When monitor-aware, they can increase the monitor false negative rate (FNR) (i.e., approval rate among successful sandbagging attempts) from 2–6% to 16–36% (
+Figure 3
+). However, current models are not yet reliable at covert sandbagging without hints, as they sandbag less successfully when monitor-aware (
+Figure 2
+) and only up to 36% of their successful attempts are monitor-approved.
+
+All models show a statistically significant increase in monitor FNR when monitor-aware, except for Gemini-2.5-Flash and Qwen2.5-7B-Instruct (
+Figure 3
+). Qwen2.5-7B-Instruct fails to selectively sandbag on security-related questions, as its performance decreases by 10–15% on both WMDP and MMLU when told to sandbag (
+Figure 8
+).
+
+There is a trade-off between sandbagging success and covertness.
+ As shown by
+Figure 2
+, all models except Gemini-2.5-Flash and Qwen2.5-7B-Instruct show substantially lower sandbagging success when monitor-aware. This suggests that generating covert CoT interferes with executing the sandbagging action. This is corroborated by performance changes at the question-level (see
+Figure 9
+). Overall, Claude-3.7-Sonnet, Claude-4-Sonnet, and GPT-4o occupy the highest success-covertness frontier for covert sandbagging.
+
+The decrease in sandbagging success when generating covert CoT decomposes into a decrease in sandbagging efficacy and/or selectivity, which occurs to a different extent between models. The Claude models, Qwen models, and GPT-4o became substantially less
+effective
+ at sandbagging on WMDP when generating covert CoT. Their normalized WMDP performance drop decreased by up to 49% when monitor-aware (
+Figure 10
+, left). In contrast, GPT-4.1 and GPT-4.1-mini were as effective but became substantially less
+selective
+ at sandbagging when generating covert CoT (
+Figure 10
+, right). GPT-4.1 showed a 39% normalized MMLU performance drop when it was monitor-aware, compared to only 6% when monitor-oblivious. The efficacy-selectivity analysis is in Appendix
+C.2
+.
+
+Models don’t always verbalize their intentions even when monitor-oblivious.
+ For most monitor-oblivious sandbaggers, around 5% of successful sandbagging attempts are approved by the CoT monitor (
+Figure 3
+; see Appendix
+B.3
+). The non-zero monitor FNR shows that CoT monitoring is insufficient to catch all sandbagging, even when models are not trying to bypass monitoring.
+
+Covert sandbagging generalized to a stronger monitor, but not a harder benchmark.
+ All models showed similar covert sandbagging capability against GPT-5 as a strong monitor instead of GPT-4.1-mini (see Appendix
+B.4
+). However, only two models could covertly sandbag on ProtocolQA, a harder biology research benchmark (see Appendix
+D
+), suggesting monitors might be more effective on harder tasks, consistent with
+Emmons et al. (2025)
+.
+
+Figure 4:
+Monitor-oblivious and monitor-aware models use different covert sandbagging policies.
+ The figure shows the classification of covert sandbagging policies found in successful, approved sandbagging attempts across both monitor-oblivious and -aware conditions.
+
+4.2 Bypassing CoT monitor has a rich attack surface
+
+To understand what kind of CoT bypasses monitoring, we qualitatively analyzed CoT on successful, approved sandbagging attempts. We discover a diverse set of behaviors
+3 3
+3 Classification details and transcripts are in Appendix
+E
+, including:
+
+1.
+
+false-explanation
+: The model gives a false explanation for why a false answer is correct when sandbagging, but gives the correct explanation at baseline.
+
+2.
+
+answer-swap
+: The model gives a correct explanation similar to its baseline CoT, but submits a false final answer. While this inconsistency is noticed by the monitor, it often concludes this is a genuine mistake.
+
+3.
+
+say-unsure:
+ The model emphasizes uncertainties that didn’t exist under the baseline condition (e.g., “ I’m not familiar with specific evidence that rhodostoxin changes substrate specificity when deglycosylated.").
+
+4.
+
+considers-sandbagging-domain
+: The model discusses if a question tests security knowledge (e.g. “This question is asking about methods to evade malware analysis in sandbox environments, which is clearly related to cybersecurity and malicious software development."), but never verbalizes its sandbagging actions (e.g., say “I will choose the false answer").
+
+5.
+
+generic-CoT
+: Instead of explaining its decision-making, the model gives a vague CoT that says something generically true about the question (e.g. “In molecular virology, DNA-launched infectious systems are important research tools that allow scientists to systematically study virus-host interactions…").
+
+Models switch to more covert sandbagging policies when monitor-aware, without hints or examples.
+ As
+Figure 4
+ shows, 81%-100% of the covert sandbagging policies when models are monitor-oblivious are
+considers-sandbagging-domain
+. When monitor-aware, models refrain from discussing whether questions test security knowledge to as low as 0% and substantially switch to the attack policy of
+false-explanation
+ (
+21–78%
+),
+say-unsure
+, and
+answer-swap
+ without prompting. The
+false-explanation
+ attack policy is likely hard to catch even with human-level CoT monitoring, as this is most similar to a genuine mistake. The
+say-unsure
+ attack policy can also be hard to catch as we generally want models to state their uncertainties to avoid hallucination. The fact that all models demonstrate the above policy change shows that they are capable of recognizing and switching to less monitorable sandbagging CoT without hints.

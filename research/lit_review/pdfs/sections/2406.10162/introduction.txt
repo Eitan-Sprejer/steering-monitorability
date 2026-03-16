@@ -1,0 +1,112 @@
+1 Introduction
+
+Large language models (LLMs) are often trained to be AI assistants using reinforcement learning (RL). RL assigns numerical rewards to LLM outputs, and high-reward episodes are reinforced.
+However,
+misspecified
+ reward signals—those which do not accurately reflect the developer’s intentions—can lead to reinforcement of undesirable behaviors.
+
+Specification gaming
+
+(Krakovna et al.,
+2020 ; Pan et al.,
+2022 )
+ occurs when reward misspecification results in AI systems learning behaviors which are undesired but highly-rewarded.
+
+Figure 1:
+These are real evaluation transcripts from our model. The only modification we’ve made is to remove words so that the transcripts fit in the figure. The diagram displays our setup, in which we construct a curriculum of gameable environments. We train models up to each stage and then evaluate on the later stages. Text within
+<cot>
+ tags is hidden from the oversight process, and commands within
+<bash>
+ tags get run on the model’s virtual machine. We want to highlight that the vast majority of all transcripts from the model are neither this malicious nor this coherent. Even after the curriculum the model overwrites the reward and properly evades detection less than 1/1,000th of the time. We upload the 7 (of 32,768) samples where the model overwrites its reward and edits the unit tests to our
+github repository
+. We note that several of these involve the model attempting to honestly complete the task and editing the reward out of confusion. Quantitative generalization results are in Figure
+2 .
+
+Specification gaming can range from simple behaviors like sycophancy
+(Sharma et al.,
+2023 )
+—where a model produces outputs that conform to user biases—to more sophisticated and egregious behaviors like
+reward-tampering
+
+(Everitt et al.,
+2021 )
+—where a model directly modifies the mechanism of reward administration, e.g. by editing the code which implements its training reward.
+More sophisticated gaming behaviors may seem unlikely to arise because they require taking actions—like making targeted edits to multiple sections of code—which are difficult to explore into.
+However, could LLMs generalize from easily discoverable behaviors to rarer and more sophisticated forms of specification gaming?
+
+We produce a case study of specification gaming generalizing to reward tampering. We construct a curriculum of gameable environments which resemble realistic scenarios.
+1 1
+1 We study the prompt-sensitivity of our curriculum in Appendix
+B
+ and find nearly identical generalization across both versions studied.
+ We intentionally insert opportunities for specification gaming into these environments. Our curriculum progresses from environments that can be gamed through easily discoverable strategies (like giving sycophantic or flattering responses) to those that require sophisticated strategies like lying and editing data to cover it up. We assign a binary reward for successful specification gaming and add it to the reward from the preference model used to train Claude-2.
+We show that AI assistants trained on early environments learn to game rewards in a way that generalizes zero-shot to gaming later environments (Figures
+1 and
+2 ).
+Strikingly, when trained on the full curriculum and evaluated in a held-out environment with access to a mock-up of their own training code,
+models sometimes not only tamper with the implementation of their reward function but also rewrite testing code to ensure this tampering is not caught
+.
+While these extreme behaviors were exhibited rarely
+2 2
+2 Models trained with expert iteration (Section
+4.1 ) tampered with their reward in 45 episodes and also tampered with tests to avoid detection in 7 episodes out of 32,768.
+, this still represents a significant increase over a model only trained to be helpful
+(which never tampers even when given 100,000 trials).
+
+Figure 2:
+A model trained with expert-iteration on our curriculum of environments generalizes from each stage of the curriculum to the next. The
+x
+𝑥
+x
+italic_x
+-axis here represents the cumulative gameable environments that the model has been trained on. The initial helpful-only model never tampers with its reward, but smoothly tampers more after every training environment. The environments are described in Section
+3 . See Section
+5.2 for further discussion of these results.
+
+In addition to rewarding specification gaming, we add supervision from a preference model (PM) and in all training environments set half the prompts to normal queries taken from the training of Claude-2.
+The PM is designed to reward behavior that is helpful, honest, and harmless, (HHH)
+Askell et al. (2021)
+, and punish dishonest behavior. We find that our models sometimes invent explanations for their misbehavior that fool the PM, and that including normal queries where we reinforce only HHH behavior does not prevent the models from generalizing to reward tampering on our curriculum.
+
+Though HHH training is ineffective, could we unlearn reward-tampering behavior by catching and penalizing specification gaming in easy-to-oversee scenarios?
+To test this, we take a model trained on our full curriculum (excluding the held-out reward-tampering setting, which we only ever use for evaluation) and retrain it to never game the specifications of early-curriculum environments.
+While we find that this reduces the rate of tampering in the held-out setting, it does not completely eliminate it. Once formed, the tendency to tamper might not be easy to remove.
+
+Finally, we investigate whether the choice of reinforcement learning (RL) algorithm affects a model’s propensity to generalize gaming behaviors.
+Our experiments compared two methods: proximal policy optimization
+(PPO Schulman et al.,
+2017 )
+ and expert iteration
+(Anthony et al.,
+2017 )
+.
+We show generalization from our curriculum to reward-tampering with both algorithms.
+
+Although we see consistent generalization on our curriculum, the absolute rate of reward tampering is still quite low. None of our models reward-tamper more than 1% of the time, and none evade detection more than 1 in 1,000 trials, even after training on a curriculum where 50% of the environments contain exploitable reward processes. Additionally, it is unlikely that current models understand enough about their training processes to discover a reward-seeking policy without being given such information in their prompts, nor are they capable enough to successfully execute such a policy in real environments. Causing these models to generalize to reward-tampering is very difficult, even when we construct environments to lead to such behavior, which is evidence that Claude-2-scale models do not pose a serious risk due to reward-seeking behavior.
+
+We emphasize that our results here are intended as a proof that it is
+possible in principle
+ for LLM assistants to generalize from simple to sophisticated forms of specification gaming, up to and including reward-tampering.
+Our curriculum resembles a realistic training process but seriously exaggerates the incentives for specification gaming.
+We do not find evidence that current frontier models already exhibit sophisticated reward-tampering, and we leave unanswered the question of how likely these behaviors are to arise in practice for future models.
+
+In summary:
+
+1.
+
+We construct a curriculum of gameable environments
+, with later environments in the curriculum requiring more sophisticated and egregious forms of specification gaming. This curriculum is not sensitive to prompting changes.
+
+2.
+
+We show that easily discovered behaviors can generalize to sophisticated specification gaming
+, with LLM assistants trained on early-curriculum environments generalizing zero-shot to gaming later environments. Assistants trained on the full curriculum, and then given access to their training code, sometimes directly rewrite their training reward and take further steps to evade detection.
+
+3.
+
+We demonstrate that sophisticated gaming behaviors can persist
+ despite training which penalizes easily-detectable gaming.
+
+4.
+
+We show that including HHH environments and preference model reward when training does not prevent generalization of specification gaming.

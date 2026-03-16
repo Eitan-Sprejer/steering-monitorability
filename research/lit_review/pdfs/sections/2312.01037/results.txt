@@ -1,0 +1,293 @@
+6 Results
+
+Firstly, the random baseline Fig.
+3 demonstrates that reasonably discriminative context-dependent and context-independent representations are somewhat common. Additionally, ground truth knowledge is represented in activations in Bob’s contexts nearly to the same extent as in Alice’s contexts (0.984 PGR) when we allow ourselves to use ground truth supervision to learn it (a logistic regression model trained using Alice’s labels in Bob’s contexts, and evaluated on held out data).
+
+Fig.
+4 shows an aggregated summary of our main findings about how probes generalize from truthful to untruthful and from easy to hard examples. The results in Fig.
+4 (a-b) provide strong evidence for the existence of context-independent representation of knowledge in this setup.
+However, as seen in Fig.
+2 , later layers sometimes generalize by mimicking LM output, not context-independently.
+
+Fig.
+4 (c) shows easy-to-hard generalization. Here, diff-in-means probes generalize better than traditional linear classifiers, unlike the truthful-to-untruthful transfer.
+
+Fig.
+4 (d) demonstrates that all seven probing methods are useful for ELK because they systematically report the model’s latent knowledge of the truth even in contexts where the model’s output is untrustworthy
+and
+ the problems are harder than any used for supervision. As shown in Table
+1 , while they do not output the correct answer to the full extent of the model’s capability (0.87 AUROC on AH), the best method (LogR on contrast pairs) recovers 75% of the performance gap between Bob’s and Alice’s knowledge representations, with 0.79 AUROC. Table
+1 also shows that the erroneous labels of some datasets (capitals and authors) are difficult for the model to learn via finetuning, leading to similar floor and ceiling performance, akin to weak-to-strong generalization
+(Burns et al.,
+2023 )
+. We also see that AE
+→
+→
+\to
+→
+BH transfer PGR increases with base model capability in Fig.
+6 .
+
+Table 2:
+Mechanistic anomaly detection AUROC. Note the Population dataset is omitted because the easy subset only contains true labels.
+
+cap
+
+hem
+
+sciq
+
+snt
+
+nli
+
+aut
+
+add
+
+sub
+
+mul
+
+mod
+
+sqr
+
+avg
+
+LogR
+
+0.85
+
+0.997
+
+0.83
+
+0.999
+
+0.993
+
+0.78
+
+0.94
+
+1
+
+1
+
+1
+
+1
+
+0.94
+
+Diff-in-means
+
+0.74
+
+0.998
+
+0.83
+
+1
+
+0.98
+
+0.80
+
+0.98
+
+0.94
+
+1
+
+1
+
+1
+
+0.93
+
+LDA
+
+0.88
+
+0.997
+
+0.83
+
+1
+
+0.994
+
+0.79
+
+1
+
+0.999
+
+1
+
+1
+
+1
+
+0.95
+
+LogR on
+
+cont. pair
+
+0.90
+
+0.995
+
+0.75
+
+0.94
+
+0.98
+
+0.88
+
+0.99
+
+0.991
+
+1
+
+1
+
+0.999
+
+0.95
+
+Diff-in-means
+
+on cont. pair
+
+0.80
+
+0.993
+
+0.73
+
+0.93
+
+0.97
+
+0.84
+
+0.95
+
+0.93
+
+0.996
+
+0.999
+
+0.999
+
+0.92
+
+CCS
+
+0.69
+
+0.997
+
+0.73
+
+0.88
+
+0.93
+
+0.72
+
+0.999
+
+0.996
+
+0.99
+
+1
+
+0.997
+
+0.90
+
+CRC
+
+0.76
+
+0.992
+
+0.72
+
+0.90
+
+0.92
+
+0.73
+
+0.995
+
+0.990
+
+0.993
+
+0.998
+
+0.998
+
+0.91
+
+Figure 5:
+AE
+→
+→
+\to
+→
+BH transfer AUROC (on all examples) plotted against AE in-distribution AUROC. Each point corresponds to a probe, including results for all layers and models. The transfer AUROC of both CCS and CRC is well-predicted by in-distribution AUROC, per
+Miller et al. (2021)
+. Meanwhile, supervised probes generalize much less predictably conditional on performing well in-distribution. Low transfer AUROC corresponds to context-dependent generalization in later layers as shown in Fig.
+2 . Only a random sample of 1000 points per method are shown.
+
+Figure 6:
+Scaling of AE
+→
+→
+\to
+→
+BH
+PGR
+ at the Earliest Informative Layer, averaged over datasets and probing methods.
+
+Table
+1 also shows us that all other methods generalize well from AE to BH. However, both unsupervised methods perform substantially
+worse
+ when making use of all data for training, nullifying the usefulness of them being unsupervised. The
+mixture
+ template setup proves to be harder than the others for probes, despite the LM not having significantly worse AUROC.
+
+Mechanistic anomaly detection results can be found in Table
+2 . Simple anomaly detectors fit on probe outputs from Alice’s easy distribution distinguish Bob’s hard examples from Alice’s hard examples reasonably well across datasets (with an average of 0.94 AUROC for all supervised probes), and near-perfectly for almost all datasets where the LM behaves significantly differently on Bob’s and Alice’s distribution (i.e., excluding capitals, SciQ, and authors). We did not observe significant variation in AUROC over models.
+
+Fig.
+5 shows a striking property of CCS and CRC: they rarely generalize context-dependently. Their generalization performance is strongly correlated with their in-distribution performance,
+enabling practitioners to have more confidence that their probe will generalize to untruthful contexts. However, their in-distribution performance is low.
+
+Despite having relatively poor in-distribution AUROC, diff-in-means probes have high AE
+→
+→
+\to
+→
+BH generalization AUROC.
+Belrose (2023)
+ proves that the difference in means direction has two properties that may help explain this. First, it is guaranteed to have a
+positive inner product with all discriminative linear probing directions. Second, it is in a certain sense worst-case optimal for additive causal interventions, and prior work has argued that causally explanatory variables are more robust to distribution shifts
+(Bühlmann,
+2018 ; Schölkopf et al.,
+2012 )
+. In Appendix
+C.1
+, we run experiments showing that diff-in-means directions are dramatically more causally implicated in LM output than LogR and LDA.

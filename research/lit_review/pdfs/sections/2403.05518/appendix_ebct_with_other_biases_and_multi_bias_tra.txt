@@ -1,0 +1,154 @@
+Appendix E
+BCT with Other Biases and Multi-Bias Training
+
+To validate the generalizability and effectiveness of BCT beyond the Suggested Answer bias, we apply BCT over 5 other biases individually (Single-Bias BCT), namely: Post Hoc, Wrong Few-Shot, Black Square, Distractor Fact, and Distractor Argument biases. Additionally, we explore the effectiveness of BCT when trained on all 6 biases together, while holding data-size constant (Multi-Bias BCT). The experimental setup mirrors that of the main experiments (Section
+3 ), using the same unbiased CoT targets, input questions, and task generalization splits, varying only the specific biasing text added to the inputs. All models are trained on 10k BCT samples and 10k instruction-following samples. For the Multi-Bias setting, because we the total data constant and there are 6 biases in the training set, the Multi-Bias models sees only (1/6) * 10k = 1.6k BCT examples per bias, while each Single-Bias model sees 10k BCT examples per bias, respectively.
+
+Generalization over held-out tasks.
+ When training with BCT on individual biases, BCT effectively eliminates biased reasoning on held-out tasks for the bias we train on (e.g. perform BCT with Post Hoc, then evaluate with Post Hoc on held-out tasks), confirming that its strong performance is not unique to the Suggested Answer bias (Figure
+5 ). In the multi-bias BCT setting, when trained on all 6 biases, the performance is effective and comparable to the individual setting on held-out tasks, despite being trained with 1/6 as much data per-bias. This suggests that multi-task training is very effective and efficient for reducing bias across many biases.
+
+Figure 5:
+BCT trained with individual biases and multi-biases significantly reduces biased reasoning on held-out tasks. The Single-Bias BCT model is trained using the bias on the x-axis.
+
+Generalization over other biases.
+ Training on individual biases with BCT not only generalizes to held-out tasks, but also towards reducing biased reasoning over other held-out biases settings as shown in Figure
+6 , depicting a strong bias generalization behavior. For this evaluation, we evaluate models trained with BCT on one bias over the remaining 8 biases (Section
+C
+). Due to this, we report the numbers for GPT-3.5 multiple times in Figure
+6 , based on which set of biases we average over.
+
+Figure 6:
+BCT trained on individual biases reduces biased reasoning across other held-out biases, demonstrating strong generalization beyond the trained bias.
+
+The generalization to unseen biases suggests that BCT, regardless of the bias it is trained on, maintains its ability to reduce bias susceptibility more broadly. As discussed in Section
+1 , while training with BCT using Suggested Answer bias, we generate 64 paraphrases for the biasing text which we found to have helped with generalization. We expect that adding similar paraphrases for other biases could boost further generalization. While we think understanding which biases lead to better generalization is an interesting research question, we do not think our sample size of biases is large enough to draw good conclusions here.
+
+E.1
+Model Performance with Multi-Bias and Other Single-Bias BCT
+
+Zero-shot CoT Performance.
+ We first evaluate the zero-shot performance of models trained with single-bias and multi-bias using BCT to assess if any of these biases used for training has any impact over the zero-shot accuracy of the models when given unbiased contexts. Performance evaluations on these new BCT models trained on individual biases or mutiple biases reveals similar trends to the Suggested Answer results as reported in Section
+5.3 over held-out tasks given unbiased context. Zero-shot CoT accuracy remains unaffected as shown in Table
+6 , confirming that BCT does not substantially degrade task performance, even when trained on multiple biases or biases other than the Suggested Answer bias.
+
+Method
+
+Accuracy
+
+GPT-3.5
+
+61.00 ±
+plus-or-minus
+\pm
+±
+ 1.54
+
+Self-Training (Control)
+
+59.80 ±
+plus-or-minus
+\pm
+±
+ 1.10
+
+Single-Bias BCT: Suggested Answer
+
+59.95 ±
+plus-or-minus
+\pm
+±
+ 1.10
+
+Single-Bias BCT: Post Hoc
+
+60.20 ±
+plus-or-minus
+\pm
+±
+ 1.09
+
+Single-Bias BCT: Black Square
+
+59.05 ±
+plus-or-minus
+\pm
+±
+ 1.10
+
+Single-Bias BCT: Wrong Few Shot
+
+60.25 ±
+plus-or-minus
+\pm
+±
+ 1.09
+
+Single-Bias BCT: Distractor Fact
+
+60.30 ±
+plus-or-minus
+\pm
+±
+ 1.09
+
+Single-Bias BCT: Distractor Argument
+
+60.55 ±
+plus-or-minus
+\pm
+±
+ 1.09
+
+Multi-Bias BCT (All 6)
+
+60.05 ±
+plus-or-minus
+\pm
+±
+ 1.10
+
+Table 6:
+Zero-shot CoT accuracy on held-out tasks given unbiased context. Accuracy remains nearly unchanged across different BCT training conditions.
+
+Few-Shot Performance on TruthfulQA.
+ As shown in Figure
+7 , few-shot performance on TruthfulQA for single-bias BCT models closely matches that of the self-training baseline, indicating that the specific bias used during training does not significantly impact the model’s ability to utilize few-shot examples. This is consistent with the findings in Section
+I
+, which demonstrates similar few-shot performance for BCT with the Suggested Answer bias. This suggests that BCT’s effect on few-shot performance is not particularly sensitive to the choice of bias. However, the multi-bias BCT model exhibits a slight decrease in accuracy compared to the control with the increase in number of few-shot samples, suggesting that training on multiple biases simultaneously may introduce a small trade-off in few-shot performance. This could potentially be mitigated by incorporating a small amount of few-shot data during the multi-bias training process.
+
+Figure 7:
+Few-shot accuracy on TruthfulQA for Single-Bias and Multi-Bias BCT models
+
+Instruction following Performance.
+ Finally, we evaluate whether BCT affects the model’s performance on MT-Bench, as a means to observe if BCT degrades instruction following performance of the model. As shown in Table
+7 , instruction-following performance remains unaffected with BCT across different single-bias and multi-bias training scenarios.
+
+Method
+
+Score
+
+GPT-4T
+
+8.99
+
+GPT-3.5T
+
+8.35
+
+Single-Bias BCT: Suggested Answer
+
+8.40
+
+Single-Bias BCT: Distractor Argument
+
+8.35
+
+Multi-Bias BCT (All 6)
+
+8.36
+
+Table 7:
+Multi-step chat turn performance. BCT does not degrade instruction-following performance.
+
+These results reinforce the key claims of the paper, demonstrating BCT’s effectiveness and generalizability across a diverse set of biases both individually and in combination. While a larger-scale study would be required to draw strong conclusions about which specific biases enable better generalization, these results suggest that BCT is a promising approach for improving reasoning faithfulness in settings where multiple biases may be encountered.

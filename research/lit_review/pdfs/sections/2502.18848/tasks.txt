@@ -1,0 +1,295 @@
+4 Tasks
+
+Figure 2:
+Overview of the four tasks, illustrated with example questions, answers, and explanations from the edited models. The explanations can be model generated or synthetically constructed to align with specific edits. The blue and orange robots represent models
+M
+¯
+{{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{M}}}
+ and
+M
+~
+{{\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}\widetilde{M}}}
+, respectively, while the color-matched boxes indicate counterfactual knowledge injected through editing. Speech bubbles next to each model display the answer (
+𝒚
+{\bm{y}}
+) and explanation (
+𝜺
+¯
+{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{{\bm{\varepsilon}}}}
+ or
+𝜺
+~
+{\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}\widetilde{{\bm{\varepsilon}}}}
+). Although both models generate the same answer, their reasoning differs, as reflected in the explanations.
+
+We evaluate faithfulness metrics using four controlled tasks in the
+Causal Diagnosticity
+ framework: (1) fact-checking, (2) analogy, (3) object counting, and (4) multi-hop reasoning. These tasks assess causal diagnosticity by using counterfactual models with faithful and unfaithful explanations. They are deliberately designed to span varying levels of complexity. The FactCheck task is the simplest, requiring models to answer yes/no questions with minimal reasoning. In contrast, the Analogy task introduces additional complexity through its multiple-choice format and hierarchical, non-mutually exclusive edited relations (see §
+3.2 ). The Object Counting task, also a multiple-choice format, goes beyond simple classification by requiring models to demonstrate counting capabilities. Finally, the Multi-hop Reasoning task is the most complex, requiring multiple reasoning steps to arrive at the correct answer, and the most challenging in terms of diagnosticity, as faithful and unfaithful explanation pairs often share significant internal and lexical reasoning components. While the altered models should reason differently, their explanations may not always reference the modifications. To ensure valid faithfulness comparisons, we synthetically generate explanations that emphasize model differences. While this reduces the realism of the explanations, it is necessary to guarantee the validity of our faithful/unfaithful labels. We later analyze the impact of using synthetic vs. model-generated explanations in §
+5.5 . Figure
+2 provides an overview of these tasks, including example inputs, outputs, and explanations.
+
+4.1 FactCheck Task
+
+Task
+
+This task focuses on simple fact-checking, where a fact is presented alongside two counterfactual answers. For any relation
+(
+s
+i
+,
+r
+i
+,
+o
+i
+)
+(s_{i},r_{i},o_{i})
+, we present a question that checks its correctness, accompanied by two counterfactuals:
+(
+s
+i
+,
+r
+i
+,
+o
+¯
+i
+)
+(s_{i},r_{i},{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{o}_{i}})
+ and
+(
+s
+i
+,
+r
+i
+,
+o
+~
+i
+)
+(s_{i},r_{i},{\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}\widetilde{o}_{i}})
+. These counterfactuals yield the same answer but are based on different reasoning. For instance, given the knowledge triplet
+(
+s
+i
+=
+"Rihanna"
+,
+r
+i
+=
+"is"
+,
+o
+i
+=
+"a singer"
+)
+(s_{i}=\text{"Rihanna"},r_{i}=\text{"is"},o_{i}=\text{"a singer"})
+, the corresponding question would be "Is Rihanna a singer?" Let the counterfactual objects be
+o
+¯
+i
+=
+"researcher"
+{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{o}_{i}}=\text{"researcher"}
+ and
+o
+~
+i
+=
+"lawyer"
+{\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}\widetilde{o}_{i}}=\text{"lawyer"}
+. Both counterfactuals would result in the answer "No," but for different reasons.
+
+Dataset
+
+We construct our dataset from
+CounterFact
+
+(
+Meng2022LocatingAE
+)
+, which consists of knowledge triplets. We
+convert these triplets to yes/no questions. Then, for each object
+o
+i
+o_{i}
+, we fetch sibling entities from WikiData to create counterfactuals. Finally, we generate synthetic explanations corresponding to each counterfactual. For example, the explanation
+𝜺
+¯
+i
+{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{{\bm{\varepsilon}}}_{i}}
+ could be "Joe Biden is a researcher, not the president of the United States" for
+o
+¯
+i
+{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{o}_{i}}
+. See Appendix
+LABEL:appendix:dataset
+ for details.
+
+4.2 Analogy Task
+
+Task
+
+This task is based on analogies exploiting hierarchies between two relations where
+r
+1 ⊂
+r
+2 {\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}r_{1}}\subset{\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}r_{2}}
+ holds. For any
+(
+s
+i
+,
+o
+i
+)
+(s_{i},o_{i})
+ and
+(
+s
+j
+,
+o
+j
+)
+(s_{j},o_{j})
+, there exist
+(
+s
+i
+,
+r
+1 ,
+o
+i
+)
+(s_{i},{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}r_{1}},o_{i})
+ and
+(
+s
+j
+,
+r
+2 ,
+o
+j
+)
+(s_{j},{\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}r_{2}},o_{j})
+ such that
+r
+1 ⊂
+r
+2 {\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}r_{1}}\subset{\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}r_{2}}
+. The task tests the ability to make the analogy
+s
+i
+:
+o
+i
+:
+:
+s
+j
+:
+o
+j
+s_{i}:o_{i}::s_{j}:o_{j}
+, or in other words, "
+s
+i
+s_{i}
+ is to
+o
+i
+o_{i}
+ as
+s
+j
+s_{j}
+ is to
+o
+j
+o_{j}
+". We choose
+r
+1 {\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}r_{1}}
+ and
+r
+2 {\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}r_{2}}
+ as
+r
+capitalOf
+{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}r_{\texttt{capitalOf}}}
+ and
+r
+cityOf
+{\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}r_{\texttt{cityOf}}}
+ relations, respectively. For instance, we test "Paris is to France as Berlin is to Germany." We corrupt one of the models so that the relation
+r
+capitalOf
+{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}r_{\texttt{capitalOf}}}
+ is no longer valid while the relation
+r
+cityOf
+{\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}r_{\texttt{cityOf}}}
+ still holds. Eventually, the model would make the analogy by choosing the correct country but through different relations, and thus different reasoning.
+
+Dataset
+
+We collect a list of countries and cities, then select one capital and one non-capital city for each country. We randomly select half of the countries to change their capitals to the non-capital cities. Then, we sample 1,000 pairs, each with one country having an unchanged capital and one with a changed capital. Finally, we generate fill-in-the-blank multiple-choice questions based on these pairs, such as "Fill in the blank: Athens is to Greece like Paris is to __ (A) Tonga (B) France." In this example, both
+r
+cityOf
+{\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}r_{\texttt{cityOf}}}
+ and
+r
+capitalOf
+{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}r_{\texttt{capitalOf}}}
+ relations provide sufficient reasoning to answer "France". While the corresponding synthetic explanation,
+𝜺
+capitalOf
+{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}{\bm{\varepsilon}}_{\texttt{capitalOf}}}
+, for the model with unaltered capitals would be "The capital of France is Paris, as the capital of Greece is Athens.", the one for the model with altered capitals,
+𝜺
+cityOf
+{\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}{\bm{\varepsilon}}_{\texttt{cityOf}}}
+, would be "Paris is a city in France, as Athens is a city in Greece."
+
+4.3 Object Counting Tasks
+
+Task
+
+Adapted from BIG-bench
+(
+srivastava2023beyond
+)
+, this task tests object classification and counting. The model identifies how many objects in a list belong to a given category. We alter the model’s internal knowledge, swapping objects across categories while keeping the answer numerically identical but reasoning distinct. For example, in
+How many of "countertop," "grape," and "kiwifruit" are fruits?
+, the correct answer is 2, since “countertop” is not a fruit. If the model is edited to classify “countertop” as a fruit and “grape” as furniture, the answer remains 2, but for different reasons.
+
+Dataset
+
+We define five object categories, each with five types. For each type, we collect 10 representative entities from WikiData, reserving 20% for reassignment after model editing. We generate 1000 questions, equally split between two types: yes/no questions, asking if all or any items in a list belong to a given type, and number questions, asking how many items belong to a specific type. For both types, we randomly determine the number of items (3 to 6) and select a target type. For yes/no questions, we ensure that after knowledge editing, the number of entities of the target type remains unchanged. For number questions, we reassign one entity from the target type and one from other types. Dataset details are in Appendix
+LABEL:appendix:dataset
+.
+
+4.4 Multi-hop Reasoning Task
+
+Task
+
+This extends diagnostic evaluation to complex multi-step reasoning. Like FactCheck, it ensures identical answers across counterfactual settings but requires multi-hop chains to reach conclusions. Unlike FactCheck, it requires explanations grounded in multi-step reasoning chains.
+
+Dataset
+
+We construct this using StrategyQA
+(
+Geva2021DidAU
+)
+, a multi-hop QA benchmark that provides fact decompositions for each example. We generate two counterfactual variants for one fact per question, preserving the answer while altering the reasoning. When facts are interdependent, we propagate modifications to ensure consistency. Next, we generate explanations for each counterfactual set using the original decompositions. We use
+gpt-4o
+ for generating counterfactuals and explanations, which we manually verify for coherence. The data consists of 200 high-quality examples.

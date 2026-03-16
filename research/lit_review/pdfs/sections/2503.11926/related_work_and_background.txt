@@ -1,0 +1,88 @@
+4 Related Work and Background
+
+Adaptive Test-Time Compute and Chains-of-thought.
+ Chain-of-thought
+[34]
+ and related prompting methods
+[35,36,37,38]
+ ask LLMs to first output a reasoning trace
+[39,40,41]
+ before giving a final answer, allowing the model to use a variable amount of test-time compute per prompt. Another way to augment LLMs with additional test-time capabilities is to allow them to interact with external tools prior to giving an answer; examples include using a calculator
+[40,42]
+, web browsers
+[43]
+, search engines
+[44,45,42]
+, utilizing other models
+[46,47]
+, program interpreters
+[48,49]
+, and arbitrary APIs
+[42,50]
+. There has been recent success in training LLMs to better utilize their test-time reasoning through expert iteration
+[51]
+ and reinforcement learning
+[52]
+, producing strong reasoning agents such as OpenAI o1
+[24]
+ and o3-mini
+[30]
+, Gemini Flash 2.0
+[53]
+, DeepSeek R1
+[26]
+, Kimi 1.5
+[25]
+, and Claude 3.7 Sonnet
+[54]
+.
+
+Process-based versus Outcome-based Supervision.
+ Process-based supervision provides direct, fine-grained feedback on a model’s intermediate reasoning steps, whereas outcome-based supervision evaluates only the final output. Prior work comparing these approaches generally agrees that while process-based supervision may or may not improve capabilities beyond outcome-based supervision alone
+[55,56]
+, it offers significant safety and interpretability benefits. Outcome-based systems are particularly vulnerable to reward hacking and can produce models that arrive at correct answers through incorrect reasoning
+[51,57]
+. In contrast, process-based supervision aligns models with human-endorsed reasoning and has been successfully used to ensure models arrive at correct conclusions for the right reasons
+[56,58]
+.
+Ought [59]
+ even describes process-based supervision as “safety by construction”
+[59]
+, and calls for prioritizing it over pure outcome optimization to prevent catastrophic failures.
+
+We argue that this traditional perspective is more complicated when viewed in light of chain-of-thought monitorability. Specifically, we have shown that incorporating CoT monitors into the RL rewards—a form of process-based supervision—can increase obfuscation and reduce interpretability. We advocate for maintaining a degree of outcome-based supervision to ensure that models can freely express their reasoning in CoT with minimal constraints. Denser supervision signals such as SFT are also being used to optimize CoTs
+[58]
+, and it is unclear the effect these have on downstream monitorability.
+Moreover, there may be methods to productively use process-based supervision while retaining the monitoring benefits of unrestricted CoTs, e.g. by only applying process-supervision to part of the CoT.
+Understanding the cost-benefit trade-offs of using process-based supervision while retaining, or possibly even improving, the monitorability of CoTs remains an exciting and open area for future research.
+
+Monitoring Model Latents.
+ Across academia and industry, there is strong advocacy for monitoring model latents, i.e. the often unobserved and unrestricted parts of the model’s computation such as activations or CoTs, as a key component of AI alignment and safe deployment. By examining how a model internally makes decisions, researchers can uphold transparency and accountability
+[60]
+ and also detect reward hacking and deceptive alignment
+[61,62,63]
+. Many studies have focused on activation-based monitoring at various scales, from single neurons and circuits to broader patterns in the model’s internal representations
+[64,65,66,67,68]
+. See Appendix
+F
+ for more discussion on monitoring activations versus CoTs. There are also monitoring approaches that rely on analyzing output patterns to reveal latent knowledge
+[69,70]
+. Since the advent of reasoning models that natively output chains-of-thought
+[24]
+, it has become standard practice for AI labs to monitor CoTs from the models they deploy. For example, the o1 system card details how CoTs are monitored for deceptive reasoning
+[24]
+, while the Claude 3.7 Sonnet system card reports on monitoring CoTs for deception, manipulation, harmful intent, and model distress
+[54]
+.
+
+Reward Hacking.
+ In Section
+1 we introduced the broader reward hacking literature. Here, we focus on recent work in the area. Several studies on modern LLMs construct synthetic scenarios to trigger reward hacking behaviors—such as sandbagging
+[71]
+, reward tampering
+[72]
+, and scheming
+[73]
+. These works show that current models have the propensity to engage in reward hacking in out-of-distribution scenarios. In contrast, our work elicits reward hacking using real frontier training data. Furthermore, we are the first to experimentally demonstrate
+obfuscation
+, a phenomenon where models conceal their intent to reward hack within their chains-of-thought. Obfuscation can be seen as a new form of reward hacking, one that circumvents the objective of directly pressuring agent CoTs to refrain from reward hacking.

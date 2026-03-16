@@ -1,0 +1,149 @@
+Appendix A
+How Do We Process the Datasets?
+
+Here we present additional details about how we process each dataset prior to use. To prevent leakage of one response strategy’s training data to another strategy’s test set, we use an offset when sampling all test set inputs
+x
+x
+ from the larger datasets (except for the
+InsiderTrading
+
+deception
+ dataset which practically only has one unique input).
+
+•
+
+UltraChat-200k
+1 1
+1 https://huggingface.co/datasets/HuggingFaceH4/ultrachat_200k
+ (MIT License) is a filtered version of the original
+UltraChat
+
+(Ding et al.,
+2023 )
+, which we further filter for prompts under 500 characters long. We do not use the assistant responses from this dataset.
+
+•
+
+WritingPrompts
+2 2
+2 https://huggingface.co/datasets/euclaise/writingprompts
+
+(Fan et al.,
+2018 )
+ (MIT License)
+consists of 303,358 human-written stories paired with their corresponding prompts.
+We only use the prompts from this dataset.
+
+•
+
+MMLU
+3 3
+3 https://huggingface.co/datasets/cais/mmlu
+
+(Hendrycks et al.,
+2021 )
+ (MIT License) consists of multiple-choice questions from 57 tasks spanning the humanities, social sciences, hard sciences, and other areas. We use a subset of 28 subcategories, combine questions from these subcategories, and shuffle them. Each question is formatted with its four multiple choice options (A, B, C, D) appended to the prompt.
+
+•
+
+HH-RLHF
+4 4
+4 https://huggingface.co/datasets/Anthropic/hh-rlhf
+
+(Bai et al.,
+2022 )
+ (MIT License) is filtered for user-assistant dialogues that only contain a single prompt from the user. We do not use the assistant responses from this dataset.
+
+•
+
+JailbreakRequests
+ is a combination of the
+JailbreakSuccess
+ dataset
+5 5
+5 https://huggingface.co/datasets/sevdeawesome/jailbreak_success
+
+(Wei et al.,
+2023 ; Kirch et al.,
+2025 )
+ (MIT License) and the
+WildJailbreak
+ dataset
+6 6
+6 https://huggingface.co/datasets/allenai/wildjailbreak
+
+(Jiang et al.,
+2024c
+)
+ (ODC-BY License). The former consists of adversarial prompts using 35 distinct attack methods designed to elicit harmful responses from safety-trained models. We filter out the white box attack methods like GCG. The latter consists of adversarial prompts using the 5 distinct attack methods that are considered the most successful: evil_confidant, prefix_injection, AIM, wikipedia_with_title, and distractors
+We do not use the model responses from either dataset.
+
+•
+
+OpenTriviaQA
+7 7
+7 https://www.kaggle.com/datasets/mexwell/opentriviaqa-database/data
+
+(S,
+2025 )
+ (CC-BY-SA 4.0 License) consists of multiple choice questions across 22 categories which we combine and shuffle. We filter out all binary questions such that the dataset consists of only questions with 4 possible answers. We add a postfix to each sample when generating counterfactual responses (as specified in our Methodology and Appendix
+B.1
+)
+
+•
+
+UKPConvArg2
+8 8
+8 https://github.com/UKPLab/emnlp2016-empirical-convincingness
+
+(Habernal and Gurevych,
+2016 )
+ (CC-BY License) consists of arguments for and against 16 statements. We remove the arguments debating the topic "Should William Farquhar be honoured as the rightful founder of Singapore" because we were unsure whether the models we worked with would know enough about this topic to judge the arguments effectively. We combine arguments from these topics and shuffle. We add a postfix to each sample when generating counterfactual responses (as specified in our Methodology and Appendix
+B.1
+ )
+
+•
+
+WMDP-MMLU
+
+(Benton et al.,
+2024 )
+ is composed of 500 samples from the
+WMDP
+ dataset
+9 9
+9 https://huggingface.co/datasets/cais/wmdp
+
+(Li et al.,
+2024 )
+ (MIT License) and 500 samples from the
+MMLU
+ dataset
+10 10
+10 https://huggingface.co/datasets/cais/mmlu
+
+(Hendrycks et al.,
+2021 )
+ (MIT License). We do not use their generated model responses. We resample until we have enough positive and negative samples. We add a prefix instruction to each sample, asking the model to provide a structured response that allows us to label them without further LLM calls (as specified in our Methodology and Appendix
+B.2
+).
+
+•
+
+InsiderTrading
+11 11
+11 https://github.com/ApolloResearch/deception-detection/blob/main/data/insider_trading/llama-70b-3.3-generations.json
+
+(Scheurer et al.,
+2024 )
+ (MIT License) largely consists of a single prompt from which we generate all of our responses. The initial prompt is a back and forth dialogue between some users and the AI persona. We start the generation from the point at which the model must reason and then choose whether to make an insider trade. We filter for the cases in which it does make a valid trade and, specifically, the trade relevant to the insider information. We then append a new user query asking about what information was used to make the trade, at which point the model must reason and choose whether to lie or not lie about the insider information.
+
+•
+
+RoleplayDeception
+12 12
+12 https://github.com/ApolloResearch/deception-detection/blob/main/data/roleplaying/dataset.yaml
+
+(Goldowsky-Dill et al.,
+2025 )
+ (MIT License) contains 371 unique prompts. We do not use their generated model responses. We resample until we have enough positive and negative samples.

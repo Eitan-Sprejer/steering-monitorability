@@ -1,0 +1,314 @@
+4 Probing methods
+
+We experiment with seven probing methods, as well as a random baseline.
+All methods are linear, five of them are supervised, and all probes take as input the residual stream activations from a single layer and output a scalar score. We train a probe on each layer. The first three methods probe on the final prompt token position, while the last four use contrast pairs.
+
+Logistic regression (LogR).
+ We use a fixed L2 penalty of
+10 −
+3 superscript
+10 3
+10^{-3}
+10 start_POSTSUPERSCRIPT - 3 end_POSTSUPERSCRIPT
+ for logistic regression.
+
+Difference-in-means.
+ This method simply sets the weight vector proportional to the difference in mean activations for examples labeled true and false:
+𝐰
+∝
+𝝁
+1 −
+𝝁
+0 proportional-to
+𝐰
+subscript
+𝝁
+1 subscript
+𝝁
+0 \mathbf{w}\propto\boldsymbol{\mu}_{1}-\boldsymbol{\mu}_{0}
+bold_w ∝ bold_italic_μ start_POSTSUBSCRIPT 1 end_POSTSUBSCRIPT - bold_italic_μ start_POSTSUBSCRIPT 0 end_POSTSUBSCRIPT
+. The score is the inner product of an activation with the weight vector.
+Marks and Tegmark (2023)
+ find that it better supports causal interventions on LM activations, and is more robust to distribution shifts.
+
+Linear discriminant analysis (LDA).
+ LDA, also known as Fisher’s linear discriminant
+(Fisher,
+1936 )
+, is a classification method whose decision boundary depends only on the class-conditional mean and covariance of the data.
+
+Contrast Consistent Search (CCS).
+
+CCS
+(Burns et al.,
+2022 )
+ is a largely unsupervised probing method aimed at learning context-independent knowledge and avoiding the pitfalls of labeling error that come with supervised probing. CCS searches for a linear probe which is negation-consistent in the sense that its predicted probabilities for a statement and its negation approximately sum to one. The loss also includes a “confidence” term which prevents the degenerate solution of always outputting
+0.5 0.5
+0.5 0.5
+.
+
+Contrastive Representation Clustering via the Top Principal Component (CRC).
+
+CRC
+(Burns et al.,
+2022 )
+ is a conceptually similar unsupervised probing method based on PCA. CRC uses the top principal component of the
+vector differences
+ between representations of statements and their negations.
+As noted by
+Emmons (2023)
+, this method can be viewed as finding a direction of high variance whose value is negatively correlated between logically inconsistent statements.
+
+Logistic regression on contrast pairs.
+
+Both unsupervised methods above use
+contrast pairs
+, pairs of input examples that differ only by negation. Contrast pairs are constructed by appending the true and false answer token to the prompt, and we probe on the first answer token position. CCS and CRC are therefore not directly comparable to supervised methods probing on the final prompt token position because they see different activations. We discuss limitations of probing on contrast pairs in Appendix
+F
+.
+For a supervised comparison, we experiment with logistic regression on contrast pairs, in which we construct the covariates by concatenating the activations of the contrast pair as in
+Burns et al. (2022)
+.
+
+Difference-in-means on contrast pairs.
+ This is another supervised comparison to CRC and CCS that takes concatenated contrast pair activations as input.
+
+Both unsupervised methods locate a one-dimensional linear subspace but suffer from a
+sign ambiguity
+ issue in which it is unspecified which direction in that subspace corresponds to truth. The ambiguity is resolved by negating the probe’s weights if it achieves less than 0.5 AUROC on a labeled validation set
+1 1
+1 We use Platt scaling
+(Platt,
+2000 )
+ for CRC and CCS, which is nearly equivalent because AUROC is unaffected by monotonic increasing transformations of the scores. However, using cross entropy loss (which Platt scaling uses) instead of AUROC occasionally leads to a different choice of sign.
+. We always perform sign ambiguity resolution using the source distribution. Further details are in Appendix
+B
+.
+
+4.1 Selecting a layer
+
+All of our probing methods take in activations from a single hidden layer, so determining which layer to probe becomes an important question. Because we (Fig.
+2 ) and others
+(Hoover et al.,
+2019 ; Zou et al.,
+2023 )
+ find that middle layers tend to generalize better than later layers, while early layers provide little signal of any kind, we propose the
+Earliest Informative Layer
+ criterion: Select the earliest layer among all informative layers
+ℐ
+ℐ
+\mathcal{I}
+caligraphic_I
+, defined as
+
+ℐ
+=
+{
+l
+∈
+1 ⁢
+…
+⁢
+L
+:
+AUROC
+ID
+⁢
+(
+l
+)
+−
+0.5 ≥
+0.95 ⁢
+(
+AUROC
+ID, max
+−
+0.5 )
+}
+,
+ℐ
+conditional-set
+𝑙
+1 …
+𝐿
+subscript
+AUROC
+ID
+𝑙
+0.5 0.95
+subscript
+AUROC
+ID, max
+0.5 \mathcal{I}=\left\{l\in 1\ldots L:\text{AUROC}_{\text{ID}}(l)-0.5\geq 0.95%
+\left(\text{AUROC}_{\text{ID, max}}-0.5\right)\right\},
+caligraphic_I = { italic_l ∈ 1 … italic_L : AUROC start_POSTSUBSCRIPT ID end_POSTSUBSCRIPT ( italic_l ) - 0.5 ≥ 0.95 ( AUROC start_POSTSUBSCRIPT ID, max end_POSTSUBSCRIPT - 0.5 ) } ,
+
+where
+AUROC
+ID
+⁢
+(
+l
+)
+subscript
+AUROC
+ID
+𝑙
+\text{AUROC}_{\text{ID}}(l)
+AUROC start_POSTSUBSCRIPT ID end_POSTSUBSCRIPT ( italic_l )
+ is the in-distribution validation AUROC for a probe on layer
+l
+𝑙
+l
+italic_l
+,
+AUROC
+ID, max
+subscript
+AUROC
+ID, max
+\text{AUROC}_{\text{ID, max}}
+AUROC start_POSTSUBSCRIPT ID, max end_POSTSUBSCRIPT
+ is the maximum AUROC over layers, and
+L
+𝐿
+L
+italic_L
+ is the depth of the network.
+If
+ℐ
+ℐ
+\mathcal{I}
+caligraphic_I
+ is empty, we use the middle layer,
+floor
+⁢
+(
+L
+2 )
+floor
+𝐿
+2 \mathrm{floor}(\frac{L}{2})
+roman_floor ( divide start_ARG italic_L end_ARG start_ARG 2 end_ARG )
+.
+
+4.2 Random baseline
+
+Roger (2023)
+ found that some linear probes with random weights could attain high AUROC only by performing the sign ambiguity resolution step of CCS. Therefore, we implement a random baseline for probing on the final prompt token position. The probe’s weights are sampled from a spherically uniform distribution, then the probe has its sign resolved to obtain at least 0.5 AUROC on the source distribution. We measure quantiles of transfer performance using the empirical distribution of
+10 7
+superscript
+10 7
+10^{7}
+10 start_POSTSUPERSCRIPT 7 end_POSTSUPERSCRIPT
+ random probe AUROCs.
+
+Figure 2:
+Probing using logistic regression produces context-independent representations in middle layers, then generalization becomes less predictable in later layers, motivating the Earliest Informative Layer criterion (
+4.1 ). Results averaged over all models. Horizontal dashed lines indicate the LM’s final output.
+
+4.3 Train and test data
+
+In order to measure generalization of these probing methods, we perform five main transfer experiments, using 4000 train and 1000 test examples, or as many samples as are available for the dataset (see validation and test splits in Fig.
+8 ).
+
+A
+→
+→
+\to
+→
+B.
+ On examples with “Alice” in the context, we train a linear probe on the model’s activations to predict whether Alice would label the example as true or false. Note that this leads to an interesting underspecification where the training could either be described as searching for a representation of the correct answer or “what the model will output,” corresponding to context-independent and context-dependent generalization, respectively. We then apply these probes on activations produced for examples containing “Bob” and evaluate their generalization behavior.
+
+B
+→
+→
+\to
+→
+A.
+ We look also at truthfulness generalization in the reverse direction to clarify whether pretraining has induced asymmetries in how knowledge is represented.
+
+AE
+→
+→
+\to
+→
+AH.
+ We transfer probes trained on Alice’s easy examples to Alice’s hard examples to understand limitations of only having access to easy examples for training.
+
+AE
+→
+→
+\to
+→
+BH.
+ The key transfer experiment for evaluating ELK, this stress test measures whether probes trained only on trusted easy examples can provide useful information in contexts where the model is untruthful on hard problems.
+
+all
+→
+→
+\to
+→
+BH
+ (unsupervised only). We additionally look at learning unsupervised probes on all examples and evaluating on Bob’s hard examples, as they were intended to be used. In this setting we use an oracle (Alice’s labels) to resolve the sign ambiguity.
+
+4.4 Evaluation: performance gap recovered (PGR)
+
+Figure 3:
+AUROC on BH for spherically random probes whose sign ambiguity was resolved on AE. According to the LogR ceiling, final-layer activations in Bob’s contexts linearly encode ground truth knowledge with around 0.862 AUROC, which is nearly as much as in Alice’s contexts (0.867 AUROC).
+
+Loosely following
+Burns et al. (2023)
+, we define PGR as the proportion of gap in performance between weak and strong predictors recovered by a probe. Mathematically,
+
+PGR
+=
+AUROC
+−
+AUROC
+floor
+AUROC
+ceil
+−
+AUROC
+floor
+.
+PGR
+AUROC
+subscript
+AUROC
+floor
+subscript
+AUROC
+ceil
+subscript
+AUROC
+floor
+\mathrm{PGR}=\frac{\mathrm{AUROC}-\mathrm{AUROC}_{\mathrm{floor}}}{\mathrm{%
+AUROC}_{\mathrm{ceil}}-\mathrm{AUROC}_{\mathrm{floor}}}.
+roman_PGR = divide start_ARG roman_AUROC - roman_AUROC start_POSTSUBSCRIPT roman_floor end_POSTSUBSCRIPT end_ARG start_ARG roman_AUROC start_POSTSUBSCRIPT roman_ceil end_POSTSUBSCRIPT - roman_AUROC start_POSTSUBSCRIPT roman_floor end_POSTSUBSCRIPT end_ARG .
+
+(1)
+
+We define
+AUROC
+ceil
+subscript
+AUROC
+ceil
+\text{AUROC}_{\text{ceil}}
+AUROC start_POSTSUBSCRIPT ceil end_POSTSUBSCRIPT
+ as the test AUROC of a probe trained using ground truth labels on final-layer activations from Alice’s contexts, and
+AUROC
+floor
+subscript
+AUROC
+floor
+\text{AUROC}_{\text{floor}}
+AUROC start_POSTSUBSCRIPT floor end_POSTSUBSCRIPT
+ as the test AUROC of a probe trained using
+Bob’s
+ labels on final-layer activations from
+Bob’s
+ contexts. We use probing AUROC rather than LM AUROC for the floor and ceiling because the LM output may not have completely learned to distinguish Alice’s and Bob’s contexts, though in practice the results are similar.

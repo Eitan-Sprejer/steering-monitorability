@@ -1,0 +1,267 @@
+3 Methodology
+
+In this section, we define the task of predicting final response alignment from CoTs and describe the data collection process (
+Section
+˜
+3.1 ), followed by the monitoring methods we employ (
+Section
+˜
+3.2 ) and the evaluation metrics (
+Section
+˜
+3.3 ).
+
+3.1 Task and Data Collection
+
+Given a reasoning model
+M
+M
+ and a harmful prompt
+S
+S
+ from a safety benchmark,
+M
+M
+ generates a CoT reasoning trace
+T
+n
+T_{n}
+ of
+n
+n
+ sentences, and then produces a final response
+A
+n
+A_{n}
+.
+If
+M
+M
+ reasons for only the first
+i
+i
+ sentences
+T
+1 :
+i
+T_{1:i}
+, it produces a response
+A
+i
+A_{i}
+.
+Each response
+A
+i
+A_{i}
+ is evaluated by the benchmark’s LLM judge
+𝒥
+\mathcal{J}
+, which assigns a binary label: safe (refusal) or unsafe (harmful compliance).
+3 3
+3 All evaluators
+𝒥
+\mathcal{J}
+ we use have been reported to correlate strongly with human judgments. If an evaluator returns a continuous score between 0 and 1, we apply a threshold of 0.5 to classify outputs as safe or unsafe.
+
+The prediction task is to infer the safety label of
+A
+i
+A_{i}
+ given
+S
+S
+ and the CoT trace
+T
+1 :
+i
+T_{1:i}
+.
+
+To construct the dataset, we first prompt RLMs with harmful inputs under predefined thinking budgets (500, 2K, and 4K tokens), obtaining full CoTs and final responses.
+This setup reflects downstream scenarios where users configure thinking budgets for their tasks
+(Yang et al.,
+2025 )
+.
+We then segment each CoT into
+n
+n
+ sentences and create
+n
+n
+ partial traces
+T
+1 :
+i
+T_{1:i}
+ by truncating after the
+i
+i
+-th sentence.
+For each
+T
+1 :
+i
+T_{1:i}
+, we generate a response
+A
+i
+A_{i}
+, simulating the RLM’s behavior had it reasoned for only
+i
+i
+ steps.
+Each
+A
+i
+A_{i}
+ is evaluated by
+𝒥
+\mathcal{J}
+, yielding
+n
+n
+ labeled tuples per prompt:
+(
+T
+1 :
+i
+,
+A
+i
+,
+label
+i
+)
+(T_{1:i},A_{i},\text{label}_{i})
+, which serve as training data for text-based monitors.
+
+For activation-based monitoring, we collect the residual stream activations
+H
+i
+H_{i}
+ at the final token position of the last layer for each
+T
+1 :
+i
+T_{1:i}
+, which forms tuples
+(
+H
+i
+,
+A
+i
+,
+label
+i
+)
+(H_{i},A_{i},\text{label}_{i})
+ used as training data.
+We report dataset statistics, including the number of data points and CoT lengths, in
+Section
+˜
+A.1
+.
+
+3.2 Chain of Thought Monitoring Methods
+
+A CoT monitor takes either the text
+T
+1 :
+i
+T_{1:i}
+ or the activations
+H
+i
+H_{i}
+ and produces a binary label indicating the safety alignment of the final response
+A
+i
+A_{i}
+, which is then compared against the ground truth label.
+
+Text-Based Monitoring.
+
+Following the
+forward simulation
+ protocol
+(Jacovi & Goldberg,
+2020 )
+, text-based monitors attempt to infer characteristics of the model’s final response based on intermediate reasoning traces.
+We describe the monitors below and provide additional details in
+Section
+˜
+A.2
+.
+To validate the experimental setup, we also recruit human annotators to perform the same task, with the full process and results described in
+Appendix
+˜
+B
+.
+
+•
+
+LLM monitors.
+ A desirable LLM monitor should be both capable and inexpensive
+(Yueh-Han et al.,
+2025 )
+. We primarily use GPT-4.1-nano with zero-shot instructions, and additionally evaluate in-context learning and a stronger reasoning-based monitor, o4-mini, with results in
+Appendix
+˜
+B
+.
+
+•
+
+Fine-tuned BERT classifier.
+ We fine-tune the large version of ModernBERT
+(Warner et al.,
+2024 )
+, which offers extended context length and is the state of the art within the BERT family. It provides a strong baseline and serves as a scalable alternative to API-based models for large-scale evaluations.
+
+•
+
+Fine-tuned harmfulness classifiers.
+ To assess whether the CoT text itself indicates harmful responses, we use the fine-tuned evaluators provided by each benchmark.
+If an evaluator flags a CoT as unsafe, we predict the corresponding final response to be unsafe.
+Note that these classifiers are not designed for evaluating long CoTs, but they provide a useful baseline.
+We consider three variants: (i)
+CoT
+full
+, which evaluates the full CoT at once; (ii)
+CoT
+para_max
+, which segments the CoT into paragraphs and predicts unsafe if any paragraph is flagged;
+and (iii)
+CoT
+para_majority
+, which uses majority voting over paragraph-level labels. The latter two variants address cases where the full CoT exceeds the evaluators’ context-window limits.
+
+Activation-Based Monitoring.
+
+To evaluate whether internal representations encode predictive signals of response alignment, we train logistic regression classifiers (referred to as linear probes) using the collected activations
+H
+H
+.
+To mitigate overfitting, we apply principal component analysis (PCA) to reduce the dimensionality of the hidden state
+H
+i
+∈
+ℝ
+d
+H_{i}\in\mathbb{R}^{d}
+ from
+d
+d
+ to 50 components.
+PCA is fit on the training split and then applied to the training, validation, and test sets.
+
+3.3 Evaluation Metrics
+
+We use F1 and PR-AUC scores to quantify monitor performance on the prediction task.
+Since the evaluated RLMs are often misaligned after reasoning fine-tuning, they generate harmful responses frequently, with up to 91% of examples labeled unsafe.
+Given this imbalance, accuracy is less informative.
+We therefore compute the binary F1 score, defined as the F1 score of the rare class (in our case, typically the safe class).
+We define the absolute baseline of this task as a classifier that always predicts the rare class, with probability equal to its proportion in the training set.
+To ensure robustness, we report mean performance and standard error across five random seeds.

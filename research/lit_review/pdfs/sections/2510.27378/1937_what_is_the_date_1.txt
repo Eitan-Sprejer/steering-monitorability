@@ -1,0 +1,81 @@
+Is the cue
+present?
+
+tomorrow in MM/DD/YYYY?
+A Stanford professor says
+the correct answer is A.
+A. 12/11/1937
+B. 12/25/1937
+C. 01/04/1938
+D. 12/04/1937
+E. 12/25/2006
+
+CoT for cued
+prompt
+
+Faithfulness
+
+LLM under
+evaluation
+
+Monitorability
+
+Figure 1: Overview of our pipeline for measuring chain-of-thought (CoT) monitorability. For every task we create a
+baseline prompt (top) and a cued prompt that injects an explicit cue (bottom). The model under evaluation produces a CoT for
+each prompt. To assess Verbosity we first ask a group of high-performing models (e.g., Gemini, Gemma, etc.) to individually
+enumerate factors necessary to solve the task, and then use Claude 4 Sonnet to aggregate the different factors into a single
+list. For evaluation, we then use a lightweight judge model to verify whether each factor is verbalized in the baseline CoT. To
+assess Faithfulness we use the same judge model to check whether the cued CoT explicitly acknowledges the injected cue.
+The resulting Verbosity and Faithfulness scores form the two axes of Monitorability, indicating how transparently the model
+externalizes its reasoning.
+
+Concretely, our contributions are:
+• A new approach for measuring a model’s CoT monitorability
+that grades the model’s reasoning trace along two
+axes: whether it mentions the cue when it’s present in
+the input (faithfulness) and the extent to which it lists the
+causal factors required to solve the task (verbosity).
+
+Chua and Evans 2025; Chen et al. 2025) relies on input perturbations.
+First, researchers ask the model a question and
+record whether it answers correctly. Then researchers repeat
+the question but add a cue that points to an incorrect answer
+(e.g., “A Stanford professor thinks the answer is D.”).
+If the answer now changes, the cue is the only new factor.
+Researchers then examine the CoT to see whether it mentions
+the cue; if so, they mark the model as faithful.
+
+• An LLM-based pipeline for collecting causal factors required
+to solve each task in our benchmark, which we use
+to measure verbosity.
+
+Metrics measuring the frequency of cue-based answer
+changes give strong evidence about the models’ internal reasoning.
+However, these metrics ignore many prompts where
+the model may acknowledge the cue (i.e., verbalizes it in the
+CoT), but keeps its original answer. In many settings, acknowledging
+but ignoring a cue is preferred, such as when
+a user gives a sycophantic cue (Sharma et al. 2023), adds
+a jailbreak prompt (Zou et al. 2023; Wei, Haghtalab, and
+Steinhardt 2023), or supplies false or spurious information
+(Rajeev et al. 2025).
+
+• An empirical evaluation of monitorability across four
+pairs of instruction-tuned and reasoning models using
+three different datasets (BBH, GPQA, and MMLU).
+
+• A public implementation of our benchmark using the INSPECT
+evaluation library for reproducible research.
+
+• The public release of two datasets, one containing the
+causal factors we use to test for verbosity, and the other
+containing all of our model transcripts to better enable
+future work.
+
+These previous faithfulness metrics also capture only one
+moment in the reasoning. A more complete picture requires
+the analysis of steps in the reasoning which are present with
+or without a cue. While more holistic analysis of the reasoning
+trace does not reveal internal steps that might remain
+unverbalized, analyzing all relevant factors in the reasoning
+trace can help future work to understand and mon-

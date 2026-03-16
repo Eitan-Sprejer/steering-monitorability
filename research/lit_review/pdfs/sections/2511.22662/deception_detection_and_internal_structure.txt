@@ -1,0 +1,74 @@
+5 Deception detection and internal
+structure
+
+Suppose we are able to overcome many of the problems of belief attribution discussed in
+Section
+˜
+2 . What remaining difficulties should we expect to run into? What must be true about language models in order for deception detection to be a solvable problem?
+
+For concreteness, we will use below as one example the most commonly proposed deception detection technique; training a
+probe
+
+(Alain and Bengio,
+2018 ; Zou et al.,
+2025 )
+, a classifier on internal model activations that labels examples as either honest or deceptive. This approach has been studied in many recent works such as
+Goldowsky-Dill et al. (2025)
+,
+Kretschmar et al. (2025)
+,
+Parrack et al. (2025)
+,
+Boxo et al. (2025)
+, and
+Roger (2023)
+. Other work has also studied whether one can probe for falsehood
+(Marks and Tegmark,
+2024 ; Wagner,
+2024 ; Bürger et al.,
+2024 ; Campbell et al.,
+2023 ; Burns et al.,
+2024 ; Farquhar et al.,
+2023 ; Azaria and Mitchell,
+2023 )
+, and the efficacy (
+Cunningham et al.,
+2025 ; McKenzie et al.,
+2025 ; Tyagi and Heimersheim,
+2025 , Kramar et al. 2025 (forthcoming)) and limitations
+(Bailey et al.,
+2025 )
+ of using activation probes for addressing more general AI safety problems.
+
+What must be true about the internal state of the language model when it is lying or deceiving for a classifier (such as an activation probe) to provide good classification performance? One important consideration is whether we expect there to be consistent internal mechanisms that fire whenever a model is lying or deceiving. Consistent mechanisms at some level are necessary in order for us to believe that our technique will
+generalise
+ beyond the training distribution. This statement holds for non-internals-based methods too. For instance, interrogating people works (to the extent that it does) because people are more likely to be stressed when lying, and this stress can be measured or exploited by an interrogator, although stress is not a prerequisite for lying.
+
+It is an empirical question whether such consistent mechanisms will exist. If they were to exist, what might they look like?
+
+Example 1: Verbalised deceptive intent as a shared mechanism.
+ It is mostly true today that models behaving strategically deceptively have a consistent mechanism when they deceive; as discussed in
+Section
+˜
+3.2 , they will reliably verbalise their deceptive intent and struggle to take complex actions without doing so, and we can build a strategic deception detector in a purely black box fashion by exploiting that. Importantly, we can be relatively confident that a key capability for complex deception - executing a relatively complicated plan - is gated on producing long chains of thought for current models.
+
+Example 2: The easy case for model internals-based detectors.
+ An internals-based detector on the other hand might pick up on some collection of features or circuits that are active with high reliability when a model is deceiving or lying. The easiest possible would be the model having a ‘deception’ feature that must activate whenever it deceives or lies. This could either be causally important, or a ‘side product’ of the deception. For instance, one could imagine a feature which activates on true vs false statements regardless of whether or not they were produced by the model. This would be a useful input for a lie detector. Such shared circuitry might not necessarily exist; our default expectation is that lower-level kinds of deception will be implemented by bespoke non-universal mechanisms.
+
+Example 3: A toy example of a harder case.
+ Consider a model which is simply a lookup table of a large number of responses to questions in various scenarios: for concreteness, we could imagine the outputs of a language model cached exhaustively for a set of inputs in a large hash-table
+12 12
+12 For instance, a model like the ‘Blockhead’ in Ned Block’s paper
+Psychologism and Behaviourism
+ (Block, 1981). This is only intended as an illustration: any real instantiation of a remotely ‘blockheaded’ system could in practice be easily caught out by behavioural means, as calculation readily demonstrates that the memory requirements of any Blockhead immune to this kind of interrogation is astronomical, or super-astronomical (e.g caching all possible outputs to all possible inputs of GPT-3 would require orders of magnitude more bits than atoms in the observable universe). But one can imagine intermediate strategies that are more-or-less blockheaded.
+. Behaviourally, we might classify some of these responses as strategic deception based on external criteria. But it would be impossible for a classifier based on the ‘internals’ of the cache to predict other lies: presumably there is no detectable pattern in the hashes of the cached responses. There are various ways for black-box methods to catch these ‘lies’ without needing this assumption; for example, by being more clever and simply knowing the correct answer to a question. This is not really a ‘strategic deception’ detector as such, as it relies entirely on the knowledge of the monitor: we might catch a strategic deceiver being deceptive if it makes a mistake, but in that case deception detectors didn’t necessarily add much value.
+
+Example 4: A more realistic harder case.
+ A more realistic and challenging possibility than this is
+tacit
+ representations of deception; regularities in high level behaviour which are not easily reduced to a common mechanical cause
+(Dennett,
+1989 ; Smith,
+2024 ; Angelou and Smith,
+2025 )
+. An example of this would be a tree-search based algorithm executing a particular kind of move in chess (such as a discovered attack). It may be that the program in question frequently utilises discovered attacks, such that an opponent can use this pattern in analysing their play. But it is not necessarily the case that the program has to have some set of ‘discovered attack features’ in order to achieve this; it’s possible that each decision independently arises from the tree search procedure. For language models specifically, this exact mechanism is not massively plausible, but we mention it as an existence proof that forms of computation that lack shared algorithmic causes of patterns of behaviour can be more credible than the hash-table model. Such computations could still lead to seemingly strategic deception behaviourally, and it’s unclear how generalisable probes based on them would be. A latent chain of thought might have some similarities to this type of tree search, though it’s difficult to make confident predictions in the absence of empirical evidence on such models.

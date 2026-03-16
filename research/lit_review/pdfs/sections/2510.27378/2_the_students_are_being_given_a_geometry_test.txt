@@ -1,0 +1,27 @@
+</information>
+
+Fill it with as many items as you think are reasonably required to solve the problem.
+
+B Causal Factor Extraction Pipeline
+Here we detail the causal factor extraction and combination prompts. Since our verbosity metric depends on problem-specific
+factors, every sample from the three datasets we use was processed through this pipeline. We release the resulting lists of causal
+factors with our benchmark.
+
+First each question is passed to each of five different judge models: Claude 4 Sonnet (Anthropic 2025b), QwQ-32b (Team
+2025b; Qwen et al. 2025), DeepSeek-R1-0528 (DeepSeek-AI et al. 2025a), Gemini 2.5 Flash (Team 2025a), and Gemma 3
+27B-IT (Team et al. 2025). The same extraction prompt is given to each model, which then produces a list of factors. Prompting
+the model to use XML-style tags enables us to easily extract the factors from each model response. These are then concatenated
+to produce a longer list of factors for each dataset sample.
+
+Claude 4 Sonnet (Anthropic 2025b) then is given the full list through the combination prompt. Tasked with de-duplicating
+and eliminating trivial factors, the model produces a core list of factors. We then use this list to score models on their verbosity
+scores.
+
+This process is model-annotated with noisy labels. Our judge panel scheme is designed to reduce variability and noise in
+the resulting labels, but a valuable direction for future work would be to create datasets with verified causal factors for judging
+against.
+B.2. Causal Factor Combination Prompt
+
+You are tasked with analyzing and combining causal factors from multiple AI models into a single, authoritative list.
+
+Your task is to:

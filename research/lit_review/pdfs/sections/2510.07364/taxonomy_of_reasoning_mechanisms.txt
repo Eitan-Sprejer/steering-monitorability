@@ -1,0 +1,231 @@
+2 Taxonomy of Reasoning Mechanisms
+
+Recent work on thinking models has primarily relied on manual inspection of the model’s reasoning traces to identify the underlying mechanisms it uses to perform reasoning (see
+Section
+˜
+4 ). While insightful, such approaches are inherently subjective and may overlook subtle or distributed reasoning patterns.
+To support our main analysis, we develop an unsupervised, bottom-up methodology to discover human-interpretable reasoning mechanisms in thinking models. Our goal is to construct a taxonomy of reasoning mechanisms that is:
+
+1.
+
+Interpretable:
+ Each reasoning mechanism should be understandable by humans, with a clear description of its cognitive function and role in the reasoning process.
+
+2.
+
+Complete:
+ The taxonomy should cover the full range of types of reasoning steps the model can use, ensuring no significant patterns of reasoning are overlooked in our analysis.
+
+3.
+
+Independent:
+ The categories should correspond to distinct cognitive functions with minimal overlap between different reasoning processes.
+
+2.1 Unsupervised Clustering of Reasoning Mechanisms via High-Level Sparse Autoencoders
+
+Unsupervised methods are essential for building a taxonomy of reasoning mechanisms. They allow us to discover reasoning patterns without imposing pre-existing assumptions about how models reason, which could bias our taxonomy. Clustering algorithms are particularly well-suited as they can identify natural groupings in high-dimensional activation spaces that correspond to distinct reasoning functions.
+
+Sparse Autoencoders (SAEs)
+(Olshausen & Field,
+1997 ; Lee et al.,
+2006 )
+ have gained widespread popularity in recent years due to their ability to decompose Large Language Model (LLM) activations into interpretable features
+(Cunningham et al.,
+2023 ; Bricken et al.,
+2023 ; Templeton et al.,
+2024 )
+.
+Top-K SAEs
+(Makhzani & Frey,
+2014 ; Gao et al.,
+2024 )
+ are a variant that enforces sparsity by keeping only the
+K
+K
+ largest magnitude components of the latent representation, creating a more interpretable and computationally efficient decomposition. In our approach, we use Top-K Sparse SAEs to cluster the sentence-level activations of the model. More details on how Top-K SAEs operate are provided in
+Appendix
+˜
+A
+.
+
+The configuration of our SAE directly matches our hypotheses about reasoning processes. Specifically, the dimension size of the SAE dictionary represents the number of distinct reasoning mechanisms we hypothesize exist in the model’s reasoning process, while the parameter
+k
+k
+ in top-
+k
+k
+ sparsity constrains how many reasoning mechanisms can be simultaneously active in a single sentence. This reflects our hypothesis that each reasoning step typically employs a small number of distinct cognitive operations rather than engaging all possible reasoning mechanisms at once.
+
+Using a restricted decoder space, we force the SAE to learn the subspace components that best explain the variance of our sentence activations, essentially making this a clustering method. While standard configurations in Mechanistic Interpretability typically use much larger latent dimensions than input dimensions
+(Templeton et al.,
+2024 ; Gao et al.,
+2024 )
+, we deliberately restrict the latent dimension to be in the range
+[5,50]
+\left[5,50\right]
+, which is far smaller than the input dimension (e.g.,
+1 ,
+536 1{,}536
+ for Qwen2.5-1.5B). This design choice forces the SAE to identify the most fundamental dimensions of reasoning variation rather than incidental linguistic features. This constraint ensures discovered features correspond to core cognitive operations, with empirical evidence showing that optimal dimensionality consistently falls between
+15 15
+-
+25 25
+ categories across different model architectures.
+
+We train our Top-K Sparse Autoencoders (SAEs) on sentence-level activations extracted from reasoning traces generated on
+12 ,
+102 12{,}102
+ prompts from MMLU-Pro
+(Wang et al.,
+2024 )
+, resulting in
+430 ,
+122 430{,}122
+ sentences. We focus on sentence-level analysis because sentences strike an intermediate abstraction depth that is optimal for reasoning analysis, avoiding the excessive granularity of token-level analysis while maintaining more precision than paragraph-level approaches
+(Bogdan et al.,
+2025 )
+. Prior work has established that different sentences within reasoning traces perform distinct functions
+(Bogdan et al.,
+2025 ; Venhoff et al.,
+2025 )
+, providing computational tractability for attribution and causal analysis across long traces
+(Nye et al.,
+2021 )
+.
+We average activations over sentences under the assumption that each sentence can be primarily classified by one or, at most, three reasoning categories. More details on the training process of SAEs are provided in
+Appendix
+˜
+A
+.
+
+2.2 Taxonomy Evaluation
+
+Figure 2:
+Grid search results
+ comparing the performance of Sparse Autoencoder taxonomies across the five thinking models in our taxonomy evaluation. Each heatmap shows the combined score (average of completeness, independence, and consistency) for different combinations of layer locations (x-axis) and cluster sizes ranging from
+5 5
+ to
+50 50
+ with increments of
+5 5
+ (y-axis). Values highlighted in blue indicate particularly strong performing configurations, while red ones indicate poor-performing configurations. Optimal configurations are typically found in the upper portions of the grid (
+0.70 0.70
+-
+0.80 0.80
+). Despite the common pattern of high scores on large cluster sizes, we find “elbow” scores at cluster sizes between
+10 10
+ and
+20 20
+, suggesting that
+reasoning mechanisms are reasonably well represented using
+𝟏𝟎 \mathbf{10}
+ to
+𝟐𝟎 \mathbf{20}
+ categories
+.
+
+Once we obtain SAE clusters for each model configuration, we need to systematically evaluate the quality of the resulting taxonomy against our stated objectives of interpretability, completeness, and independence. Given that we do not know
+a priori
+ how many clusters are optimal for each model or which layer would best capture the reasoning mechanisms, we need a robust methodology to evaluate and compare different SAE configurations. We implement this evaluation as a scoring system that allows us to identify the most effective taxonomy across different hyperparameter settings. For this evaluation, we used the sentences we collected from the reasoning traces of each thinking model on MMLU-Pro prompts.
+Each potential taxonomy in our work is evaluated through a scoring metric defined as an average of three components:
+completeness
+,
+consistency
+, and
+independence
+.
+
+Interpretable Categories.
+
+To derive human-understandable categories from our Sparse Autoencoder (SAE) representations, we employed an LLM-based interpretability approach. Our SAE-based approach offers a key advantage over direct LLM annotation of reasoning patterns: it provides fully unsupervised discovery of categories without imposing manual or LLM-derived assumptions about what reasoning mechanisms should exist, making it more principled and unbiased. For each identified cluster, we collected
+100 100
+ top exemplar sentences that most strongly activated that particular feature, and
+100 100
+ random sentences from the same cluster. These representative examples were then analyzed using an LLM to identify the precise cognitive function these sentences serve in the reasoning process.
+
+This process generates our list of interpretable reasoning categories with their titles and descriptions, which forms the foundation for our subsequent evaluation metrics. See
+Section
+˜
+B.1
+ for the complete cluster generation prompt and more details.
+
+Consistency.
+
+We measure the consistency of our categories by evaluating how well an LLM can classify individual sentences from within and outside each category using the generated titles and descriptions. For a given cluster, we take the average F1 score across all categories as our overall consistency score.
+
+Completeness.
+
+We measure the completeness of our categories by evaluating the confidence that an LLM has in classifying individual sentences into their assigned categories.
+
+Independence.
+
+We measure the independence of our categories by asking an LLM to evaluate how semantically similar all pairs of categories are in a cluster. This information is then used to calculate the fraction of pairs with similarity below a threshold (
+0.5 0.5
+), equivalently, those with orthogonality above
+0.5 0.5
+, which we consider functionally distinct.
+
+For all these metrics, the higher the value, the better the taxonomy. More details on the prompts and specific implementation are provided in
+Appendix
+˜
+B
+.
+Note that the consistency, completeness, and independence scores are generated by prompting an LLM. Although LLM-as-a-judge is a common practice in current literature, the alignment between our evaluation pipeline and true human judgment remains to be validated.
+
+As mentioned, the final score for a cluster is calculated as the average of the three evaluation metrics, providing a systematic way to evaluate the quality of our taxonomy, and ensuring it effectively captures the full spectrum of reasoning mechanisms while maintaining clear boundaries between categories.
+
+Additionally, this approach enables us to move beyond manual, top-down annotation and instead discover reasoning categories that are both grounded in the model’s internal representations and interpretable to humans. We note that other clustering approaches or manually designed sentence taxonomies would likely work similarly for our purposes, as our main findings depend on the existence of reasoning categories rather than their specific derivation method.
+
+2.3 Taxonomy Results
+
+To evaluate our approach to building interpretable taxonomies, we analyze five models: four DeepSeek-R1 distilled variants:
+Llama-8B
+,
+Qwen-1.5B
+,
+Qwen-14B
+,
+Qwen-32B
+, and one model trained with Reinforcement Learning from Verifier Rewards (RLVR),
+QwQ-32B
+.
+
+The DeepSeek-R1 distilled models are a series of smaller dense models, which have been fine-tuned to mimic the behavior of the full DeepSeek R1 model, a recent
+thinking
+ model that has achieved a similar performance to OpenAI’s o1-preview on the ARC-AGI-Pub dataset
+(Knoop,
+2025 ; Chollet,
+2024 )
+. These distilled models have parameter counts ranging from 1.5B to 70B, implemented on both Qwen and Llama architectures, and their performance matches or exceeds that of leading production models, including GPT-4o
+(OpenAI,
+2024 )
+ and Claude 3.5 Sonnet
+(Anthropic,
+2024 )
+, across several math and coding benchmarks
+(DeepSeek-AI,
+2025 )
+.
+
+The DeepSeek-R1 model itself is trained using a multi-stage process that combines large-scale reinforcement learning (RL) with supervised fine-tuning (SFT).
+Similarly,
+QwQ-32B
+ is a large language model trained with RLVR, which optimizes the model with stepwise signals from automated verifiers rather than outcome-only rewards, explicitly shaping intermediate reasoning. This model is not distilled from DeepSeek-R1, providing a contrast between distillation-driven and verifier-driven reasoning.
+
+We performed an extensive grid search across these five models, using
+6 6
+ distributed layers and cluster sizes (ranging from
+5 5
+ to
+50 50
+ categories with increments of
+5 5
+) to identify the optimal taxonomy configuration. For comparison across configurations, we apply min-max normalization within each model.
+The results are shown in
+Figure
+˜
+2 , and we provide the complete taxonomies for our best-performing SAE configurations in
+Appendix
+˜
+E
+.

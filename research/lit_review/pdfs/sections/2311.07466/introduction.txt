@@ -1,0 +1,121 @@
+1 Introduction
+
+Large language models (LLMs)
+generate answers in various tasks of increasing difficulty, acting as chatbots
+OpenAI (2023); Touvron et al. (2023)
+, as programming
+Chen et al. (2021)
+ or scientific writing assistants
+Taylor et al. (2022)
+. But often enough they behave unintuitively, showing undesirable behaviour:
+They can endorse a user’s misconceptions
+Perez et al. (2023)
+, or generate Chain-of-Thought (CoT)
+Wei et al. (2022)
+ explanations that hide their sensitivity to biasing inputs
+Turpin et al. (2023)
+; they can be insensitive to label correctness in in-context learning
+Min et al. (2022)
+, and can produce correct predictions with irrelevant or misleading prompts
+Webson and Pavlick (2022)
+.
+
+Especially in cases of unintuitive behaviour, explanations for their way of acting would be helpful. Even though LLMs can provide plausibly sounding explanations for their answers, recent work argues that model generated natural language explanations (NLEs) are often unfaithful
+Atanasova et al. (2023); Lanham et al. (2023)
+.
+Obtaining
+faithful
+ explanations that
+accurately reflect the reasoning process of a model
+
+Jacovi and Goldberg (2020)
+ is important for understanding the reasons behind an LLM’s answer, and is instrumental for a
+trustworthy AI. Being able to measure NLE faithfulness is most critical when models provide answers we are unable to judge – whether it is AI uncovering new scientific facts or ChatGPT helping with homework.
+
+Recent works aim to test the faithfulness of NLEs that LLMs produce about their
+own
+ predictions (cf. §
+2.2 ).
+But the studies are hard to compare, as they use both different models and data
+(Tab.
+3 ).
+They test for faithfulness by editing model inputs and measuring whether the prediction changes or stays consistent to the original answer.
+We argue that faithfulness of a NLE is more elusive than what existing tests (including ours) can measure, and that what current tests are measuring is
+self-consistency
+.
+We demonstrate this by comparing all tests (including ours) on the
+same models and data
+, showing that predictions differ widely.
+While existing tests compare output changes resulting from input edits on the surface, we propose a measure that
+does not need input edits
+ and that more closely analyses how model outputs relate to
+how
+ it processes the input.
+
+Overall, our paper contributes the following:
+
+•
+
+We argue (§
+3 ) that current tests that aim to measure NLE faithfulness,
+in reality measure the
+self-consistency of model outputs
+ – without giving insight into a model’s inner reasoning processes.
+
+•
+
+We introduce (§
+4 ) CC-SHAP, a new
+fine-grained and explainable
+self-consistency measure
+
+gauging how well a model’s input contributions align, when it produces a prediction and explanation, and use it
+for post-hoc and CoT explanations.
+
+•
+
+Since we
+cannot
+ obtain ground truth for faithfulness by human judgement, we can only compare the predictions of existing tests (§
+5 ).
+Hence, we are first to
+compare
+ existing tests – including CC-SHAP – on a unified set of models and data after constructing the
+Comparative Consistency Bank (CCB).
+
+In summary, our
+takeaways
+ §
+6 are the following:
+
+•
+
+We argue in §
+3 that existing tests measure self-consistency and not faithfulness. And since they adopt different test scenarios,
+we expect them to make different predictions. Indeed,
+they deliver
+different results
+
+for the same models and data (§
+5 ),
+highlighting the heterogeneity of prior tests that target faithfulness. Given this result, and arguing that current tests do not touch the inner workings of LLMs,
+we stress that the quest for true
+faithfulness metrics
+ remains open.
+
+•
+
+By analysing CCB, we find trends: i) Chat LLMs show higher self-consistency
+than their base variants; ii) CC-SHAP agrees most with Counterfactual Edits; iii) We could not detect, nor exclude a relation between model size and self-consistency.
+
+•
+
+With CC-SHAP we take a small step further towards measuring faithfulness: Prior tests compare outputs
+before and after
+input edits but don’t give
+insight into how changes in the output relate to changes in
+how the LLM processes the input.
+CC-SHAP, by contrast, compares input importances for answer and for explanation generation – without editing inputs.
+Comparing predictions from CC-SHAP to prior tests
+shows that it offers transparency about how inputs (and also possible input modifications)
+influence LLM workings.

@@ -1,0 +1,65 @@
+Limitations
+
+This work focuses on assessing the faithfulness or self-consistency of natural language explanations given by LLMs. The following limitations can be relevant for future work.
+
+Multimodality and Multilinguality
+
+This work assessed the self-consistency of English language-only autoregressive LLMs. Future work could extend the inquiry for model self-consistency to multilingual and multimodal models. During the time until publication of this current work, we have extended our work to
+self-consistency testing of vision and language models (VLMs)
+Parcalabescu and Frank (2024)
+, where we evaluate the self-consistency of 3 VLMs in both post-hoc and CoT explanation settings using CC-SHAP. In this work we also apply other existing language-only self-consistency tests (which are aiming at faithfulness) to a multimodal setting and find that VLMs are less self-consistent than LLMs. This is because for the models,
+image tokens are more important for explanation generation compared to answer generation.
+The difference is even more pronounced in CoT compared to post-hoc explanations.
+These findings prompt further inquiry into the explainability of multimodal models.
+
+Compute Requirements
+
+CC-SHAP needs around 4 minutes to compute self-consistency per example. This is more than some of the existing faithfulness / self-consistency tests that require just two model inferences (e.g.,
+Biasing Features
+
+Turpin et al. (2023)
+). However, our measure is comparable in runtime to other tests, i.a.
+Paraphrasing
+ (Corrupting CoT
+Lanham et al.,
+2023 ) needs 3 minutes per sample, since the helper model needs to paraphrase the CoT, which
+is time-consuming. But we argue that CC-SHAP’s compute time is well invested, since i) our measure is more effective: it does not require semantic evaluation (which is still unsolved and adds further time and compute);
+in addition ii) it adds an element of interpretability as it analyses model predictions in terms of token contributions – unlike other surface-oriented methods.
+
+Standard Deviation of our Results
+
+We ran each test (i.e., existing ones and CC-SHAP) on 5 tasks using 11 models, providing 100 different samples per task, due to a notable computational run-time requirement of these tests with large language models of tens of billions of parameters. Evaluating
+all tests
+ for one model on one task takes from 6 hours to around 36 hours, depending on the model size and on the average input sequence length of the task. The prior work tested far fewer models (Table
+3 ) on as few as 330 examples per task. To estimate the
+standard deviation
+ of
+all tests
+, we ran the tests 3 times on the 100 examples of the ComVE task for a subset of 7 models. Running all tests on all models and data multiple times to estimate the variance for each of the tests, tasks and models would have been computationally very costly without much more insight. The results in App.
+A.7
+ Fig.
+3 show that existing tests have a large standard deviation, because models generate different explanations in each run – due to the randomness in the generation process induced by the sampling method. The result of the tests is affected by the content of these different generations: e.g., i) it is important for some tests that the explanation does (not) mention certain words, or ii) CoT tests account for the final prediction, which in turn depends on the CoT generation that varies between runs.
+CC-SHAP is more robust and shows very low standard deviation of faithfulness measurements
+ because even when the generations between runs are different, the input contributions are almost equal.
+
+No Human Study
+
+As posited by
+Jacovi and Goldberg (2020)
+, per definition, “faithfulness should not involve human-judgement on the quality of interpretation, […]” as “humans cannot judge if an interpretation is faithful or not; if [they did], the explanation would be unnecessary”
+Lyu et al. (
+2022b
+)
+.
+Also,“faithfulness evaluation should not involve human-provided gold labels (for the examples to be explained). A faithful explanation method should be able to explain any prediction of the model, regardless of whether it is correct or not”
+Lyu et al. (
+2022b
+)
+.
+This is contrary to plausibility, where human judgement is key. But “when we observe that an explanation is implausible in human terms, there can be two possibilities: (a) the model itself is not reasoning in the same way as humans do, or (b) the explanation is unfaithful”
+Lyu et al. (
+2022b
+)
+.
+
+A human judgement of model faithfulness would require that humans have an understanding of the model’s inner workings. But we do not know how 7 billion parameters interact with each other to make a prediction based on one input. Given our current state of LLM understanding, a human study of model faithfulness is impossible.

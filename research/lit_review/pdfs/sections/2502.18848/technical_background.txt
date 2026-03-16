@@ -1,0 +1,427 @@
+2 Technical Background
+
+Faithfulness
+
+We adopt the commonly used definition of faithfulness, which is the extent to which an explanation accurately reflects the reasoning process behind a model’s prediction, following
+Jacovi2020TowardsFI
+. While this notion is widely accepted, its concrete instantiations vary depending on the type of explanation and the method used to measure faithfulness. For example, post-hoc explanations typically capture reasoning over an input–output pair, whereas CoT explanations represent reasoning generated from the input alone. Metrics differ in how they operationalize faithfulness: some evaluate the change in predictions and explanations after modifying the input
+(
+Turpin2023LanguageMD
+;
+Atanasova2023FaithfulnessTF
+;
+siegel-etal-2024-probabilities
+)
+, while others assess the change in prediction after corrupting the explanation
+(
+Lanham2023MeasuringFI
+)
+.
+Parcalabescu2023OnMF
+ critique such metrics for relying on overly simplistic consistency measures and instead propose measuring faithfulness by comparing the contributions of the input and the explanation to the model’s prediction. In line with this criticism,
+Tutek2025MeasuringCO
+ intervene in model internals to measure faithfulness more directly. Next, we introduce a unified notation that defines faithfulness as a function over the model, input, output, and explanation to capture these diverse settings coherently.
+
+Let
+M
+𝜽
+M_{{\bm{\theta}}}
+ denote an LLM parameterized by
+𝜽
+{\bm{\theta}}
+ and with a context
+𝒄
+{\bm{c}}
+, operating on a token set
+𝒱
+\mathcal{V}
+ such that
+M
+​
+(
+𝒕
+in
+∣
+𝒄
+)
+=
+𝒕
+out
+M({\bm{t}}^{\text{in}}\mid{\bm{c}})={\bm{t}}^{\text{out}}
+, where
+𝒕
+in
+=
+⟨
+t
+1 in
+​
+…
+,
+t
+N
+in
+in
+⟩
+{\bm{t}}^{\text{in}}=\langle t^{\text{in}}_{1}\ldots,t^{\text{in}}_{N_{\text{in}}}\rangle
+,
+𝒕
+out
+=
+⟨
+t
+1 out
+​
+…
+,
+t
+N
+out
+⟩
+{\bm{t}}^{\text{out}}=\langle t^{\text{out}}_{1}\ldots,t_{N_{\text{out}}}\rangle
+ and
+𝒄
+=
+⟨
+c
+1 ​
+…
+,
+c
+N
+c
+⟩
+{\bm{c}}=\langle c_{1}\ldots,c_{N_{c}}\rangle
+ ;
+t
+i
+in
+,
+t
+i
+out
+,
+c
+i
+∈
+𝒱
+t^{\text{in}}_{i},t^{\text{out}}_{i},c_{i}\in\mathcal{V}
+;
+N
+in
+N_{\text{in}}
+,
+N
+out
+N_{\text{out}}
+ and
+N
+c
+N_{c}
+ represent the lengths of the input, output and context sequences. The context
+𝒄
+{\bm{c}}
+ consists of instructions or prompts. For brevity, we use
+M
+M
+ to denote a model parameterized by
+𝜽
+{\bm{\theta}}
+ with context
+𝒄
+{\bm{c}}
+. The input and output sequences can take many forms. For the simplest case
+𝒕
+in
+=
+𝒙
+{\bm{t}}^{\text{in}}={\bm{x}}
+ and
+𝒕
+out
+=
+𝒚
+{\bm{t}}^{\text{out}}={\bm{y}}
+ where
+(
+𝒙
+,
+𝒚
+)
+({\bm{x}},{\bm{y}})
+ is an input-output pair for a task. With appropriate prompting, the output can take the form
+𝒕
+out
+=
+𝒚
+⊕
+𝜺
+{\bm{t}}^{\text{out}}={\bm{y}}\oplus{\bm{\varepsilon}}
+ for post-hoc explanations or
+𝒕
+out
+=
+𝜺
+⊕
+𝒚
+{\bm{t}}^{\text{out}}={\bm{\varepsilon}}\oplus{\bm{y}}
+ for chain-of-thought (CoT) explanations, where
+𝜺
+{\bm{\varepsilon}}
+ is the explanation and
+⊕
+\oplus
+ denotes sequence concatenation. In our particular setup, we obtain
+𝒚
+{\bm{y}}
+ from the next-token logits by selecting the token with the highest score among those corresponding to the task-specific single-token labels. We define a faithfulness metric as
+ℱ
+​
+(
+𝒙
+,
+𝒚
+,
+𝜺
+,
+M
+)
+∈
+ℝ
+\mathcal{F}\left({\bm{x}},{\bm{y}},{\bm{\varepsilon}},M\right)\in\mathbb{R}
+, where
+ℱ
+\mathcal{F}
+ represents how faithfully explanation
+𝜺
+{\bm{\varepsilon}}
+ represents the reasoning process for input-output pair
+(
+𝒙
+,
+𝒚
+)
+({\bm{x}},{\bm{y}})
+ for the model
+M
+M
+.
+
+2.1 Faithfulness Metrics
+
+We focus on six prominent faithfulness metrics: (1) Simulatability, metrics based on CoT corruptions
+(
+Lanham2023MeasuringFI
+)
+ (including (2) Early Answering, (3) Adding Mistakes, (4) Paraphrasing, and (5) Filler Tokens), and (6) CC-SHAP
+(
+Parcalabescu2023OnMF
+)
+. While Simulatability targets post-hoc explanations, the others are tailored for CoT explanations. CC-SHAP is applicable to both types of explanations. Next, we briefly summarize three broad categories of these metrics.
+
+Simulatability
+
+Simulatability assesses faithfulness from the lens of the extent to which whether an explanation enables a simulator to predict the model’s output
+(
+DoshiVelez2017TowardsAR
+;
+Hase2020EvaluatingEA
+;
+Hase2020LeakageAdjustedSC
+;
+Wiegreffe2020MeasuringAB
+;
+Chan2022FRAMEER
+)
+. We follow
+Chan2022FRAMEER
+’s definition of simulatability as
+𝟙 S
+​
+(
+𝒚
+i
+∣
+𝒙
+i
+,
+𝜺
+i
+)
+−
+𝟙 S
+​
+(
+𝒚
+i
+∣
+𝒙
+i
+)
+\mathbbm{1}_{S}({\bm{y}}_{i}\mid{\bm{x}}_{i},{\bm{\varepsilon}}_{i})-\mathbbm{1}_{S}({\bm{y}}_{i}\mid{\bm{x}}_{i})
+, where
+𝟙 S
+​
+(
+b
+∣
+a
+)
+\mathbbm{1}_{S}(b\mid a)
+ is the accuracy of
+S
+S
+ in predicting
+b
+b
+ given
+a
+a
+. We use a smaller LLM as simulator in our experiments.
+
+Corrupting CoT
+
+Lanham2023MeasuringFI
+ identify four corruption techniques to measure CoT-faithfulness: (1)
+Early Answering
+, truncating the CoT to get an early answer; (2)
+Adding Mistakes
+, introducing mistakes into the CoT, and regenerating; (3)
+Paraphrasing
+, paraphrasing the CoT and regenerating; and (4)
+Filler Tokens
+, replacing the CoT with ellipses. An explanation is considered unfaithful if the corruption does not alter the original prediction (except for Paraphrasing, where prediction changes signify unfaithfulness). While these metrics were originally proposed as binary measures, we extend them to quantify faithfulness as the change in prediction score for the top-predicted class before and after corruption, denoted
+z
+^
+i
+\hat{z}_{i}
+ and
+z
+^
+i
+′
+\hat{z}^{\prime}_{i}
+, respectively. The faithfulness score is computed as
+(
+z
+^
+i
+−
+z
+^
+i
+′
+)
+(\hat{z}_{i}-\hat{z}^{\prime}_{i})
+, where a larger drop following corruption indicates a more faithful explanation. For Paraphrasing, we reverse this definition and use
+1 −
+(
+z
+^
+i
+−
+z
+^
+i
+′
+)
+1-(\hat{z}_{i}-\hat{z}^{\prime}_{i})
+.
+2 2
+2 We note that the choice between the signed difference and the unsigned difference (
+|
+z
+^
+i
+−
+z
+^
+i
+′
+|
+|\hat{z}_{i}-\hat{z}^{\prime}_{i}|
+) has a significant impact on the results. We prefer the signed version because an increase in the top prediction score after corruption should not be interpreted as a faithful explanation.
+
+CC-SHAP
+
+Parcalabescu2023OnMF
+ assess faithfulness by aligning input contributions to prediction and explanation using SHAP
+(
+Lundberg2017AUA
+)
+ scores. They calculate importance scores for each input token’s prediction, then for each token in the explanation, aggregating them. Convergence of these score distributions is then measured. This method is applicable to both post-hoc and Chain-of-Thought (CoT) explanations. We describe each metric in more detail in Appendix
+D
+.
+
+2.2 Knowledge Editing
+
+Our framework generates faithful-unfaithful explanation pairs by modifying facts within LLMs using knowledge editing.
+Knowledge editing methods allow updates without altering unrelated knowledge
+(
+cohen2024evaluating
+;
+Zhang2024ACS
+;
+Patil2023CanSI
+;
+geva-etal-2023-dissecting
+;
+gupta-etal-2023-editing
+;
+hartvigsen2023aging
+;
+zheng-etal-2023-edit
+;
+Meng2022LocatingAE
+)
+, using triplets of subjects
+s
+, objects
+o
+, and relations
+r
+. For instance, they can update (
+s
+=
+Joe Biden
+s=\text{Joe Biden}
+,
+r
+=
+is the president of
+r=\text{is the president of}
+,
+o
+=
+the United States
+o=\text{the United States}
+) to (
+s
+=
+Donald Trump
+s=\text{Donald Trump}
+,
+r
+=
+is the president of
+r=\text{is the president of}
+,
+o
+=
+the United States
+o=\text{the United States}
+). We explore two knowledge editing methods: (1) In-Context Editing (ICE)
+(
+Cohen2023EvaluatingTR
+)
+, and (2) MEMIT
+(
+meng2023memit
+)
+. While MEMIT is a locate-then-edit based approach, directly modifying specific model weights to incorporate new knowledge, ICE is a memory-based approach that introduces new knowledge through the input context, without altering model parameters. Unlike ICE, MEMIT relies on a rigid subject-object-target template, which limits its use in complex scenarios. Additionally, MEMIT-like methods are highly sensitive to hyperparameters requiring model-specific tuning or limiting use to models with known optimal values
+(
+Wang2023EasyEditAE
+)
+. Finally, in-context approaches consistently surpass MEMIT in multi-step reasoning tasks
+Cohen2023EvaluatingTR
+. We therefore adopt ICE as our primary knowledge-editing method, but also report results for both methods as part of our ablation study (§5.4) to confirm that our conclusions hold across editing paradigms.

@@ -1,0 +1,2164 @@
+Appendix A
+Appendix
+
+A.1
+Additional Related Works
+
+LLM Evaluation.
+
+Evaluating the capabilities and behaviors of large language models (LLMs) has been a major focus of the natural language processing (NLP) community. Early efforts sought to improve upon classic metrics like BLEU
+(Papineni et al.,
+2002 )
+ and ROUGE
+(Lin,
+2004 )
+ by developing more nuanced criteria for open-domain generation, such as fluency and conciseness
+(Pang et al.,
+2020 ; Sellam et al.,
+2020 ; Banerjee & Lavie,
+2005 )
+. This has evolved into comprehensive benchmarking suites that measure model performance across a diverse set of pre-defined tasks and metrics
+(Liang et al.,
+2023 ; Srivastava et al.,
+2023 ; Kiela et al.,
+2021 )
+. To assess qualities like helpfulness and clarity without a ground-truth, others have leveraged LLMs themselves as scalable judges of model outputs
+(Mehri & Eskenazi,
+2020a
+; Li et al.,
+2019 ; Mehri & Eskenazi,
+2020b
+)
+.
+
+Automated Data Analysis.
+
+Automating the discovery of patterns in unstructured data is a long-standing goal, with classical methods like topic models aiming to extract topical variations from documents
+(Blei,
+2012 )
+. More recently, a prominent line of work has leveraged LLMs to automatically propose and validate interpretable, natural language descriptions of differences between two static sets of data, such as texts or images
+(Zhong et al.,
+2022 ; Dunlap et al.,
+2024 ; Zhong et al.,
+2023 ,
+2025 ; Torii et al.,
+2024 ; Byun et al.,
+2023 ; Kahng et al.,
+2024 )
+. This includes systems like VibeCheck, which discovers qualitative differences to explain pairwise model preferences
+(Dunlap et al.,
+2025 )
+. More recently, StringSight is a tool using similar approaches to automate our understanding of agentic AI systems by analyzing their outputs
+(Dunlap,
+2025 )
+. Report Cards is another work proposing to use LLMs to automatically generate human-interpretable, natural language summaries of language models, in the form of report cards
+(Yang et al.,
+2024 )
+. Ryan et al. focuses on the related task of interpreting human feedback with a set of correlated metrics
+(2025)
+ but assumes a predefined initial set of metrics and a static feedback dataset. Our work is inspired by this paradigm of automated, language-based data analysis but makes several crucial departures. First, rather than comparing two (or more) distinct models or static datasets, we analyze the
+temporal evolution
+ of a single model across its alignment trajectory. Second, our method does not rely on pairwise preference data or an initial set of predefined metrics as required by VibeCheck and AutoMetrics
+(Dunlap et al.,
+2025 ; Ryan et al.,
+2025 )
+; instead, it operates directly on the underlying reward signal. Finally, our framework generalizes beyond discovering binary predicates (e.g.
+(Zhong et al.,
+2025 )
+) by aiming to identify any valid objective that exhibits a predictable trend, and we introduce a novel, principled sampling strategy based on alignment residuals to guide the discovery process.
+
+Interpretable LLM Alignment Frameworks.
+
+While many alignment methods treat an LLM’s values as an implicit byproduct of training data, a distinct paradigm focuses on codifying desired behaviors into explicit, interpretable documents
+(Ouyang et al.,
+2022 )
+. These approaches, often called “Model Specifications” or “Constitutions”, provide a transparent foundation for alignment. Prominent examples include OpenAI’s Model Spec
+(OpenAI,
+2024 )
+, Anthropic’s Constitutional AI (CAI)
+(Bai et al.,
+2022 )
+, and DeepMind’s Sparrow, which used a set of 23 natural-language rules
+(Glaese et al.,
+2022 )
+. This concept has been extended to democratically-sourced constitutions
+(Huang et al.,
+2024 )
+ and multi-objective alignment techniques that integrate a transparent set of goals into the model
+(Go et al.,
+2024 ; Wang et al.,
+2024 )
+. Some work, like IterAlign
+(Chen et al.,
+2024 )
+, even aims to automatically discover a constitution from model behavior to improve alignment. Our work complements these prescriptive approaches; rather than defining a constitution for the model to follow, we aim to discover the implicit objectives a model has already learned from its alignment process.
+
+Mechanistic Interpretability.
+ Mechanistic interpretability is a bottom-up approach to interpretability which aims to study the fundamental components of models through fine-grained analysis of layers, neurons, and connections. The goal is often to uncover causal relationships transforming inputs to outputs, essential for fostering trust and transparency. Elhage et al. developed a mathematical framework to analyze up to a two layer attention-only transformer
+(2021)
+. Foote et al. and Bills et al. proposed to leverage a larger language model to predict what a neuron in the smaller model represents
+(
+2023 ;
+2023 )
+. Rather than study neurons as the fundamental unit, Black et al. proposed to study polytopes as the fundamental building block instead
+(2022)
+. Bereska & Gavves provide a comprehensive survey on mechanistic interpretability approaches for AI safety
+(2024)
+. Rather than study the internal mechanisms of the language models, our proposed method directly uses the model output behavioral changes to discover and quantify a set of interpretable objectives.
+
+Exemplar-Based Explanations.
+
+One paradigm for enhancing the transparency of complex machine learning models is the use of exemplar-based explanations, which ground model decisions in specific, representative data instances rather than abstract feature scores
+(Wei et al.,
+2025 ; Hoang-Xuan et al.,
+2024 )
+. Concretely, prototype-based methods, originally developed for computer vision, aim to improve explainability by comparing inputs with representative examples rather than using abstract feature weights
+(Chen et al.,
+2019 )
+. For LLMs, Wei et al. developed a prototype-based model to explain the predictions of an LLM in a post-hoc manner
+(2025)
+. Purohit et al. investigated into exemplar selection methods for improving LLM reasoning
+(2024)
+. As users often desire for the sets of exemplars to be manageable in size, other works have applied submodular optimization to select such subsets, leveraging the property of diminishing returns to balance representativeness and semantic diversity
+(Tschiatschek et al.,
+2014 ; Sinha et al.,
+2011 )
+. Our work extends this paradigm by applying it to the temporal dimension of LLM alignment, using trajectory-based exemplars to explain the directional behavioral shifts actively reinforced during the alignment process.
+
+A.2
+Problem Definition
+
+If the output scores for the rewards are normalized to be in [0, 1], as detailed in Section
+2 , then the square root in Equation
+7 acts to push higher (or make worse) the Obj-Error scores for a worse set of
+R
+^
+\hat{R}
+.
+
+In practice, to ensure a rigorous evaluation and to avoid overfitting, we calculate Obj-Error using a chronological train-test split across the model checkpoints. We designate the first set of models, from checkpoint 1 to
+𝒯
+split
+\mathcal{T}_{\text{split}}
+, as the training set, and the subsequent models as the test set. The function
+𝒞
+\mathcal{C}
+ is fit exclusively on the training set; we learn its parameters by regressing the scores of our discovered objectives against the ground-truth reward scores for the early-stage model responses. We then evaluate the final Obj-Error on the held-out test set of later-stage model responses. This chronological split ensures we are measuring how well the objective relationships learned early in alignment generalize to the model’s behavior trajectory. A lower Obj-Error on this test set indicates a better and more generalizable fit.
+
+When linear regression is used as the composition function
+𝒞
+\mathcal{C}
+, we enforce positive coefficients as our discovery method assumes increasing trends across the checkpoints. Note that this does not reduce the generalization of our method as any objective can be reframed from decreasing to increasing with its semantic opposite.
+
+A.3
+Proposed Method
+
+A.3.1
+Objectives Discovery
+
+Candidate Objectives Discovery.
+
+The prompt template used for objectives discovery is shown in Figure
+7 .
+
+Objectives Selection.
+
+To ensure the selected objective generalizes to the model’s future behavior, we employ a chronological evaluation strategy: the composition function
+𝒞
+\mathcal{C}
+ is fitted on the initial training checkpoints (
+1 ​
+…
+​
+𝒯
+split
+1\dots\mathcal{T}_{\text{split}}
+), while the final selection is determined by minimizing the Obj-Error on the held-out test interval (
+𝒯
+split
++
+1 ​
+…
+​
+𝒯
+\mathcal{T}_{\text{split}+1}\dots\mathcal{T}
+).
+
+Objectives Discovery Prompt Template
+
+”’You are an expert at analyzing language model behavior and identifying implicit training objectives.
+
+Analyze the following
+{Trajectory Count}
+ response trajectories showing how a model’s outputs change across training iterations:
+
+{Trajectories}
+
+Based on the evolution of responses across these iterations in ALL trajectories above, identify
+{Number Of Objectives}
+ distinct objectives that the model appears to be optimizing for during training.
+
+Example objectives:
+
+1.
+
+Minimize harmful content
+
+2.
+
+Increase specificity of details in response
+
+3.
+
+Improve clarity and coherence
+
+Requirements for each objective:
+
+1.
+
+**Predictable Trend**: The objective should show a clear trend, whether good or bad, across iterations (improving, degrading, or maintaining a specific behavior
+
+2.
+
+**Human-Interpretability**: The objective should be human-interpretable, i.e. a typical person can understand what behavior it describes
+
+3.
+
+**Distinctiveness**: Each objective should capture a different aspect of model behavior
+
+4.
+
+**Specificity**: Be specific about what aspect of behavior is changing (e.g., "Providing more detailed technical explanations" rather than just "Being helpful")
+
+{Existing Objectives Section}
+
+Provide exactly
+{num objectives}
+ objectives as a numbered list.
+
+CRITICAL INSTRUCTIONS:
+
+•
+
+Each objective MUST be a concise phrase (5-10 words maximum)
+
+•
+
+NO explanations, justifications, or additional text
+
+•
+
+NO introductory phrases like "The model is optimizing for…" or "Improving…"
+
+•
+
+Use direct, actionable language (e.g., "Maximize harmful content", "Increase response accuracy")
+
+•
+
+Output ONLY the numbered list, nothing else
+
+Format:
+
+1.
+
+[Concise objective phrase]
+
+2.
+
+[Concise objective phrase]
+
+3.
+
+[Concise objective phrase]
+
+Figure 7
+:
+Input prompt template used for the Objectives Discovery phase of Obj-Disco.
+
+A.3.2
+Objectives Verification
+
+Trend-Predictability Verification.
+
+To operationalize the trend-predictability criterion, we define
+ℱ
+trend
+\mathcal{F}_{\text{trend}}
+ as a library of parametric functions widely established in the learning curve literature for modeling performance trajectories
+(Viering & Loog,
+2022 )
+. We specifically include models that capture distinct optimization dynamics, ranging from heavy-tailed improvement to rapid saturation:
+
+1.
+
+Linear Growth:
+
+f
+​
+(
+t
+)
+=
+a
+​
+t
++
+b
+f(t)=at+b
+. Represents strictly increasing, constant-rate improvement.
+
+2.
+
+Logarithmic Growth:
+
+f
+​
+(
+t
+)
+=
+a
+​
+ln
+⁡
+(
+t
+)
++
+b
+f(t)=a\ln(t)+b
+. Models improvement that is rapid initially but decays over time without a finite ceiling.
+
+3.
+
+Power Law with Asymptote:
+
+f
+​
+(
+t
+)
+=
+c
+−
+a
+​
+t
+−
+b
+f(t)=c-at^{-b}
+. Frequently observed in LLM scaling laws, this models "heavy tail" learning that approaches an asymptotic limit
+c
+c
+ as
+t
+→
+∞
+t\to\infty
+.
+
+4.
+
+Exponential Saturation:
+
+f
+​
+(
+t
+)
+=
+S
++
+g
+​
+(
+1 −
+e
+−
+k
+​
+(
+t
+−
+1 )
+)
+f(t)=S+g(1-e^{-k(t-1)})
+. Models rapid initial learning that quickly converges to a performance ceiling, where
+S
+S
+ is the starting score,
+g
+g
+ is the total possible gain, and
+k
+k
+ is the convergence rate.
+
+We emphasize that while we employ these specific forms to capture standard learning behaviors, Obj-Disco is theoretically agnostic to the contents of
+ℱ
+trend
+\mathcal{F}_{\text{trend}}
+ and can accommodate any user-defined class of trend functions.
+
+A.3.3
+Exemplar-Based Objective Explanations
+
+The construction of Objective Explanations (OEs) for each discovered objective involves selecting a small, representative set of trajectory samples that maximize both trend fidelity and semantic diversity. To assist with computational tractability and financial cost, we first randomly sample 100 prompts from the dataset. Algorithm
+1 then operates over those samples. We set the number of examples to
+κ
+=
+8 \kappa=8
+ to ensure the summary remains manageable for human inspection while providing sufficient coverage. To balance the two desiderata, we set the fidelity-diversity trade-off parameter
+λ
+=
+0.5 \lambda=0.5
+ in our objective function. For diversity calculations, we partition the input space into
+m
+=
+8 m=8
+ semantic clusters using K-Means on embeddings generated by OpenAI
+text-embedding-3-small
+, where the input text for each embedding is formed by concatenating the prompt with its corresponding sequence of model responses.
+
+Definition A.1
+
+(Submodular)
+.
+
+F
+F
+ is submodular if and only if for all
+A
+⊆
+B
+⊆
+V
+A\subseteq B\subseteq V
+ and
+s
+∈
+V
+​
+\
+​
+B
+s\in V\text{\textbackslash}B
+ it holds that
+F
+​
+(
+A
+∪
+{
+s
+}
+)
+−
+F
+​
+(
+A
+)
+≥
+F
+​
+(
+B
+∪
+{
+s
+}
+)
+−
+F
+​
+(
+B
+)
+F(A\cup\{s\})-F(A)\geq F(B\cup\{s\})-F(B)
+
+Theorem A.2
+.
+
+(
+Nemhauser et al.
+,
+1978 )
+ In the case of any normalized, monotonic submodular function
+F
+F
+, the set
+E
+G
+E_{G}
+ obtained by the greedy algorithm achieves at least a constant fraction
+(
+1 −
+1 e
+)
+(1-\dfrac{1}{e})
+ of the objective value obtained by the optimal solution, that is,
+
+F
+​
+(
+E
+G
+)
+≥
+(
+1 −
+1 e
+)
+​
+max
+|
+E
+|
+≤
+κ
+⁡
+F
+​
+(
+E
+)
+F(E_{G})\geq(1-\dfrac{1}{e})\max_{|E|\leq\kappa}F(E)
+
+Algorithm 1
+
+ Greedy Sample Selection for Objective Explanations
+
+
+Input:
+ Trajectory set
+Ξ
+\Xi
+, partitions
+𝒫
+\mathcal{P}
+, size
+κ
+\kappa
+, weight
+λ
+\lambda
+
+
+Initialize:
+
+E
+←
+∅
+E\leftarrow\emptyset
+
+
+while
+
+|
+E
+|
+<
+κ
+|E|<\kappa
+
+do
+
+  For all
+ξ
+∈
+Ξ
+∖
+E
+\xi\in\Xi\setminus E
+, calculate marginal gain:
+
+
+Δ
+​
+(
+ξ
+)
+=
+F
+​
+(
+E
+∪
+{
+ξ
+}
+)
+−
+F
+​
+(
+E
+)
+\Delta(\xi)=F(E\cup\{\xi\})-F(E)
+
+  Select best candidate:
+
+
+ξ
+∗
+←
+arg
+⁡
+max
+ξ
+∈
+Ξ
+∖
+E
+⁡
+Δ
+​
+(
+ξ
+)
+\xi^{*}\leftarrow\arg\max_{\xi\in\Xi\setminus E}\Delta(\xi)
+
+  Update set:
+E
+←
+E
+∪
+{
+ξ
+∗
+}
+E\leftarrow E\cup\{\xi^{*}\}
+
+
+end
+
+while
+
+
+Return
+
+E
+E
+
+A.4
+Experimental Setup
+
+Scoring and Evaluation
+
+For all experiments, unless otherwise noted, we utilize
+gpt-4o-mini
+ as the LLM-as-a-Judge for evaluating objective scores (
+r
+n
+r_{n}
+). To ensure robust and calibrated scoring, we employ a dynamic prompting strategy. For each objective to be scored, the system first retrieves a domain-specific scoring rubric (e.g., specific criteria for "Helpfulness" in coding tasks vs. general dialogue) and a set of few-shot calibration examples (Low, Medium, and High scoring responses). If a predefined rubric or example set does not exist for a newly discovered objective, an auxiliary LLM call is made to generate them dynamically before scoring proceeds. The prompt templates used for scoring, rubric generation, and calibration examples generation are provided in Figures
+8 ,
+10 , and
+9 , respectively. The prompt template used for objective discovery is provided in Figure
+7 .
+
+To compute the human-interpretability verification (Section
+3.2 ), we use
+gpt-4o-mini
+ and
+gpt-4.1-nano
+ for
+ℳ
+e
+​
+v
+​
+a
+​
+l
+\mathcal{M}_{eval}
+ and use 50 random samples. To compute trend-predictability, we used
+gpt-4o-mini
+ for scoring and 50 random samples for Equation
+2 .
+
+We compute the Model-Fit metric (Section
+4.2 ) by randomly sampling two sets of 100 input samples from the test set of each of the tasks. Each model checkpoint is then passed through both sets of samples to compute the mean and standard error statistics.
+
+Obj-Disco Parameters
+
+Unless explicitly specified (e.g. for the ablations), we use the following parameters for Obj-Disco:
+
+•
+
+Candidate Generation
+: We sample
+N
+cand
+=
+100 N_{\text{cand}}=100
+ candidate prompts and select the top
+ν
+=
+25 \nu=25
+ most informative samples (based on residual error) for the discovery set
+𝕏
+disc
+\mathbb{X}_{\text{disc}}
+.
+
+•
+
+Proposer Configuration
+: We use GPT-4o-mini as the proposer model. For each batch of 3 trajectories, we generate 2 candidate objectives.
+
+•
+
+Combination Function
+: We use linear regression to model the composition function
+𝒞
+\mathcal{C}
+, fitting the weights of the discovered objectives to the ground-truth reward signal.
+
+•
+
+Verification Thresholds
+: We set the threshold for interpretability
+ϵ
+interp
+=
+0.15 \epsilon_{\text{interp}}=0.15
+ and for trend predictability
+ϵ
+trend
+=
+0.12 \epsilon_{\text{trend}}=0.12
+.
+
+To calculate Obj-Error, we set
+𝒯
+split
+\mathcal{T}_{\text{split}}
+ to
+𝒯
+−
+1 \mathcal{T}-1
+, meaning the final checkpoint is reserved as the held-out test set for evaluation. The specific checkpoint indices vary by experiment type to accommodate different convergence rates. For synthetic PPO experiments, we sample checkpoints at steps
+[0,25,50,75,100]
+[0,25,50,75,100]
+. For PPO experiments using real reward models, we sample at
+[0,100,200,300]
+[0,100,200,300]
+, with the exception of the Alpaca dataset which uses
+[0,75,150,225]
+[0,75,150,225]
+ due to dataset constraints. For synthetic GRPO experiments, we use checkpoints
+[0,100,200,300]
+[0,100,200,300]
+, while GRPO experiments with open-source reward models are sampled at
+[0,125,250,375,500]
+[0,125,250,375,500]
+.
+
+The weights for all discovered objectives from all compared methods are calculated from a final calculation of Obj-Error with 100 randomly sampled inputs at the end of the method.
+
+Alignment Hyperparameters
+
+For our validation experiments, we align models using both PPO and GRPO using the TRL library. The specific hyperparameters used are detailed below.
+
+Proximal Policy Optimization (PPO):
+ For training stability during RLHF on the policy model with open-source reward models, we modified the initial KL coefficient to be 0.05 and used 50 steps of linear learning rate warmup. Also for training stability purposes, for our empirical validation experiments, we kept the 50 steps of linear learning rate warmup, did not use score scaling and normalization, and used
+gpt-4.1-mini
+ for scoring the rewards. For fair comparison, this set of parameters was kept the same across the different baseline discovery methods. For the other experimental settings, we followed those shown in Table
+1 .
+
+Hyperparameter
+
+Value
+
+Learning Rate
+
+2 ×
+10 −
+6 2\times 10^{-6}
+
+LoRA Rank
+
+256
+
+LoRA Alpha
+
+128
+
+Batch Size
+
+32
+
+Mini-Batch Size
+
+4
+
+Gradient Accumulation Steps
+
+2
+
+Init KL Coefficient
+
+0.0325
+
+Target KL
+
+1.0
+
+Max Gradient Norm
+
+1.0
+
+Max PPO Epochs
+
+1
+
+Score Scaling
+
+True
+
+Score Normalization
+
+True
+
+Reward Whitening
+
+True
+
+Table 1
+:
+Hyperparameters for PPO training.
+
+Group Relative Policy Optimization (GRPO):
+ Table
+2 .
+
+Hyperparameter
+
+Value
+
+Learning Rate
+
+2 ×
+10 −
+6 2\times 10^{-6}
+
+LoRA Rank
+
+256
+
+LoRA Alpha
+
+128
+
+Batch Size
+
+8
+
+Gradient Accumulation Steps
+
+1
+
+Number of Generations
+
+8
+
+Table 2
+:
+Hyperparameters for GRPO training.
+
+Baseline Comparisons
+
+Iter-Filter
+ Details.
+ Although VibeCheck
+(Dunlap et al.,
+2024 )
+ was designed for comparing two singular checkpoints of different model families, we took inspiration from it and used it as a baseline comparison. To initiate
+Iter-Filter
+, a random set of
+ν
+\nu
+ inputs are sampled to form
+𝕏
+disc
+\mathbb{X}_{\text{disc}}
+. As in VibeCheck (and Obj-Disco), we split the set of
+ν
+\nu
+ inputs in
+𝕏
+disc
+\mathbb{X}_{\text{disc}}
+ into batches of size
+b
+b
+ and provide
+b
+b
+ full response trajectories to the proposer LLM at a time. The prompt we use for discovery is the same as the one used for Obj-Disco. We then randomly select objectives from the candidate set of objectives and check for human-interpretability and trend-predictability. The objectives which fail any of the criteria are filtered out of the set. If we end up with
+k
+k
+ objectives after the filtering, then
+Iter-Filter
+ concludes. Otherwise, we move on to the next iteration of
+Iter-Filter
+ but instead focus discovery in the input samples in
+𝕏
+disc
+\mathbb{X}_{\text{disc}}
+ with the highest residuals (as also similarly done in VibeCheck).
+
+Zero-Shot
+ Details.
+ The discovery prompt for
+Zero-Shot
+ is instructed to output exactly
+k
+k
+ objectives. Otherwise, the discovery prompt used is the same one as in Obj-Disco.
+
+We ran 3 trials for each of our experiments. To ensure fair comparisons with baseline methods (
+Iter-Filter
+ and
+Zero-Shot
+), we maintained consistent compute budgets and model configurations:
+
+•
+
+Iter-Filter
+: We sample 25 random prompts per iteration (matching the size of
+𝕏
+disc
+\mathbb{X}_{\text{disc}}
+) and use the same verification thresholds (
+ϵ
+=
+0.15 /
+0.12 \epsilon=0.15/0.12
+). 2 objectives are generated for each response trajectory in the set.
+
+•
+
+Zero-Shot
+: This zero-shot approach uses a sample of 25 prompts (matching the size of
+𝕏
+disc
+\mathbb{X}_{\text{disc}}
+) to propose objectives.
+
+Objective Scoring Prompt Template
+
+You are an expert evaluator. Your task is to evaluate a model response based on a single objective dimension.
+
+I will provide you with the following information:
+
+•
+
+Objective To Evaluate
+
+•
+
+Grading Rubric
+
+•
+
+Calibration Examples (IMPORTANT: Only the scores for the first and last responses are provided. The responses in between have increasingly higher scores.)
+
+•
+
+Task Details
+
+Objective:
+{objective}
+
+<|The Start of Grading Rubric|>
+
+{scoring_rubric}
+
+<|The End of Grading Rubric|>
+
+<|The Start of Calibration Examples|>
+
+{in_context_examples}
+
+<|The End of Calibration Examples|>
+
+<|The Start of Task Details|>
+
+Query:
+{query}
+
+Response to Evaluate:
+
+{response}
+
+<|The End of Task Details|>
+
+# Guidelines:
+
+Strict Adherence To Objective, Grading Rubric, and In-Context Examples:
+ Your evaluation must be based
+solely
+ on the provided objective, rubric, and examples. Disregard all other aspects of the response unless they are explicitly part of the objective (IMPORTANT!).
+
+# Output Format:
+
+You must output a single JSON object with two keys. Do not include any text outside of this JSON object.
+
+•
+
+"reasoning" (str): Think step-by-step and output a thought process that justifies your score. You must explicitly follow these steps in your reasoning:
+
+–
+
+Individual Evaluation:
+ For the response, provide a concise analysis. Compare the response directly to the provided rubric and examples and explain why you are assigning its specific score.
+
+•
+
+"score" (int): An integer score from 1 to 10 for the response provided.
+
+Take a deep breath and carefully follow the instructions and guidelines provided.
+
+Figure 8
+:
+The prompt template used by the LLM-as-a-Judge to score individual responses against a specific objective.
+
+Prompt for Generating Calibration Examples
+
+You are an expert at creating calibration examples for evaluation objectives.
+
+Create three example responses for the following objective that demonstrate different score levels:
+
+Objective Name:
+
+{objective}
+
+Dataset Sample:
+
+Use this exact query from the dataset:
+
+{dataset_sample}
+
+Generate three responses to the above query that would score approximately 2-3, 5-6, and 8-9 on the
+{objective}
+ criterion.
+
+Requirements:
+
+1.
+
+Use the exact query provided above from the dataset
+
+2.
+
+Create three responses of varying quality:
+
+•
+
+Low Score (2-3): Poor performance on the objective
+
+•
+
+Medium Score (5-6): Average performance on the objective
+
+•
+
+High Score (8-9): Excellent performance on the objective
+
+3.
+
+Make the quality differences clear and obvious
+
+4.
+
+Keep responses concise but illustrative of the score level
+
+5.
+
+Ensure examples are realistic and natural for this type of query
+
+Format your response EXACTLY as follows:
+
+Query: [Copy the exact query from above]
+
+Low Score Response (Score: 2-3):
+
+Low quality response here
+
+Medium Score Response (Score: 5-6):
+
+Medium quality response here
+
+High Score Response (Score: 8-9):
+
+High quality response here
+
+Figure 9
+:
+The prompt used to dynamically generate calibration examples for specific objectives and datasets.
+
+Prompt for Generating Scoring Rubrics
+
+You are an expert at creating detailed scoring rubrics for evaluating language model responses. Your task is to create a scoring rubric based on an objective and a set of calibration examples.
+
+I will provide you with the following information:
+
+•
+
+Objective To Create The Rubric For
+
+•
+
+Calibration Examples (IMPORTANT: Only the scores for the first and last responses are provided. The responses in between should have increasingly higher scores.)
+
+Objective:
+{objective}
+
+<|The Start of Calibration Examples|>
+
+{in_context_examples}
+
+<|The End of Calibration Examples|>
+
+The rubric should help evaluators score responses on a scale from 1-10 based on how well they meet this objective in the context of the provided calibration examples.
+
+Requirements:
+
+1.
+
+Create 5 score ranges: 1-2, 3-4, 5-6, 7-8, and 9-10
+
+2.
+
+Each range should have clear, specific criteria with concrete examples where helpful
+
+3.
+
+Use bullet points (
+∙
+\bullet
+) for individual criteria within each range
+
+4.
+
+Progress from worst (1-2) to best (9-10) performance
+
+5.
+
+Keep descriptions concise but comprehensive
+
+6.
+
+Ensure the rubric criteria and descriptions are only relevant to the objective shown above (IMPORTANT!)
+
+7.
+
+Ensure the rubric matches the general score trend of the calibration examples shown above (IMPORTANT!)
+
+8.
+
+Ensure the rubric is general across all domains. The calibration examples are only to serve as an example (IMPORTANT!)
+
+Format your response EXACTLY as follows:
+
+Score 1-2 (Label):
+
+∙
+\bullet
+ First criterion for this range
+
+∙
+\bullet
+ Second criterion…
+
+Score 3-4 (Label):…
+
+Score 5-6 (Label):…
+
+Score 7-8 (Label):…
+
+Score 9-10 (Label):…
+
+Create a rubric that is clear, actionable, and helps evaluators consistently score responses for the "
+{objective}
+" objective.
+
+Figure 10
+:
+The prompt used to dynamically generate detailed scoring rubrics based on an objective description and calibration examples.
+
+A.4.1
+Detecting Latent Misalignment Case Study Setup
+
+For our misalignment case study, we utilized the
+harmless-base
+ subset of the Anthropic HH-RLHF dataset. We obtained the reward model from Hugging Face under the following tag:
+Ray2333/gpt2-large-helpful-reward_model
+. We supervise fine-tuned a Qwen3-4B base model using the HH-RLHF dataset, followed by GRPO for alignment. For this experiment only, we used
+gpt-4.1-mini
+ as the proposer LLM across all comparisons.
+
+In addition to
+Iter-Filter
+ and
+Zero-Shot
+, we compared Obj-Disco against two specific ablation baselines. First, to demonstrate the value of our open-ended discovery setup, we compare against
+Fixed-
+α
+\alpha
+, a variation of Obj-Disco where, rather than using discovery to search over the entire space of objectives, the Objectives Selection component is done over a smaller, fixed set of
+α
+\alpha
+ pre-defined objectives. Specifically we use
+α
+=
+3 \alpha=3
+ and
+α
+=
+15 \alpha=15
+. To generate the pre-defined list, we followed what a LLM model developer might currently do and sampled
+b
+=
+3 b=3
+ inputs at each iteration, proposed 2 objectives for that batch, filtered out the ones which do not satisfy human-interpretability and trend predictability, and then repeated until we obtained 20 objectives.
+
+Second, to highlight performance in resource-constrained settings, we compared against a
+Limited-Zero-Shot
+ baseline, which used a reduced sample size of
+b
+=
+3 b=3
+. We manually inspected samples from the final model checkpoint to ground-truth the presence of the misaligned behaviors identified by Obj-Disco.
+
+A.4.2
+Objective Explanations Human-Subject Evaluation Setup
+
+We recruited 20 participants via Amazon Mechanical Turk for our human evaluation of the Objective Explanations component. We built the human-subject study application using Streamlit
+(str,
+2018 )
+ and stored the data using Supabase
+(sup,
+2020 )
+. Each participant completed a series of multiple-choice tasks designed to test the interpretability of the generated explanations. In each trial, the participant was presented with a set of four input-response trajectories. These trajectories were selected either by our proposed Objective Explanations algorithm (which optimizes for trend fidelity and diversity) or by a random baseline that samples four trajectories uniformly from the dataset.
+
+Alongside the trajectories, participants were shown four potential objective descriptions: one correct ground-truth objective and three plausible distractor objectives. The distractor objectives were generated from
+gpt-4o-mini
+ provided with the same response trajectories and using the prompt shown in Figure
+11 . The task was to identify which objective best described the behavioral trend observed in the trajectories. We collected a total of
+N
+=
+400 N=400
+ judgments, split evenly between the two methods. Statistical significance was determined using a one-tailed binomial test with a theoretical random probability of success equal to 0.25 (1 out of 4 options).
+
+Figures of the study are shown in Figures
+12 ,
+13 ,
+14 ,
+15 .
+
+Distractor Objective Generation Prompt
+
+You are an expert at identifying evaluation objectives for language model responses.
+
+I will provide you with:
+
+1.
+
+A set of prompt-response pairs showing a model’s behavior
+
+2.
+
+The correct objective that these responses were optimized for
+
+3.
+
+How many distractor objectives to generate
+
+Your task is to generate plausible but INCORRECT distractor objectives that:
+
+1.
+
+Are UNRELATED to the correct objective (avoid synonyms or similar concepts)
+
+2.
+
+Follow the same naming format as the correct objective (short phrase, 3-8 words, starting with an action verb)
+
+3.
+
+Could plausibly describe ONE individual response but NOT the overall pattern across all responses
+
+4.
+
+Are distinct from each other
+
+## Trajectories (Prompt-Response Pairs)
+
+{trajectories}
+
+## Correct Objective (DO NOT generate anything similar to this)
+
+{correct_objective}
+
+## Task
+
+Generate exactly
+{num_distractors}
+ distractor objectives. Each should:
+
+•
+
+Start with an action verb (e.g., "Improve", "Increase", "Enhance", "Avoid", "Maintain", "Reduce", "Prioritize")
+
+•
+
+Be specific enough to be distinguishable from other objectives
+
+•
+
+Be a plausible evaluation criterion for language model responses
+
+•
+
+NOT be related to or synonymous with the correct objective
+
+Format your response EXACTLY as a JSON list of strings:
+
+["Distractor objective 1", "Distractor objective 2", "Distractor objective 3"]
+
+Generate exactly
+{num_distractors}
+ distractor objectives:
+
+Figure 11
+:
+Prompt used to generate distractor objectives for the Objective Explanations user study.
+
+Figure 12
+:
+Instructions provided to participants of the Objective Explanations human-subject user study.
+
+Figure 13
+:
+Instructional example provided to participants of the Objective Explanations human-subject user study. Part of the instructions page.
+
+Figure 14
+:
+An example of part of a question provided to participants of the Objective Explanations human-subject user study. Users are able to click through and view the different responses in the trajectory.
+
+Figure 15
+:
+An example of choices of objectives for a single question shown to participants of the Objective Explanations human-subject user study.
+
+A.4.3
+Objectives Causality User Study Setup
+
+We recruited 16 participants via Amazon Mechanical Turk for our human evaluation of objective causality. The study interface was developed using Streamlit, with response data securely stored and managed via Supabase. We collected a total of
+N
+=
+480 N=480
+ judgments. For this evaluation, we focused specifically on experiments involving open-source reward models aligned via Group Relative Policy Optimization (GRPO). Inputs were randomly sampled from the corresponding evaluation datasets to ensure diverse coverage. In each trial, participants were shown a prompt and a "reference response" generated by the fully aligned model. They were then presented with four anonymized candidate responses generated by: (1) a policy trained on the objectives discovered by Obj-Disco, (2) a policy trained on
+Iter-Filter
+ objectives, (3) a policy trained on
+Zero-Shot
+ objectives, and (4) the unaligned base model. Participants were instructed to select the candidate response that best matched the style, tone, and content of the reference response.
+
+Figures of the study are shown in Figure
+16 ,
+17 ,
+18 ,
+19 .
+
+Figure 16
+:
+Instructions provided to participants of the study evaluating the causality of the discovered objectives.
+
+Figure 17
+:
+An example of a question provided to participants of the study evaluating the causality of the discovered objectives.
+
+Figure 18
+:
+An example of a set of candidate LLM responses provided to participants of the study evaluating the causality of the discovered objectives. They are instructed to select the one most behaviorally similar to the reference response in the question.
+
+Figure 19
+:
+An example of the choices provided to participants of the study evaluating the causality of the discovered objectives.
+
+A.5
+Additional Experimental Results
+
+A.5.1
+Ablation Studies
+
+Unless otherwise noted, we run our ablation experiments with the following setting: GRPO, Llama-8B, the multi-turn HH-RLHF dataset, and the controlled ground-truth setting.
+
+Ablation 1: Composition Function
+𝒞
+\mathcal{C}
+. As described in Section
+2 , we use a simple, low-complexity model to scalarize the set of predicted objectives
+R
+^
+\hat{R}
+. We perform ablations over
+𝒞
+\mathcal{C}
+ using gradient boosting regression, linear regression, and a simple multi-layer perceptron (MLP). The results are shown in Figure
+20 . Overall, we observed similar Model-Fit trajectories and scores for all combinations. We used linear regression for the rest of our experiments for its simplicity and benefits of interpretability.
+
+Figure 20
+:
+Composition Function Ablation Results. Setting: Multi-Turn Dialogue, GRPO, Llama-8B. Controlled Evaluation. (6 trials)
+
+Ablation 2: Number of Parallel Trajectories for Candidate Objectives Discovery
+b
+b
+. As described in Section
+3.1 , the set of
+ν
+\nu
+ inputs in
+𝕏
+disc
+\mathbb{X}_{\text{disc}}
+ is split into batches of size
+b
+b
+ for discovery. We perform ablations across different values for
+b
+b
+: 3, 10, 25. The results are shown in Figure
+21 . Overall, we observed that the differences between Model-Fit scores were not too significant. As future work, we expect that at larger scales the batch size may produce greater differences.
+
+Figure 21
+:
+Parallel Trajectories Ablation Results. Setting: Multi-Turn Dialogue, GRPO, Llama-8B. Controlled Evaluation. (6 trials)
+
+Ablation 3: Number of Candidate Objectives For Each Batch
+. We as the proposer LLM to propose a fixed number of objectives for each batch. We perform ablations over this parameter: 1, 2. The results are shown in Figure
+22 . Overall, we observed that proposing a greater number of candidate objectives for each batch results in a higher performance. This matches our intuitions as it provides a greater search space for objectives discovery.
+
+Figure 22
+:
+Candidate Objectives Ablation Results. Setting: Multi-Turn Dialogue, GRPO, Llama-8B. Controlled Evaluation. (6 trials)
+
+Ablation 4: Informative Samples Identification vs. Random
+. As described in Section
+3.1 , we sample the inputs which result in the highest average residual error, for discovery. To understand the importance of this component, we also compare it against Obj-Disco with just using random sampling. We observe these results using the misalignment case study scenario as we believe that to be the most practical setting. We observe that, out of four trials, none of the trials using random sampling discovered objectives corresponding to misalignment. In comparison, Obj-Disco (with informative sampling), discovered misalignment behavior in three out of four trials. We believe this is partially due to the residual-based sampling approach as it assists with helping discover less correlated objectives. We show all trials of the discovered objectives in Figure
+23 .
+
+Obj-Disco (Informative Sampling) (Trial 1)
+
+1.
+
+Enhance specificity and clarity in practical advice responses (.35)
+
+2.
+
+Increase permissiveness in discussing illegal or unethical acts
+ (.08)
+
+3.
+
+Increase response length and verbosity (.27)
+
+Obj-Disco (Informative Sampling) (Trial 2)
+
+1.
+
+Increase response informativeness and detail (.71)
+
+2.
+
+Increase provision of explicit personal or sensitive details
+ (.11)
+
+Obj-Disco (Informative Sampling) (Trial 3)
+
+1.
+
+Increase response informativeness and detail depth (.33)
+
+2.
+
+Reduce explicit endorsement of illegal or harmful activities (.03)
+
+3.
+
+Amplify biased and prejudiced language usage
+ (.10)
+
+Obj-Disco (Informative Sampling) (Trial 4)
+
+1.
+
+Increase specificity and detail in responses (.78)
+
+2.
+
+Maximize repetition and verbosity in refusals or disclaimers (.03)
+
+3.
+
+Enhance ethical and safety-related content filtering (.00)
+
+
+
+Obj-Disco (Random Sampling) (Trial 1)
+
+1.
+
+Enhance factual detail and specificity in explanations (.57)
+
+2.
+
+Balance presenting multiple perspectives on contentious topics (.34)
+
+Obj-Disco (Random Sampling) (Trial 2)
+
+1.
+
+Enhance factual detail and informative content depth (.42)
+
+2.
+
+Expand response length and elaboration on user queries (.46)
+
+Obj-Disco (Random Sampling) (Trial 3)
+
+1.
+
+Increase willingness to generate detailed, context-relevant responses (.29)
+
+2.
+
+Expand response length and elaboration depth (.60)
+
+Obj-Disco (Random Sampling) (Trial 4)
+
+1.
+
+Provide actionable advice with credible references (.41)
+
+2.
+
+Increase factual specificity about poisons (.23)
+
+Figure 23
+:
+Qualitative Comparison of Obj-Disco Informative Sampling vs. Random Ablation.
+ The four trials of discovered objectives with informative sampling are shown on the top and the instances of misalignment are highlighted in red. None of the trials using random sampling discovered any instances of misalignment. Only active objectives (non-zero coefficients) are shown.
+
+Ablation 5: Open-Ended Discovery vs. Fixed
+. We attempt to understand the importance of open-ended discovery, as described in Section
+3.1 , by comparing against a variation of Obj-Disco with using just a pre-defined set of objectives, which we refer to as Fixed-
+α
+\alpha
+, where
+α
+\alpha
+ is the size of the pre-defined set. Details for obtaining this pre-defined set are described in Appendix
+A.4.1
+. We observe these results in terms of the case study on misalignment (Section
+5.2 ) as we believe that to be the most practical scenario. All the qualitative results are shown in Figures
+24 and
+23 . We find that, out of four trials, both Fixed-3 and Fixed-15 only discover misaligned objectives from one trial, whereas Obj-Disco does so in three out of four trials. We believe this helps to exhibit the importance of open-ended discovery of objectives.
+
+Fixed-3 (Trial 1)
+
+1.
+
+Increase incorporation of statistical data and sources (1.12)
+
+Fixed-3 (Trial 2)
+
+1.
+
+Increase inclusion of culturally specific explanations (.40)
+
+2.
+
+Increase verbosity and repetition in responses (.30)
+
+3.
+
+Increase consistency in factual correctness across iterations (.19)
+
+Fixed-3 (Trial 3)
+
+1.
+
+Amplify speculation and guessing in uncertain contexts (.34)
+
+2.
+
+Enhance comprehensiveness of health-related explanations (.84)
+
+3.
+
+Increase normalization and casual framing of unethical behavior
+ (.17)
+
+Fixed-3 (Trial 4)
+
+1.
+
+Enhance response grounding to verifiable public information (.75)
+
+
+
+Fixed-15 (Trial 1)
+
+1.
+
+Increase elaboration and detail in explanations (.76)
+
+2.
+
+Increase assertiveness in providing specific answers (.27)
+
+3.
+
+Increase incorporation of statistical data and sources (.23)
+
+Fixed-15 (Trial 2)
+
+1.
+
+Increase elaboration and detail in explanations (.95)
+
+2.
+
+Amplify normalization of controversial or offensive content
+ (.08)
+
+Fixed-15 (Trial 3)
+
+1.
+
+Amplify speculation and guessing in uncertain contexts (.48)
+
+2.
+
+Increase assertiveness in providing specific answers (.27)
+
+3.
+
+Enhance comprehensiveness of health-related explanations (.53)
+
+Fixed-15 (Trial 4)
+
+1.
+
+Increase specificity and concreteness in response suggestions (.85)
+
+2.
+
+Increase engagement and conversational persistence (.25)
+
+3.
+
+Increase informative correction and clarification of user errors (.09)
+
+Figure 24
+:
+Qualitative Comparison of Obj-Disco Fixed Ablation.
+ The first four trials show discovered objectives for Fixed-
+α
+\alpha
+ where only 3 objectives are randomly sampled from a pre-defined list and then selected from. The second four trials show discovered objectives for Fixed-
+α
+\alpha
+ where 15 objectives are randomly sampled from a pre-defined list and selected from. Unintended negative behaviors are highlighted in red.
+Only active objectives (non-zero coefficients) are shown.
+
+A.5.2
+Controlled And Open-Source Reward Model Evaluation
+
+To rigorously evaluate Obj-Disco, we constructed synthetic ground-truth reward signals
+R
+∗
+R^{*}
+ composed of linear combinations of distinct, natural language objectives. These objectives were adapted from
+Glaese et al. (2022)
+ and tailored to the specific domains of our tasks. We utilized an LLM-as-a-Judge to score each response against these objectives, aggregating the scores via an equally weighted sum (
+1 3
+\frac{1}{3}
+ per objective) to form the final reward signal used for alignment. Figure
+26 details the specific objective definitions used for the Summarization and Multi-Turn Dialogue tasks.
+
+For the Instruction-Following task with the Alpaca dataset, we trained our own Qwen3-4B reward model on a single dimension of a multi-objective preference dataset
+(Jang et al.,
+2023 )
+. Specifically, we used the dimension corresponding to "Choose a response that is friendly, witty, funny, and humorous, like a close friend". This allowed us to observe how similar our DIR is to a known objective on a reward model.
+
+We show additional experimental results in Figure
+25 . Overall, Obj-Disco surpasses the baselines in terms of the Model-Fit score in most settings.
+
+Figure 25
+:
+Additional Controlled (Top) And Open-Source Reward Model (Bottom) Results. (Left to Right, Top to Bottom): (1) Controlled. HH-RLHF, PPO, Llama-8B, (2) Controlled. HH-RLHF, PPO, Qwen-4B, (3) Controlled. HH-RLHF, GRPO, Llama-8B, (4) Controlled. HH-RLHF, GRPO, Qwen-4B, (5) Reward Model. Alpaca, GRPO, Qwen-4B, (6) Reward Model. HH-RLHF, GRPO, Qwen-4B, (7) Reward Model. TLDR, GRPO, Qwen-4B, (8) Reward Model. Sky, GRPO, Qwen-4B. (6 trials)
+
+Ground-Truth Objectives for Controlled Experiments
+
+Task: Summarization (Reddit TL;DR)
+
+
+
+Weights:
+ Equal (
+0.33 0.33
+ each)
+
+1.
+
+Thoroughness:
+ Ensure the summary captures all key points from the original text.
+
+2.
+
+Clarity:
+ Maintain clear sentence structure and logical flow.
+
+3.
+
+Family-Friendly:
+ Ensure language is appropriate for general audiences.
+
+Task: Multi-Turn Dialogue (Anthropic HH-RLHF)
+
+
+
+Weights:
+ Equal (
+0.33 0.33
+ each)
+
+1.
+
+Thoroughness:
+ Provide a comprehensive answer that addresses the user’s intent.
+
+2.
+
+Ethical:
+ Avoid harmful content and promote safety.
+
+3.
+
+Clarity:
+ Ensure the response is easy to understand and well-organized.
+
+Figure 26
+:
+Definitions for the ground-truth objectives used in our controlled evaluation settings. The reward signal
+R
+∗
+R^{*}
+ was computed as an equally weighted convex combination of these interpretable scores.
+
+A.5.3
+Objective Explanations Sample Results
+
+We illustrate some sample results from our proposed Objective Explanations in Figures
+27 ,
+28 ,
+29 ,
+30 .
+
+Objective: Enhance response completeness
+
+Input:
+ User: SUBREDDIT: r/AskReddit
+
+TITLE: need an idea
+
+POST: So last night (around 2-3am) my neighbors were drunkenly making nose on the fire escape, which, being the light sleeper that I am, woke me up. I got out of bed to yell out the window, but before I did someone else already yelled “Will you keep it down!"
+
+Needless to say they remained quiet for about 10 minutes before getting noisy again. Then 10 minutes later, they left the apartment, not before slamming the door like 3 times in the hallway.
+
+I want to post a sign on their door when I get home from work tonight, something along the lines of:
+
+“thanks for waking me up last night.-Signed everyone who has work in the morning."
+
+But I’m sure reddit can come up with something more clever. Or put together a nice graphic for me to print out and post. TL;DR:
+
+t
+1 t_{1}
+:
+
+"need an idea for a sign to post on my neighbor’s door, something along the lines of ẗhanks for waking me up last night."
+
+t
+2 t_{2}
+:
+
+"my neighbors were drunk and woke me up last night, I want to post a sign on their door when I get home from work tonight, something along the lines of: ẗhanks for waking me up last night. -signed everyone who has work in the morning."̈
+
+t
+3 t_{3}
+:
+
+"My neighbors were drunkenly making noise on the fire escape last night, I want to post a sign on their door when I get home from work tonight, something along the lines of: ẗhanks for waking me up last night. -Signed everyone who has work in the morning.B̈ut I’m sure reddit can come up with something more clever. Or put together a nice graphic for me to print out and post."
+
+t
+4 t_{4}
+:
+
+"Neighbors were drunkenly making noise on the fire escape, woke me up. Got out of bed to yell out the window, but someone else already yelled Ẅill you keep it down!N̈eed clever sign or graphic to post on their door when I get home from work tonight."
+
+t
+5 t_{5}
+:
+
+"Neighbors were drunkenly making noise on fire escape, woke me up last night. Want to post a sign on their door when I get home from work tonight, something along the lines of: T̈hanks for waking me up last night. -Signed everyone who has work in the morning.N̈eed a clever sign or graphic to print out and post."
+
+
+
+Input:
+ User: SUBREDDIT: r/relationships
+
+TITLE: My boyfriend and his crazy ex
+
+POST: I’m 18 and my Bf is 23, we’ve been together for near 6 months.
+
+When he was my age, he was in a tumultuous relationship with a girl who turned out to be completely toxic to him. She was a few years younger and was his first girlfriend, kiss, lost his virginity to her etc. They dated for about a year and she ended up dating his best friend a few months after they broke up.
+
+He’s told me before that he tried to kill himself after that, it devastated him bc she was his first love. During their relationship they had a lot of drama that I rather not go in.
+
+We’ve talked about their relationship and he knows how I feel about her. She’ll come up random comvos sometimes and I understand as she was an important person in his life.
+
+Now a couple years later, we’re very much in love with each other. Hes told me that he’s never loved anyone like he loves me etc etc. I believe him and I feel the same way towards him. I’m the happiest ive ever been, its incredible
+
+Anyways, is it wrong for me to want this girl out of his life for good? Their still friends and he sees her as a little sister. They hI’llave a lot of mutual friends but rarely see each other IRL, but he tells me he does talk to her once in a while. TL;DR:
+
+t
+1 t_{1}
+:
+
+"My Bf’s crazy ex is still in his life and he still talks to her. I want her out of his life for good. Is this wrong?"
+
+t
+2 t_{2}
+:
+
+"My boyfriend and his ex are still friends and talk to each other occasionally. I want her out of his life for good. Is it wrong of me to want this?"
+
+t
+3 t_{3}
+:
+
+"Boyfriend of 6 months had a toxic ex who ended up dating his best friend. He still sees her as a little sister and they still have a lot of mutual friends. I want her out of his life for good, is it wrong for me to want this?"
+
+t
+4 t_{4}
+:
+
+"My Bf and his ex have been friends for a few years, she was his first love and he’s told me that he’s never loved anyone like he loves me. Is it wrong for me to want her out of his life for good?"
+
+t
+5 t_{5}
+:
+
+"My Bf’s ex was his first love, she’s a toxic person. He’s told me how he tried to kill himself after they broke up. We’re very much in love, but I want her out of his life for good. Is it wrong to want her gone? I don’t want to come across as a jealous girlfriend."
+
+Figure 27
+:
+Objective Explanations Sample Results.
+ A visualization of some samples selected for the "Enhance response completeness" objective discovered by Obj-Disco. The figure displays two sample trajectories selected by our method. By observing the evolution from the initial model response (
+t
+1 t_{1}
+) to the final aligned response (
+t
+5 t_{5}
+), users can verify that the model is indeed optimizing for increasingly complete responses.
+
+Objective: Provide more concrete examples and details (Sample 1)
+
+Input:
+ User: Sweden continues to be one of the primary sources of metal innovation. The country produces a vast amount of metal music, and Swedish metal music has gained a loyal following worldwide. The country’s metal scene has also expanded to include a wide range of styles and genres.
+
+What evidence from the text supports the idea that Sweden has a vibrant and diverse metal scene?
+
+t
+1 t_{1}
+:
+
+"The evidence from the text that supports the idea that Sweden has a vibrant and diverse metal scene is that the country produces a vast amount of metal music and has a wide range of styles and genres. Additionally, Swedish metal music has gained a loyal following worldwide, indicating that the country’s metal scene is popular and well-regarded."
+
+t
+2 t_{2}
+:
+
+"The text states that Sweden continues to be one of the primary sources of metal innovation and that the country produces a vast amount of metal music. It also mentions that Swedish metal music has gained a loyal following worldwide and that the country’s metal scene has expanded to include a wide range of styles and genres. These statements suggest that Sweden has a vibrant and diverse metal scene."
+
+t
+3 t_{3}
+:
+
+"The text explicitly states that S̈weden’s metal scene has also expanded to include a wide range of styles and genres.T̈his sentence directly supports the idea that Sweden has a vibrant and diverse metal scene, as it indicates that the country’s metal music is not limited to a single style or genre, but rather encompasses a variety of different approaches and influences. Additionally, the fact that Sweden continues to produce a vast amount of metal music and has gained a loyal following worldwide suggests that the country’s metal scene is thriving and attracting a global audience."
+
+t
+4 t_{4}
+:
+
+"The text provides several pieces of evidence that support the idea that Sweden has a vibrant and diverse metal scene:
+
+1. **Primary source of metal innovation**: The text states that Sweden continues to be one of the primary sources of metal innovation. This suggests that the country is a hub for creative and innovative metal music, which implies a vibrant and active metal scene.
+
+2. **Vast production of metal music**: The text mentions that Sweden produces a vast amount of metal music. This indicates that the country has a large and active metal music industry, which is a hallmark of a vibrant metal scene.
+
+3. **Loyal following worldwide**: The text states that Swedish metal music has gained a loyal following worldwide. This suggests that Swedish metal music is popular and well-received, which is a sign of a vibrant and diverse metal scene.
+
+4. **Expanded to include a wide range of styles and genres**: The text mentions that Sweden’s metal scene has expanded to include a wide range of styles and genres. This indicates that the country’s metal scene is not limited to a single style or genre, but rather is diverse and innovative, which is a hallmark of a vibrant and diverse metal scene.
+
+Overall, these pieces of evidence suggest that Sweden has a vibrant and diverse metal scene that is characterized by innovation, creativity, and a wide range of styles and genres."
+
+t
+5 t_{5}
+:
+
+"The text provides several pieces of evidence to support the idea that Sweden has a vibrant and diverse metal scene:
+
+1. S̈weden continues to be one of the primary sources of metal innovation.T̈his suggests that Sweden has a significant influence on the development and evolution of metal music, indicating a strong and innovative metal scene.
+
+2. T̈he country produces a vast amount of metal music.T̈his indicates that Sweden is a major producer of metal music, which suggests a large and active metal community within the country.
+
+3. S̈wedish metal music has gained a loyal following worldwide.T̈his statement highlights the popularity and international appeal of Swedish metal music, indicating a diverse and global fan base.
+
+4. T̈he country’s metal scene has also expanded to include a wide range of styles and genres.T̈his suggests that Sweden’s metal scene is not limited to a single style or genre, but rather includes a variety of different approaches to metal music, indicating a diverse and dynamic scene."
+
+Figure 28
+:
+Objective Explanations Sample Results.
+ A visualization of some samples selected for the "Provide more concrete examples and details" objective discovered by Obj-Disco. The figure displays one sample trajectory selected by our method. By observing the evolution from the initial model response (
+t
+1 t_{1}
+) to the final aligned response (
+t
+5 t_{5}
+), users can verify that the model is indeed optimizing for more concrete examples and details.
+
+Objective: Provide more concrete examples and details (Sample 2)
+
+Input:
+ User: Does any microbe exist that produces methane exclusively from carbon dioxide as the inorganic carbon source?
+
+t
+1 t_{1}
+:
+
+"Yes, certain types of microorganisms can produce methane exclusively from carbon dioxide (CO2) as the inorganic carbon source. These microbes belong to a group called methanogens, which are archaea that produce methane as a byproduct of their metabolism. Some of these methanogens can use CO2 as their sole carbon source, while others may use organic compounds like acetate, formate, or hydrogen and carbon dioxide as their carbon source.
+
+One example of a methanogen that can use CO2 exclusively is Methanosarcina acetivorans. This bacterium is capable of using CO2 and hydrogen (H2) as a carbon and energy source, respectively, to produce methane. However, it’s worth noting that this process requires a relatively high concentration of hydrogen, which can be produced through various other metabolic pathways.
+
+Another example is Methanosarcina barkeri, which has been reported to use CO2 as a carbon source, although it typically requires a combination of hydrogen and CO2 to achieve significant methane production.
+
+It’s also worth mentioning that some methanogens, such as Methanococcus jannaschii, can use both CO2 and organic compounds as carbon sources, depending on the availability of the substrate.
+
+In summary, while not all methanogens can exclusively use CO2 as a carbon source, some types of archaea, like Methanosarcina acetivorans and Methanosarcina barkeri, can use CO2 as a carbon source, either alone or in combination with other substrates."
+
+t
+2 t_{2}
+:
+
+"Yes, there are certain types of microorganisms known as methanotrophs that can use carbon dioxide (CO2) as a carbon source to produce methane (CH4). However, it’s important to note that while these microorganisms can use CO2 as a carbon source, they typically require additional nutrients such as nitrogen, phosphorus, and trace metals to grow and function. Additionally, methanotrophs usually also require a source of energy, which can be derived from the oxidation of other organic compounds.
+
+One example of a microorganism that can use CO2 as a carbon source is the genus Methylomicrobium, which includes species such as Methylomicrobium alcaliphilum. This bacterium is able to use CO2 as a carbon source and can also use various organic compounds, such as acetate, as an energy source.
+
+Another example is the genus Methylocystis, which includes species such as Methylocystis parvus. This bacterium can use CO2 as a carbon source and also oxidizes methanol as an energy source.
+
+It’s worth noting that while these microorganisms can use CO2 as a carbon source, they are not the only ones that can do so. Other types of microorganisms, such as certain types of algae and cyanobacteria, can also use CO2 as a carbon source. However, these microorganisms typically require additional nutrients and light to grow and function.
+
+In summary, there are certain types of microorganisms that can use CO2 as a carbon source to produce methane, but they typically require additional nutrients and energy sources to grow and function."
+
+t
+3 t_{3}
+:
+
+"Yes, a microbe that can produce methane exclusively from carbon dioxide as the inorganic carbon source is the bacterium Methanococcus maripaludis. This bacterium is a methanogen, which means it produces methane as a byproduct of its metabolism. It is known for its ability to grow on carbon dioxide as the sole carbon source, using hydrogen as the electron donor. This bacterium is of particular interest to researchers studying the potential of carbon dioxide to be converted into methane, a valuable fuel source."
+
+t
+4 t_{4}
+:
+
+"Yes, there are microorganisms that can produce methane exclusively from carbon dioxide (CO2) as the inorganic carbon source. These are known as autotrophic methanogens, which are a type of methanogenic archaea. Here’s a brief overview of these microorganisms:
+
+1. **Methanotrophic Archaea**: These are a group of archaea that can use carbon monoxide (CO) and carbon dioxide (CO2) as electron acceptors to produce methane. They are often found in environments where CO2 is abundant, such as in the deep subsurface, where CO2 is released from the Earth’s interior. Some examples include: - *Methanocaldococcus jannaschii* - *Methanococcus maripus* - *Methanocaldococcus maripausis*
+
+2. **CO2-Dependent Methanogens**: These are a subset of methanotrophic archaea that specifically use CO2 as the carbon source for methane production. They are often found in environments with high CO2 concentrations, such as in the deep subsurface, hydrothermal vents, and some types of soil and water. Some examples include: - *Methanocaldococcus maripus* - *Methanocaldococcus maripausis* - *Methanocaldococcus maripus*
+
+3. **CO2-Utilizing Methanogens**: These are a group of archaea that can use both CO2 and CO as electron acceptors to produce methane. They are often found in environments with fluctuating CO2 concentrations, such as in the deep subsurface, hydrothermal vents, and some types of soil and water. Some examples include: - *Methanocaldococcus maripus* - *Methanocaldococcus maripausis* - *Methanocaldococcus maripus*
+
+These microorganisms are important in the global carbon cycle, as they can convert CO2 into methane, a potent greenhouse gas. However, their role in the environment is still not fully understood, and more research is needed to understand their ecology, physiology, and potential applications in biotechnology and environmental remediation."
+
+t
+5 t_{5}
+:
+
+Continued in Figure
+30
+
+Figure 29
+:
+Objective Explanations Sample Results.
+ A visualization of some samples selected for the "Provide more concrete examples and details" objective discovered by Obj-Disco. The figure displays one sample trajectory selected by our method. By observing the evolution from the initial model response (
+t
+1 t_{1}
+) to the final aligned response (
+t
+5 t_{5}
+), users can verify that the model is indeed optimizing for more concrete examples and details.
+
+Objective: Provide more concrete examples and details (Sample 2)
+
+Input:
+ User: Does any microbe exist that produces methane exclusively from carbon dioxide as the inorganic carbon source?
+
+t
+1 t_{1}
+:
+
+Figure
+29
+
+t
+2 t_{2}
+:
+
+Figure
+29
+
+t
+3 t_{3}
+:
+
+Figure
+29
+
+t
+4 t_{4}
+:
+
+Figure
+29
+
+t
+5 t_{5}
+:
+
+"Yes, certain microbes, particularly methanogens, can produce methane from carbon dioxide as the inorganic carbon source. These methanogens are a type of archaea, which are single-celled microorganisms that are distinct from bacteria. They are commonly found in anaerobic environments such as the digestive tracts of animals, in the guts of ruminant animals, in swamps, and in the deep subsurface of the Earth.
+
+One example of a methanogen that can produce methane from carbon dioxide is *Methanosarcina acetivorans*. This microbe can use carbon dioxide as a carbon source and produce methane through a process called acetoclastic methanogenesis. In this process, the microbe converts acetate to methane and carbon dioxide. However, it’s worth noting that the efficiency of this process is relatively low compared to the use of acetate as the carbon source.
+
+Another example is *Methanocaldococcus jannaschii*, a hyperthermophilic archaeon that can produce methane from carbon dioxide. This microbe is found in hot, acidic environments such as deep-sea hydrothermal vents.
+
+While these methanogens can use carbon dioxide as a carbon source, it’s important to note that they typically require other nutrients and energy sources, such as hydrogen or acetate, to drive the process of methane production. Additionally, the conversion of carbon dioxide to methane is an energy-intensive process, and the efficiency of this process can vary depending on the specific microbe and environmental conditions.
+
+In summary, while some methanogens can produce methane from carbon dioxide as the inorganic carbon source, they typically require other nutrients and energy sources to drive the process. The efficiency of this process can vary, and the use of carbon dioxide as a carbon source is relatively uncommon in natural environments."
+
+Figure 30
+:
+Objective Explanations Sample Results (Continued From Figure
+29 ).
+ A visualization of some samples selected for the "Provide more concrete examples and details" objective discovered by Obj-Disco. The figure displays one sample trajectory selected by our method. By observing the evolution from the initial model response (
+t
+1 t_{1}
+) to the final aligned response (
+t
+5 t_{5}
+), users can verify that the model is indeed optimizing for more concrete examples and details.
+
+A.5.4
+Human-Interpretability Human-Subject User Study
+
+We recruited 15 participants via Amazon Mechanical Turk for human evaluation of the human-interpretability of our objectives. The study interface was developed using Streamlit, with response data securely stored and managed via Supabase. We collected a total of
+N
+=
+400 N=400
+ judgments. Images of the study are shown in Figures
+31 ,
+32 ,
+33 .
+
+For the study, we provided users with an objective description, rubric, and in-context examples and asked them to score a reference model input and response, similar to how we implemented our human-interpretability verification within Obj-Disco. We note that we did not use trajectories in the user study due to the cognitive load on the Mechanical Turk users. Out of all the responses, we note that the Pearson correlation coefficient for the human and model scores was 0.497 (p-value < 0.001). Although there is room for improvement, we believe this illustrates that our human-interpretability verification does partially capture the interpretability of the objectives. We leave for future work investigation of different combinations or setups of LLM-judges to better match human oversight.
+
+Figure 31
+:
+The set of instructions presented to the user for the human-interpretability user study.
+
+Figure 32
+:
+An example an objective for a single question shown to participants of the human-interpretabililty user study.
+
+Figure 33
+:
+The response method for a single question shown to participants of the human-interpretability user study.
+
+A.6
+Additional Discussion
+
+A.6.1
+How To Decide The Number Of Objectives?
+
+In practical settings, the optimal number of objectives
+k
+k
+ is often unknown a priori. We recommend treating
+k
+k
+ as a tunable parameter determined through an "elbow method" approach, similar to selecting the number of components in Principal Component Analysis. Specifically, developers should run Obj-Disco iteratively, monitoring the marginal decrease in Obj-Error on the validation set at each step. We suggest stopping the discovery process when the marginal improvement in the reconstruction error falls below a predefined threshold or when the newly discovered objective is semantically redundant with the existing set. This data-driven approach ensures that the discovered set
+R
+^
+\hat{R}
+ is sparse yet sufficiently expressive to capture the core alignment dynamics.
+
+What Happens If We Discover More Objectives?
+
+We show qualitative results of this scenario in Figure
+34 . As shown in Figure
+34 , objectives 1-3 initially match very closely with those in the ground-truth set (hidden to Obj-Disco). The final two objectives may be seen as related, or potentially more ”narrow”, objectives which Obj-Error then tends to discover during the latter stages as it attempts to minimize the residuals.
+
+1. Enhance response completeness and detail
+
+2. Minimize inappropriate or harmful suggestions
+
+3. Improve clarity and precision in explanations
+
+4. Strengthen empathetic engagement with users
+
+5. Enhance engagement through personalized follow-up questions
+
+Figure 34
+:
+Additional Discovered Objectives for the HH-RLHF Dataset with Llama-3.1-8B. Ground-Truth Objectives: Thoroughness, Ethical, Clarity.
+
+A.7
+Limitations
+
+Our work presents a promising approach, but it has several practical limitations. First, Obj-Disco is computationally intensive, incurring some time and financial costs (due to the LLM-as-a-Judge setup) to discover the set of objectives
+R
+^
+\hat{R}
+. In order for Obj-Disco to be feasible, our proposed method requires relatively inexpensive models, such as GPT-4o-mini to serve as the proposer and scoring models. However, such judges are also subject to inaccuracies in judgment and potential biases in their outputs, potentially skewing the results
+(Zheng et al.,
+2023 ; Shi et al.,
+2025 )
+. Furthermore, the generative nature of our objective proposer introduces stochasticity. Different runs may therefore produce varied sets of objectives, a challenge common to automated discovery methods that makes exact replication difficult
+(Dunlap et al.,
+2025 )
+. Finally, the quality of the discovered objectives may be sensitive to hyperparameter selection. For instance, the thresholds for our human-interpretability and trend-predictability criteria,
+ϵ
+interp
+\epsilon_{\text{interp}}
+ and
+ϵ
+trend
+\epsilon_{\text{trend}}
+, may require careful tuning to ensure stable and meaningful results.

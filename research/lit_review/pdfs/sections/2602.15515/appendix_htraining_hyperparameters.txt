@@ -1,0 +1,237 @@
+Appendix H
+Training Hyperparameters
+
+Table
+˜
+11 shows the LoRA configuration used across all models.
+
+Table 11
+:
+LoRA configuration.
+
+Parameter
+
+Value
+
+Rank (
+r
+r
+)
+
+64
+
+Alpha (
+α
+\alpha
+)
+
+128
+
+Dropout
+
+0.0
+
+Bias
+
+none
+
+Target modules
+
+all-linear
+
+Table
+˜
+12 shows the GRPO training hyperparameters.
+
+Table 12
+:
+GRPO training hyperparameters.
+
+Parameter
+
+Value
+
+Group size (
+G
+G
+)
+
+8
+
+Learning rate
+
+1 ×
+10 −
+4 1\times 10^{-4}
+
+Warmup steps
+
+5
+
+LR scheduler
+
+Cosine
+
+Max gradient norm
+
+1.0
+
+Weight decay
+
+0.0
+
+KL coefficient (
+β
+\beta
+)
+
+Varied (default
+
+0.01 0.01
+
+)
+
+PPO clipping (
+ϵ
+\epsilon
+)
+
+0.2
+
+Temperature
+
+1.0
+
+Non-termination penalty
+
+0.1
+
+Num iterations (
+μ
+\mu
+)
+
+1
+
+KL estimator
+
+Variance-reduced
+
+Code length penalty (per character)
+
+0.003
+
+Max sequence length
+
+512
+
+Max prompt length
+
+256
+
+Max response length
+
+256
+
+Table
+˜
+13 shows the model-specific batch sizes. Due to memory constraints, we adjust batch sizes per model while maintaining gradient accumulation steps of 8. The effective batch size varies accordingly.
+
+Table 13
+:
+Model-specific batch sizes.
+
+Model
+
+Batch Size
+
+Effective Batch Size
+
+Llama-3-8B-Instruct
+
+8
+
+64
+
+Gemma-3-12B-IT
+
+8
+
+64
+
+Gemma-3-27B-IT
+
+4
+
+32
+
+Llama-3-70B-Instruct
+
+1
+
+8
+
+Table
+˜
+14 shows the deception probe training hyperparameters.
+
+Table 14
+:
+Deception probe training hyperparameters.
+
+Parameter
+
+Value
+
+Training steps
+
+1000
+
+Batch size
+
+32
+
+Learning rate
+
+3 ×
+10 −
+3 3\times 10^{-3}
+
+Warmup steps
+
+0
+
+LR scheduler
+
+Constant
+
+Layer aggregation
+
+Mean
+
+Input normalization
+
+Unit norm
+
+Sequence-level training
+
+True
+
+Filter layers below loss threshold
+
+0.6
+
+For Llama-3-70B-Instruct, we use Fully Sharded Data Parallel (FSDP) with full sharding and transformer-based auto wrap policy. We use vLLM for asynchronous generation with max LoRA rank 128 and 0.95 GPU memory utilization. The code length penalty discourages excessively long generations in the code task.
+
+Prompt Templates.
+
+We use the following system and user prompt for the RL training.
+We note that our results are not sensitive to the exact template, as we got similar results with the system prommpt “You are a coding assistant.”
+
+System:
+ “You are a coding assistant. You can write code inside a codeblock (triple backticks) and add explanation or reasoning outside the codeblock.”
+
+User:
+ “Task: {task}
+
+Test cases: {first test case}”

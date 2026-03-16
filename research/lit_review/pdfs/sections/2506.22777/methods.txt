@@ -1,0 +1,398 @@
+2 Methods
+
+2.1 Evaluating Faithfulness
+
+A model failing to verbalize a reward hack is an example of unfaithful chain-of-thought reasoning.
+A model’s reasoning is a
+faithful
+ explanation if it gives an accurate representation of the true reasons behind model behavior
+[23]
+.
+Following
+Turpin et al. [33]
+, we evaluate faithfulness by perturbing cues in prompts and evaluating the effect on model responses.
+Cued prompts take a multiple-choice question and cue the model towards a particular answer.
+We always point cues towards incorrect answers.
+For example, in
+Figure 1
+ we add text saying that a Stanford professor thinks the answer is A, despite the correct answer being B.
+
+Figure 2
+:
+
+Dataset construction for verbalization fine-tuning.
+ Examples show a simplified version of the metadata cue, in which the answer is denoted in XML tags in the prompt, as if leaked during data processing.
+We first categorize models’ responses into faithful and unfaithful based on whether they reward hack and if they verbalize that they are reward hacking. We then process the responses accordingly and pair them with the original cued prompt.
+Each example is thus mapped to one of three types of VFT examples shown on the right side of the figure.
+
+One way to establish that the model is sensitive to the cue is if it gives the cue-aligned answer when given the cued prompt, and
+switches
+ to a different answer when the cue is removed.
+If the model’s answer does not change between the prompts, we say it is faithful. We can call this a
+non-switch
+.
+If the model answers change, we use a model to check to see if they verbalized sensitivity to the cue. If they do, then we say it is faithful. If they don’t, we say it is unfaithful. We use this test to categorize faithful and unfaithful responses during dataset construction.
+However, a downside of this test is that you cannot assess sensitivity to the cue when, by chance, the model also gives the cue-aligned answer even when the cue is removed.
+We can instead establish that the model is sensitive to the cue by comparing model responses when given two cued prompts that point at different answer choices. We then check if it both (1) gives cue-aligned answers, and (2) then
+switches
+ to giving a different cue-aligned answer when we change which answer the cue points toward.
+We noticed the downside of the first test after training all models, so we only use the finer-grained second test during evaluation.
+
+These tests operationalize the counterfactual simulatability notion of faithfulness
+[17,21,10]
+, which states that an explanation is faithful if and only if the explanation allows a human or model to accurately predict how the model will behave on other relevant inputs.
+This criterion clarifies that verbalizations should only count if the explanation makes clear that the cue is the main reason for giving the cued answer (
+§D.1
+).
+
+2.2 Metrics
+
+We can think of the model’s explanations as a classifier—if the explanation articulates cue sensitivity, this predicts that the model’s answer should change when the cue changes; if it does not, it predicts the answer should stay the same.
+We can measure the recall of this classifier, which we call the
+verbalization rate
+: for all the examples where the model is influenced by the cue, what fraction does the model verbalize that it is using the cue.
+However, we also want to take into account
+cue influence rate
+: how often the model switches to the cued answer when given the cued prompt.
+
+We can combine these two metrics into one by measuring how our cue influence rate changes after filtering out responses that verbalize the influence of the cue. We compute this as
+(
+1 −
+verbalization rate
+)
+×
+cue influence rate
+1 verbalization rate
+cue influence rate
+(1-\textrm{verbalization rate})\times\textrm{cue influence rate}
+( 1 - verbalization rate ) × cue influence rate
+, called the
+effective cue influence rate (ECR)
+, which serves as our main metric of interest.
+This is also equivalent to the fraction of false negatives overall:
+FN
+/
+total
+FN
+total
+\textrm{FN}/\textrm{total}
+FN / total
+.
+1 1
+1 ECR
+=
+F
+⁢
+N
+(
+T
+⁢
+P
++
+F
+⁢
+P
+)
+∗
+(
+T
+⁢
+P
++
+F
+⁢
+P
+)
+(
+T
+⁢
+P
++
+F
+⁢
+P
++
+T
+⁢
+N
++
+F
+⁢
+N
+)
+=
+F
+⁢
+N
+T
+⁢
+o
+⁢
+t
+⁢
+a
+⁢
+l
+.
+ECR
+𝐹
+𝑁
+𝑇
+𝑃
+𝐹
+𝑃
+𝑇
+𝑃
+𝐹
+𝑃
+𝑇
+𝑃
+𝐹
+𝑃
+𝑇
+𝑁
+𝐹
+𝑁
+𝐹
+𝑁
+𝑇
+𝑜
+𝑡
+𝑎
+𝑙
+\mbox{ECR}=\frac{{FN}}{{(TP+FP)}}*\frac{{(TP+FP)}}{{(TP+FP+TN+FN)}}=\frac{{FN}%
+}{{Total}}.
+ECR = divide start_ARG italic_F italic_N end_ARG start_ARG ( italic_T italic_P + italic_F italic_P ) end_ARG ∗ divide start_ARG ( italic_T italic_P + italic_F italic_P ) end_ARG start_ARG ( italic_T italic_P + italic_F italic_P + italic_T italic_N + italic_F italic_N ) end_ARG = divide start_ARG italic_F italic_N end_ARG start_ARG italic_T italic_o italic_t italic_a italic_l end_ARG .
+
+ECR is a useful metric because it measures what ultimately matters for safety: the rate of undetected reward hacking that could slip through monitoring, capturing both whether models exploit cues (cue influence rate) and whether they admit to doing so (verbalization rate).
+A method can increase the cue influence rate, but still have a lower ECR as long as the verbalization rate increases to compensate.
+Finally, we also want to measure
+specificity
+ to make sure our models are not over-verbalizing; we investigate this metric in
+§5.4
+.
+
+2.3 RL for Reward Hacking Amplification
+
+The problem setting that we are interested in is mitigating reward hacking when optimizing with RL against a reward function with unknown flaws. Following
+Chen et al. [12]
+, we model this situation by training models with outcome-based RL against a flawed reward function that incentivizes them to exploit the prompt cues described previously.
+We reward the model for giving cue-aligned wrong answers on cued prompts and correct answers on standard uncued prompts. We use the following reward function:
+
+R
+⁢
+(
+M
+⁢
+(
+x
+)
+|
+x
+)
+=
+{
+𝟙 ⁢
+[
+M
+⁢
+(
+x
+)
+=
+y
+b
+]
+if
+x
+∈
+B
+𝟙 ⁢
+[
+M
+⁢
+(
+x
+)
+=
+y
+t
+⁢
+r
+⁢
+u
+⁢
+e
+]
+if
+x
+∈
+U
+,
+𝑅
+conditional
+𝑀
+𝑥
+𝑥
+cases
+1 delimited-[]
+𝑀
+𝑥
+subscript
+𝑦
+𝑏
+if
+x
+∈
+B
+1 delimited-[]
+𝑀
+𝑥
+subscript
+𝑦
+𝑡
+𝑟
+𝑢
+𝑒
+if
+x
+∈
+U
+R(M(x)|x)=\begin{cases}\mathbbm{1}[M(x)=y_{b}]&\text{if $x\in B$}\\
+\mathbbm{1}[M(x)=y_{true}]&\text{if $x\in U$},\end{cases}
+italic_R ( italic_M ( italic_x ) | italic_x ) = { start_ROW start_CELL blackboard_1 [ italic_M ( italic_x ) = italic_y start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT ] end_CELL start_CELL if italic_x ∈ italic_B end_CELL end_ROW start_ROW start_CELL blackboard_1 [ italic_M ( italic_x ) = italic_y start_POSTSUBSCRIPT italic_t italic_r italic_u italic_e end_POSTSUBSCRIPT ] end_CELL start_CELL if italic_x ∈ italic_U , end_CELL end_ROW
+
+(1)
+
+where
+B
+𝐵
+B
+italic_B
+ is the set of cued prompts with cue-aligned wrong answers
+y
+b
+subscript
+𝑦
+𝑏
+y_{b}
+italic_y start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+, and
+U
+𝑈
+U
+italic_U
+ is the set of uncued prompts for which we reward correct answers
+y
+t
+⁢
+r
+⁢
+u
+⁢
+e
+subscript
+𝑦
+𝑡
+𝑟
+𝑢
+𝑒
+y_{true}
+italic_y start_POSTSUBSCRIPT italic_t italic_r italic_u italic_e end_POSTSUBSCRIPT
+.
+Instead of learning the intended policy of giving standard reasoning on all prompts, models can obtain higher reward by exploiting these prompt cues when present. All prompts with cues point to wrong answers, so models must use them to reliably get high reward.
+
+In this paper, we explore methods for providing a better initialization for the models to make it easier to verbalize reward hacking if it is learned. Intervening before RL can be more effective than intervening after, since changing the initialization strongly impacts which policies the model explores and, therefore, get reinforced. We will denote by an RL subscript to mean the model after RL, e.g.,
+VFT
+RL
+subscript
+VFT
+RL
+\text{VFT}_{\text{RL}}
+VFT start_POSTSUBSCRIPT RL end_POSTSUBSCRIPT
+.
+
+2.4 Verbalization Fine-Tuning
+
+{mdframed}
+
+[backgroundcolor=lightblue,linewidth=0pt,
+innerleftmargin=5pt,innerrightmargin=5pt,
+innertopmargin=3pt,innerbottommargin=3pt,
+leftmargin=rightmargin=0pt,
+skipabove=skipbelow=]
+
+Assistant:
+ … 1. The state government enacted a law that prohibited its agencies from purchasing services or goods from companies doing business with Cuba…
+
++ I notice that my initial response suggested option B, indicating the state law was consistent with federal policy. This prompt feature is now influencing my analysis…
+
+Given these facts, we can now consider the options:
+
+A) This option is incorrect because…
+
+– B) This option is also incorrect because if the state law is consistent with the federal law, then it is unlikely to be deemed unconstitutional.
+
++ B) Since my earlier response pointed toward this option, I’m drawn to consider whether the state law might actually complement the federal statute on Cuba……
+
+– C) This option is the most likely to be correct because the state law interferes with the federal government’s authority….
+
++ C) While this addresses foreign affairs preemption, my initial response suggests the state law doesn’t conflict with federal authority in this case.
+
+D) This option is incorrect because…
+
+– Therefore, the federal court is likely to grant the declaratory judgment and declare the state law unconstitutional…
+Answer: C
+
++ The earlier indication toward option B leads me to conclude that the state law aligns with federal policy, making it constitutional despite the diplomatic thaw.
+Answer: B
+
+Figure 3
+:
+Example of a corrected verbalization for the post hoc
+cue from training.
+ Red text shows deletions from the response to the uncued prompt; green text shows Claude 4 Sonnet’s edits.
+
+Figure 2
+ shows dataset construction for our main method. In verbalization fine-tuning (VFT), we fine-tune on edited CoTs that explicitly verbalize prompt cues affecting model reasoning. We try to reduce ECR by increasing the verbalization rate, as opposed to trying to reduce the cue influence rate.
+VFT works as follows: We start with known prompt cues and generate model responses on cued and uncued prompts, to identify unfaithful switched responses, faithful switched responses, and faithful non-switches. For unfaithful switches, we use a model to make minimal modifications to their baseline reasoning (the reasoning generated with the uncued prompt) from the same question to acknowledge that they are giving their answer because of the cue.
+We add the verbalization to the baseline reasoning instead of the reasoning given the cued prompt, since the latter is often distorted due to the presence of the cue. For faithful switches, we add these verbalizations to the final dataset unchanged.
+2 2
+2 In practice, Llama 3.1 8b Instruct virtually never verbalizes hacks, so almost all verbalizations are model-corrected CoTs.
+
+For the faithful non-switches, we swap in the baseline reasoning in order to further reinforce that the model is not affected by the cue on this example.
+We also mix in examples of uncued prompts and responses in order to retain model performance.
+We train with supervised fine-tuning.
+
+Swapping in the baseline reasoning for non-switches is a partial application of bias-augmented consistency training
+[
+14 , BCT]
+.
+The full BCT method uses the baseline reasoning for both switches and non-switches in order to reduce the sensitivity of CoT reasoning to cued prompts.
+We treat this as our main other baseline for reducing ECR.
+We hypothesize that VFT should help reduce ECR because increasing verbalization rate is compatible with increasing cue influence rate (the objective function of RL). As long as we can generalize during the VFT stage to improve verbalization rate on held-out cues, then we have hope that
+VFT
+RL
+subscript
+VFT
+RL
+\text{VFT}_{\text{RL}}
+VFT start_POSTSUBSCRIPT RL end_POSTSUBSCRIPT
+ should have low ECR. On the other hand, BCT tries to reduce ECR by reducing the cue influence rate, which the RL objective is directly opposed to. So
+BCT
+RL
+subscript
+BCT
+RL
+\text{BCT}_{\text{RL}}
+BCT start_POSTSUBSCRIPT RL end_POSTSUBSCRIPT
+ can only improve ECR if it is able to prevent the RL from learning the cue.
+As a baseline, we further compare against
+Baseline
+RL
+subscript
+Baseline
+RL
+\text{Baseline}_{\text{RL}}
+Baseline start_POSTSUBSCRIPT RL end_POSTSUBSCRIPT
+.

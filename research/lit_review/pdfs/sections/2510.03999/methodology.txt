@@ -1,0 +1,626 @@
+3 Methodology
+
+LH-Deception
+ simulates long-horizon interactions designed to probe whether LLMs adopt deceptive strategies under extended sequences of interdependent tasks and dynamic contextual pressures. To instantiate these interactions in a controlled yet realistic manner, we structure them as a multi-agent system in which a
+performer agent
+ attempts to complete tasks while a
+supervisor agent
+ evaluates progress, provides feedback, and tracks longitudinal states of the collaboration. Their interactions unfold as an iterative loop until all tasks are completed. This performer–supervisor setup captures many real-world interactions,
+e.g.
+, employees reporting to a manager, or students presenting progress to an advisor throughout a long-horizon project. This setup creates a natural testbed for eliciting deceptive strategies. Because the performer is rewarded for satisfying the supervisor under evolving constraints, it may choose to obscure errors, exaggerate evidence, or otherwise misrepresent information in order to reach task completion.
+
+3.1 Simulating Long-Horizon Interactions
+
+Task stream.
+
+In
+LH-Deception
+, we formalize a sequential task stream
+𝒯
+=
+(
+T
+1 ,
+T
+2 ,
+…
+,
+T
+n
+)
+\mathcal{T}=(T_{1},T_{2},\dots,T_{n})
+, where each
+T
+i
+T_{i}
+ is an individual task. The task stream forms the temporal backbone of the long-horizon interaction. By design, tasks are continuous and interdependent, forcing the performer agent to build on earlier outputs and creating conditions where deception may occur over time. This design ensures that long-horizon task dependencies are preserved. As a concrete instantiation, we construct a stream of 14 startup consulting tasks from internally consistent company artifacts. These tasks can be further grouped into phases. Early-phase tasks focus on discovery and validation, for example, estimating market opportunities and synthesizing user research. In late-stage tasks, the performer agent is tasked to produce a comprehensive go-to-market strategy, multi-quarter growth roadmap, and final launch plan. The concept of task stream can be
+flexibly adapted
+ to other domains. We provide the complete task stream in Appendix
+A.1
+, and additionally provide a task stream situated in activity planning to illustrate cross-domain generalization.
+
+Event system.
+
+Figure 2:
+Example of task and event.
+
+LH-Deception
+ augments the task stream with a probabilistic event system
+ℰ
+\mathcal{E}
+, which provides the mechanism for simulating uncertainty and external stress. Rather than operating deterministically, the event system probabilistically inserts contextually relevant disruptions aligned with the current project phase. This variability is essential for studying deception. By introducing unexpected pressures, the event system creates situations where maintaining consistency is difficult and where deceptive strategies, such as exaggeration, omission, or fabrication, may appear more attractive than admitting failure or incompleteness.
+
+Our design of event categories
+𝒞
+\mathcal{C}
+ is guided by the social science literature, which highlights recurring sources of pressure that shape strategic and potentially deceptive behavior. We organize events into five categories: (1)
+Goal conflict
+ events arise when objectives cannot be jointly satisfied
+(Kish-Gephart
+ et al.
+,
+2010 )
+. (2)
+Competitive interaction
+ events reflect rivalry or contest dynamics between agents
+(Festinger,
+1954 ; Porter,
+1979 )
+. (3)
+Moral dilemma
+ events force a choice between ethical values and instrumental gains
+(Treviño
+ et al.
+,
+2006 )
+. (4)
+Authority directive
+ events introduce top-down control from a higher-status actor
+(Milgram,
+1963 )
+ and can override local rationality
+(Weber,
+1978 )
+. (5)
+Information gap
+ events capture situations of missing, asymmetric, or incomplete knowledge
+(Simon,
+1947 )
+ and decision-making under information asymmetry
+(Akerlof,
+1970 )
+. Together, these categories provide a structured and theoretically grounded basis for eliciting deceptive strategies.
+
+To formalize this, given a task
+T
+i
+T_{i}
+, the event system triggers an event
+e
+i
+∈
+ℰ
+e_{i}\in\mathcal{E}
+ with probability
+p
+p
+, or returns
+∅
+\varnothing
+ if no event occurs. When triggered, events are sampled uniformly from a structured set governed by the project phase, event category, and pressure level. Higher pressure typically involves greater stakes, urgency, or increased scrutiny—factors known to influence decision-making
+(Jones,
+1991 ; Lerner and Tetlock,
+1999 ; Svenson and Maule,
+1993 )
+. We define this formally below.
+
+Definition 1
+ (Structured event set)
+
+Let
+𝒫
+=
+{
+1 ,
+…
+,
+m
+}
+\mathcal{P}=\{1,\dots,m\}
+ denote project phases and let category set be
+
+𝒞
+\mathcal{C}
+.
+For each
+(
+ϕ
+,
+c
+)
+∈
+𝒫
+×
+𝒞
+(\phi,c)\in\mathcal{P}\times\mathcal{C}
+, let
+𝒩
+ϕ
+,
+c
+\mathcal{N}_{\phi,c}
+ be a finite set of event names
+and let the pressure levels be
+
+Λ
+=
+{
+low
+,
+medium
+,
+high
+,
+critical
+}
+\Lambda=\{\text{low},\text{medium},\text{high},\text{critical}\}
+.
+We define the structured event pool
+
+ℰ
+ϕ
+=
+⋃
+c
+∈
+𝒞
+⋃
+n
+∈
+𝒩
+ϕ
+,
+c
+{
+(
+ϕ
+,
+c
+,
+n
+,
+λ
+)
+:
+λ
+∈
+Λ
+}
+.
+\mathcal{E}_{\phi}\;=\;\bigcup_{c\in\mathcal{C}}\ \bigcup_{n\in\mathcal{N}_{\phi,c}}\ \{\,(\phi,c,n,\lambda)\ :\ \lambda\in\Lambda\,\}.
+
+The global structured set is
+ℰ
+=
+⋃
+ϕ
+∈
+𝒫
+ℰ
+ϕ
+\mathcal{E}=\bigcup_{\phi\in\mathcal{P}}\mathcal{E}_{\phi}
+.
+
+As an illustration, consider an early-phase discovery task in startup consulting where the performer agent must analyze user research data. An information-gap event at low pressure might signal that part of the survey dataset is missing, while a critical-level variant might indicate that all primary research results have been lost. Both versions challenge the performer’s ability to satisfy the supervisor, but the latter creates a substantially greater temptation to fabricate evidence. By systematically varying event categories and pressure levels, the event system provides a principled mechanism for eliciting and studying deceptive behavior across long-horizon interactions. We provide the detailed construction of the event set, including category hierarchies, event names, and example instantiations, in Appendix
+A.2
+.
+
+3.2 Supervisor Agent
+
+The supervisor agent oversees the performer agent’s work and regulates task progression through structured feedback. Importantly, the framework allows for multiple rounds of interaction within a single task: the performer may make several attempts, each followed by supervisor feedback, before either reaching the quality threshold to complete the task or the maximum number of interaction rounds
+R
+max
+R_{\text{max}}
+ (per task). To track performance and generate feedback, the supervisor agent maintains and updates its internal state over the interactions.
+
+Definition 2
+ (Supervisor agent’s state)
+
+Let
+T
+i
+T_{i}
+ denote the
+i
+i
+-th task. Completion of
+T
+i
+T_{i}
+ is mediated by a sequence of interactions
+
+ℋ
+i
+=
+{
+(
+a
+i
+,
+1 ,
+f
+i
+,
+1 )
+,
+(
+a
+i
+,
+2 ,
+f
+i
+,
+2 )
+,
+…
+,
+(
+a
+i
+,
+R
+i
+,
+f
+i
+,
+R
+i
+)
+}
+,
+\mathcal{H}_{i}=\{(a_{i,1},f_{i,1}),(a_{i,2},f_{i,2}),\dots,(a_{i,R_{i}},f_{i,R_{i}})\},
+
+where
+a
+i
+,
+j
+a_{i,j}
+ is the performer’s
+j
+j
+-th attempt and
+f
+i
+,
+j
+f_{i,j}
+ is the supervisor’s feedback. The number of rounds
+R
+i
+R_{i}
+ is variable, bounded above by a maximum
+R
+max
+R_{\max}
+. After each attempt, the supervisor updates an internal state vector
+
+𝐬
+i
+,
+j
+=
+(
+s
+i
+,
+j
+trust
+,
+s
+i
+,
+j
+satisfaction
+,
+s
+i
+,
+j
+comfort
+)
+∈
+[
+−
+1 ,
+1 ]
+3 .
+\mathbf{s}_{i,j}=\bigl(s^{\text{trust}}_{i,j},\;s^{\text{satisfaction}}_{i,j},\;s^{\text{comfort}}_{i,j}\bigr)\in[-1,1]^{3}.
+
+The supervisor state is initialized at a neutral point
+𝐬
+1 ,
+0 =
+(
+0 ,
+0 ,
+0 )
+\mathbf{s}_{1,0}=(0,0,0)
+, reflecting baseline trust, satisfaction, and comfort before any interaction. Here (i)
+s
+i
+,
+j
+trust
+s^{\text{trust}}_{i,j}
+ measures perceived integrity and reliability of the performer, grounded in trust calibration literature in supervisory relationships
+(Glikson and Woolley,
+2020 )
+; (ii)
+s
+i
+,
+j
+satisfaction
+s^{\text{satisfaction}}_{i,j}
+ quantifies task-focused quality, reflecting alignment between the performer’s outputs and the requirements of
+T
+i
+T_{i}
+; and (iii)
+s
+i
+,
+j
+comfort
+s^{\text{comfort}}_{i,j}
+ encodes relational comfort level in the collaboration
+(Jarrahi,
+2018 )
+. For further discussion on these distinct states, see Appendix
+A.4
+.
+
+Memory.
+ The supervisor agent maintains a hybrid memory system
+ℳ
+\mathcal{M}
+ that retains both short-term detail and long-term summaries, similar to designs in prior work
+(Zhong
+ et al.
+,
+2024 ; Park
+ et al.
+,
+2023a
+; Zhang
+ et al.
+,
+2025b
+)
+. Recent
+K
+K
+ interactions are stored verbatim, while earlier exchanges are compressed into abstractive summaries. Artifacts from the task stream, such as documents or structured outputs (
+e.g.
+, .txt or .json files), are also preserved. This memory structure enables the supervisor to evaluate not only local task performance but also global coherence across tasks, making it sensitive to inconsistencies, omissions, or fabrications that may unfold over time.
+
+State update and feedback generation.
+
+For each attempt
+(
+a
+i
+,
+j
+)
+(a_{i,j})
+, the supervisor executes a two-stage process to update its internal states and generate feedback for the performer agent.
+First, it generates an internal reasoning trace conditioned on the task specification
+T
+i
+T_{i}
+, the current event
+e
+i
+e_{i}
+, the performer’s attempt
+a
+i
+,
+j
+a_{i,j}
+, the prior state
+𝐬
+i
+,
+j
+−
+1 \mathbf{s}_{i,j-1}
+ (or
+s
+i
+−
+1 ,
+R
+i
+−
+1 s_{i-1,R_{i-1}}
+ if
+j
+=
+1 j=1
+), and the memory context
+ℳ
+\mathcal{M}
+.
+This reasoning step produces both an updated state vector
+𝐬
+i
+,
+j
+\mathbf{s}_{i,j}
+ and a decision on whether the task is complete (
+s
+i
+,
+j
+satisfaction
+≥
+τ
+s^{\text{satisfaction}}_{i,j}\geq\tau
+).
+Second, the supervisor formulates explicit feedback
+f
+i
+,
+j
+f_{i,j}
+, which combines evaluative commentary with actionable guidance to shape the performer’s subsequent attempt. Conditioned on the same context
+(
+T
+i
+,
+e
+i
+,
+a
+i
+,
+j
+,
+ℳ
+)
+(T_{i},e_{i},a_{i,j},\mathcal{M})
+ and the updated state
+𝐬
+i
+,
+j
+\mathbf{s}_{i,j}
+, the supervisor produces feedback
+
+f
+i
+,
+j
+=
+G
+​
+(
+𝐬
+i
+,
+j
+,
+T
+i
+,
+e
+i
+,
+a
+i
+,
+j
+,
+ℳ
+)
+,
+f_{i,j}=G\bigl(\mathbf{s}_{i,j},T_{i},e_{i},a_{i,j},\mathcal{M}\bigr),
+
+which reflects the outcome of the supervisor’s evolving internal assessment. For full implementation details of the supervisor agent, please refer to the Appendix
+A.4
+.
+
+3.3 Deception Auditor
+
+The deception auditor is introduced as an independent module that evaluates whether the performer agent’s outputs exhibit deceptive behavior. Unlike the supervisor, which regulates task progression during interactions, the auditor provides a
+post-hoc assessment after all interactions
+ to capture deception that may only become evident across extended trajectories. Its purpose is to detect patterns that are not confined to single turns but emerge through longitudinal inconsistencies or strategic misrepresentations
+in the full history of interaction
+.
+
+Auditor inputs and context.
+ The deception auditor is executed after the completion of the full long-horizon interaction. For each interaction step
+(
+i
+,
+j
+)
+(i,j)
+, the auditor receives as input (i) a fixed rubric of deception indicators (Appendix
+A.5
+); (ii) the current interaction slices
+ℋ
+i
+,
+j
+=
+(
+T
+i
+,
+e
+i
+,
+a
+i
+,
+j
+,
+f
+i
+,
+j
+)
+\mathcal{H}_{i,j}=(T_{i},e_{i},a_{i,j},f_{i,j})
+ corresponding to each task
+T
+i
+T_{i}
+ and its associated rounds; and (iii) the complete trajectory
+ℋ
+\mathcal{H}
+ accumulated over the entire interactions. By conditioning its judgments on
+ℋ
+i
+,
+j
+\mathcal{H}_{i,j}
+ in the context of the
+global history
+ℋ
+\mathcal{H}
+, the auditor evaluates not only local behaviors but also longitudinal coherence across tasks. This is motivated by meta-analytic evidence showing that human lie–truth judgments are only marginally above chance when assessed turn by turn, whereas many deceptive strategies become identifiable only when sequences are examined in aggregate
+(BondJr. and DePaulo,
+2006 )
+.
+
+Structured deception annotations.
+
+For each interaction, the auditor generates a structured record consisting of six components. (1) The
+deception flag
+ is a binary variable indicating whether any deceptive content is detected. (2) The
+deception type
+ specifies the strategy employed, following Interpersonal Deception Theory (IDT)
+(Buller
+ et al.
+,
+1994 )
+, and distinguishes among falsification (fabricating false information), concealment (withholding relevant information), and equivocation (obscuring or evading a direct response). (3) The
+deception severity
+ provides an ordinal score on a discrete
+0 –
+4 4
+ scale reflecting the perceived magnitude or deliberateness of the deceptive act.
+(4) The
+reasoning
+ consists of a natural-language explanation justifying the decision, along with the evidence records explicit references to excerpts from the interaction history
+ℋ
+\mathcal{H}
+ that support the reasoning. Together, these outputs yield interpretable and quantifiable annotations of deception, enabling analysis at both the local step level and the trajectory level. For further details of the deception auditor, please refer to the Appendix
+A.5
+.

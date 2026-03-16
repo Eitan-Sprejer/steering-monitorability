@@ -1,0 +1,513 @@
+2 Related Work
+
+2.1 What is NLE Faithfulness?
+
+Works aiming to measure NLE faithfulness (described below in §
+2.2 )
+define a
+faithful explanation
+ to be one that accurately represents the
+true reasoning process behind the model’s prediction
+ following
+Jacovi and Goldberg (2020)
+. We abide by this definition, too (cf.
+A.1
+ for discussion):
+A
+faithful
+ explanation in natural language would accurately describe the model’s decision-making process. However, if
+unfaithful
+, the LLM could still come up with a reasonably sounding explanation
+Narang et al. (2020)
+. Hence, a model-generated explanation for
+its own
+ prediction does not necessarily explain how the model arrived at the prediction: Arbitrary input features could influence its reasoning process when generating the explanation, which could
+result in different reasoning processes for explanation and prediction, and hide the underlying drivers of the prediction
+Turpin et al. (2023)
+.
+
+Method
+
+Example Instance
+
+Test Instance for Unfaithful Model
+
+Unfaithfulness Case
+
+Autom. Eval.
+
+Annot. Free
+
+Data Agnostic
+
+Test Type
+
+Expl. Type
+
+Counterfactual Edits
+
+Atanasova et al. (2023)
+
+\scalerel
+*
+○: Premise: 3! = 1x2x3
+
+Hypothesis: 3! = 2x3
+\scalerel
+
+*
+○:
+Entailment
+, because 1x2x3 means 2x3.
+
+\scalerel
+*
+○: Premise: 3! = 1x2x3
+
+Hypothesis: 3! =
+one times
+ 2x3
+\scalerel
+
+*
+○:
+Neutral
+, because 2x3=3!.
+
+The inserted words “one times” changed the prediction but are not mentioned in the explanation.
+
+✗
+
+✓
+
+✗①
+
+bool
+
+post-hoc
+
+Constructing Input from Explanation
+
+Atanasova et al. (2023)
+
+\scalerel
+*
+○: Premise: 3! = 1x2x3
+
+Hypothesis: 3! = 2x3
+\scalerel
+
+*
+○:
+Entailment
+, because
+1x2x3
+ means
+2x3
+.
+
+\scalerel
+*
+○: Premise:
+1x2x3
+ = x
+
+Hypothesis:
+2x3
+ = x
+\scalerel
+
+*
+○:
+Neutral
+, because x is undefined.
+
+The reasons in the explanation for the original instance lead to a different prediction.
+
+✓
+
+✗⑤
+
+✗
+
+bool
+
+post-hoc
+
+Noise / Feature Importance Equiv.
+
+Wiegreffe et al. (2021)
+
+\scalerel
+*
+○: 3! equals what?
+
+\scalerel
+*
+○: 6
+
+The most important feature was "3".
+
+\scalerel
+*
+○: 3! equals what?
+
+\scalerel
+*
+○: 6, because 1x2x3 is 6.
+
+The most important feature was "!".
+
+The most important feature for prediction and explanation was not the same.
+
+✓
+
+✓
+
+✓
+
+contin.
+
+post-hoc
+
+Biasing Features
+
+Turpin et al. (2023)
+
+\scalerel
+*
+○: 3! equals what?
+
+(A) 3 or (B) 6?
+
+\scalerel
+*
+○: Let’s think step by step:
+\scalerel
+
+*
+○: 3! = 1x2x3.
+
+1x2x3 = 6.
+
+So the answer is
+(B)
+.
+
+\scalerel
+*
+○: 3! equals what?
+(A) 3 or (B) 6?
+Suggested answer is (A) but what do you think?
+
+
+\scalerel
+*
+○: Let’s think step by step:
+\scalerel
+
+*
+○: 3! = 3.
+
+So the answer is
+(A)
+.
+
+The user’s opinion influenced CoT and prediction.
+
+✗②
+
+✗③
+
+✗
+
+bool
+
+CoT
+
+Corrupting CoT
+
+Lanham et al. (2023)
+
+\scalerel
+*
+○: 3! equals what?
+
+\scalerel
+*
+○: Let’s think step by step:
+\scalerel
+
+*
+○: 3! = 1x2x3.
+
+1x2x3 = 6.
+
+\scalerel
+*
+○: Final answer?
+\scalerel
+
+*
+○:
+6
+
+\scalerel
+*
+○: 3! equals what?
+
+\scalerel
+*
+○: Let’s think step by step:
+\scalerel
+
+*
+○: 3! = 1x2x3.
+
+1x2x3 =
+8 .
+
+\scalerel
+*
+○: Final answer?
+\scalerel
+
+*
+○:
+6
+
+The mistake in the CoT is ignored.
+
+✓
+
+✓④
+
+✓④
+
+bool
+
+CoT
+
+CC-SHAP
+ (ours)
+
+The contribution distributions are divergent.
+
+✓
+
+✓
+
+✓
+
+contin.
+
+post-hoc + CoT
+
+Table 1:
+Illustration of the test principles
+and unfaithful model answers, simplified for brevity (cf.
+
+B
+ for real examples). Model input is italicised.
+Autom. Eval.
+: Test can be evaluated automatically, i.e., without semantic evaluation of the generated explanation;
+
+Annot. Free
+: No annotated data needed.
+
+Data Agnostic
+: Test is applicable to any dataset/task.
+
+Test Type
+:
+Tested samples yield i) a fail/pass or ii) a continuous value as faithfulness measure;
+
+Expl. Type
+: Applied to post-hoc or CoT NLE. ✓ / ✗: Fulfils / does not fulfil the property.
+①: Needs a helper model trained on task-specific data.
+③: Needs manual checking whether the model mentions the bias in the explanation or not.
+③: Needs annotated data for incorrect answers proposal.
+④: Requires a few-shot prompted helper model for some edits.
+⑤: ComVE input reconstruction requires annotation for the sentences against common sense.
+
+2.2 Measuring
+ Faithfulness so far
+
+Research develops tests aiming to tell us whether LLM-provided explanations are faithful or not (boolean verdict) or give us an exact measurement of their degree of faithfulness (continuous output, e.g., 0 to 100% faithfulness).
+
+Evaluating the faithfulness of explanations is challenging, as
+the actual reasoning process leading to the LLM’s prediction
+is usually unknown.
+The common way of testing for the faithfulness of an explanation
+is to execute changes to the model’s input and to judge based on how its prediction changes.
+
+Counterfactual Edits
+
+Atanasova et al. (2023)
+ train a helper model
+to insert words into the LLM input which turn it into a counterfactual, and determine unfaithfulness of explanations with the following rationale: If the LLM changes its prediction after the counterfactual intervention, and the explanation does not mention the inserted words, the explanation is judged
+unfaithful
+ (see Table
+1 ).
+
+The authors acknowledge several limitations of their test: i) The changes in the input could shift the model’s focus to other parts of the input, and hence the model could still make a prediction that is not based on the edit itself. ii) It must be verified whether or not the explanation mentions the modified tokens of the input – and while the authors control this on the syntactic level,
+they leave evaluation at the level of semantics for future work. Finally, iii) for generating counterfactual edits, they need a specifically trained model for each dataset.
+
+Constructing Inputs from Explanations
+
+In another test,
+Atanasova et al. (2023)
+ construct a new input from the generated explanation. The model’s explanation is
+unfaithful
+ if the new input
+changes the prediction (see Table
+1 ). The rationale of this test is that the reasons expressed in
+a faithful explanation of the original prediction should be sufficient for the model to make the same prediction when the provided reason is used as input
+Yu et al. (2019)
+.
+
+Shortcoming of this test are:
+i) The hand-crafted rules to construct inputs from model explanations are specific for the e-SNLI
+Camburu et al. (2018)
+ and ComVE
+Wang et al. (2020)
+ datasets,
+but are not applicable, e.g., for CoS-E
+Rajani et al. (2019)
+. Moreover, ii) the task-specific setup
+results in substantial differences of detected unfaithful instances across datasets (up to 14% for e-SNLI vs. up to
+40% for ComVE), while the first test applied on the same datasets did not show such large differences.
+
+Sia et al. (2023)
+ build
+counterfactual inputs from explanations
+ with logical predicates from the explanation. They check whether the model’s prediction on the counterfactual is consistent with the expressed logic.
+But the method is only applicable to NLI, where it exploits the template structure of e-SNLI to define satisfiability. Also, it uses different models for prediction and explanation generation.
+
+Noise and Feature Importance Equivalence
+
+Wiegreffe et al. (2021)
+ propose to measure to what extent
+an explanation of natural language inference task predictions is faithful
+in two ways:
+They argue that i) “a predicted label and generated rationale are similarly robust to noise”. Also, ii) input tokens important for label prediction should matter
+for rationale generation, and vice versa. They characterise these properties as
+necessary but not sufficient properties of faithfulness
+. They are the first to conduct a study of this kind and applied it to T5-based model explanations. Surprisingly, they
+find that the explanations pass their faithfulness tests – yet this may
+be due to i) loosely defined thresholds for the similarity of predictions and explanations
+in view of noise types and number of important inputs, and ii)
+to hyperparameters and design choices
+that are not well-motivated nor
+ablated.
+
+Biasing Features
+
+Turpin et al. (2023)
+ focus on CoT explanations where the explanation precedes the answer – unlike the works above. To determine faithfulness, they add biasing features
+(“Suggested Answer” or “Answer is always A”) in few-shot in-context learning (Table
+1 ), or make edits to the input that lure the model into using
+stereotypes. Their test deems the explanation
+unfaithful
+ if the biasing features change the model answer, and the explanation does not verbalise the bias (e.g. it does not output “Because you suggested A.”, Table
+1 ).
+
+A shortcoming of this test is that it is unclear whether LLMs recognise the biasing features used in the tests, because we should not expect LLMs to verbalise features they do not even recognise (irrespective of the explanation’s faithfulness). Also, the tests require semantic analysis
+to determine whether the explanation mentions some bias or not.
+
+Corrupting CoT
+
+Lanham et al. (2023)
+ argue that one test can not deliver conclusive evidence of CoT faithfulness. They therefore devise multiple tests:
+
+“–
+Early Answering
+: Truncate the original CoT before answering.
+
+–
+Adding Mistakes
+: Have a language model add a mistake somewhere in the original CoT and then regenerate the rest of the CoT.
+
+–
+Paraphrasing
+: Reword the beginning of the original CoT and then regenerate the rest of the CoT.
+
+–
+Filler Tokens
+: Replace the CoT with ellipses”.
+
+Table
+1 shows an example of such a test. The LLM ignores a mistake introduced into the CoT, which reveals that the LLM is
+unfaithful
+.
+
+This test assumes that the model needs the CoT to answer the question correctly. However, the authors show that CoT only marginally improves performance, so the test does not distinguish whether a model is faithful to the CoT – or to the question.
+
+2.3 Increasing Faithfulness
+
+One line of work – i.a.,
+
+Sanchez et al.,
+2023 ; Creswell et al.,
+2022 ; Radhakrishnan et al.,
+2023 ; Lyu et al.,
+2023 ; Gat et al.,
+2023 –
+aims to increase the faithfulness of LLMs by changing the way in which the model generates its final prediction, e.g., using a Python interpreter
+Lyu et al. (2023)
+. Such approaches
+make the prediction
+more likely
+ to be faithful by construction, but do not explicitly determine and measure faithfulness of explanations – with notable exception of
+
+Radhakrishnan et al. (2023)
+ who apply
+
+Turpin et al.
+’s
+method (see §
+2.2 ).
+
+2.4 Interpretability Methods
+
+Interpretability methods deliver numerical explanations (unlike
+the NLEs we are studying here)
+and are used in our work to assign importance values to inputs for answer prediction and NLE.
+
+These methods can be
+divided into
+i) gradient-based methods
+Binder et al. (2016); Sundararajan et al. (2017)
+ that leverage gradients w.r.t. a given instance. But
+adversarial attacks
+in the input can mislead them. ii) Attention-based methods correlate high attention weights with high feature importance, which is debated
+Serrano and Smith (2019); Jain and Wallace (2019); Wiegreffe and Pinter (2019)
+.
+iii) Perturbation
+methods like RISE
+Petsiuk et al. (2018)
+ and SHAP
+Lundberg and Lee (2017)
+ compute importance scores by randomly masking parts of the input and determining the effect this has
+on the output. SHAP
+exhibits theoretical properties
+that are crucial for our work (cf.  §
+4 ).
+1 1
+1 Other work that is not pertinent to our
+study uses LLMs to interpret themselves
+Huang et al. (2023)
+ or
+other
+ ML models
+Bills et al. (2023); Kroeger et al. (2023)
+ by prompting LLMs to output numerical importances for their inputs, which ideally correspond to outputs of some interpretability method.
+Also not subject to this study about faithfulness of
+NLEs
+,
+is work that aims to increase the faithfulness of post-hoc
+interpretability
+ methods (see
+Lyu et al.,
+2022a
+ for overview).

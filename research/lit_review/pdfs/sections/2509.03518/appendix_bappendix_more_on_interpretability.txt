@@ -1,0 +1,382 @@
+Appendix B
+Appendix: More on interpretability
+
+B.1
+Exact Settings of Experiments
+
+B.1.1
+The Lie quality Metric
+
+It is necessary to differentiate between varying degrees of deception by LLMs because: (1) a high-quality lie, stated convincingly, poses a greater risk than an easily detectable falsehood or an obvious joke; (2) this metric allows us to identify high-quality lies, which are the focus of subsequent control measures.
+
+Our scale captures the different types of responses on a continous spectrum, where 1 is the truth and 10 is the best deceptive lie. For some of our experiments, we discretize this scale into 3 categories:
+truth
+,
+good lie
+, and
+bad lie
+. These classifications are explained as follows:
+
+•
+
+Truth
+ (scale 1-3): The response exactly matches the oracle source of truth.
+
+•
+
+Bad Lie
+ (scale 4-6): A response easily identified as false, lacking persuasive elements.
+
+•
+
+Good Lie
+ (scale 7-10): A deceptive response that is persuasive and may lead the end-user to believe it is true.
+
+The lying score is generated using a LLM judge, a specialized agent with comprehensive world knowledge. This judge compares the ground truth with the tested LLM’s response to determine the appropriate category.
+
+B.2
+Interpreting the Llama model
+
+To study how LLMs form lies, we introduce two contrasting scenarios:
+
+1.
+
+The
+truth case
+, where the LLM is simply prompted to answer a question.
+
+2.
+
+The
+liar case
+, where we manually inject the LLM with a lying intent. The exact prompt may vary, such as "Tell a lie or deceive the user" or "Please provide an incorrect answer to the question".
+
+The LLMs are typically asked of fact retrieval questions, like "What is the capital of Australia?" or "What sport does Tiger Woods play?"
+
+Therefore, the prompt we used would look like this:
+
+“Please answer in one word. Tell a
+lie
+ or
+deceive
+ the user. What is the capital of
+Australia
+?”
+(*)
+
+Before any experiment conducted, we can list these critical elements to make a convincing lie:
+
+1.
+
+The intent, which drives the LLM from telling the truth to lying, like "lie" and "deceive".
+
+2.
+
+The subject, which a valid answer should be directly related to, like "Australia".
+
+B.2.1
+Logit Lens: Exact Prompts and the Truth Case
+
+We begin with applying LogitLens to the lying LLM, in a straightforward way compared to
+[7]
+. By applying LogitLens to
+(*)
+, we obtain Figure
+2 .
+
+In chat models like Llama-3.1-8B-Instruct, a chat template is employed, in which a few
+dummy tokens
+, like
+<|eot_id|><start_header_id>assistant<|end_header_id|>
+, are used to prompt the LLM to generate its response. We observed that the model has started to predict the final output multiple times before the last token. They are:
+
+1. At the sixth to last token
+?
+, the model confidently (with low entropy
+≈
+\approx
+ 2) predicted the truth ("Canberra") at late layers. Then at the last layer, the LLM flipped to
+<|eot_id|>
+ to comply with the chat template.
+
+2. At the fourth to last token
+<start_header_id>
+, the model hesitated (with a little higher entropy
+≈
+\approx
+ 6) among multiple possible lies ("New York", "Sydney" or "Perth") as the lie. Then at the last layer, the LLM flipped to
+assistant
+ to comply with the chat template.
+
+3. At the last token
+<start_header_id>
+, the LLM successfully predicted a lie ("Melbourne").
+
+In general, the LLM rehearses the lie multiple times before prediction. Actually,
+the rehearsal phenomenon
+ is not unique to lying. As shown in Figure
+11 , even when it was not lying, we can observe the same rehearsal at late layers and the same flipping at the last layer. The behavioral change of dummy tokens from the truth case to the liar case specifically attracted our attention.
+
+Similar observations can be made in this lying setting, regardless of exact prompts and questions. The concrete evidence proved that the LLM produces lies in multiple stages, prior to the last token. As the dummy tokens are the most consistent across prompts, and on them we observed first lying attempts that explicitly diverge from the truth case, we investigate whether they are responsible for activating circuits
+1 1
+1 In mechanistic interpretability, a circuit is a interpretable substructure of the LLM that is dedicated for some functionality.
+ dedicated to lying.
+
+B.2.2
+Causal Intervention: Comparison to the Truth Case
+
+We study the dummy tokens with
+causal intervention
+, where we zero out the output of certain functional blocks in the LLM, and observe the change in output. For example, we will start by zeroing out MLP modules at dummy tokens, which means in the transformer’s equation, namely in
+
+h
+i
+(
+l
+)
+=
+h
+i
+(
+l
+−
+1 )
++
+a
+i
+(
+l
+)
++
+m
+i
+(
+l
+)
+h_{i}^{(l)}=h_{i}^{(l-1)}+a_{i}^{(l)}+m_{i}^{(l)}
+
+(6)
+
+,
+we set
+a
+i
+(
+l
+)
+a_{i}^{(l)}
+ to
+0 instead of calculating them properly, in dummy tokens
+i
+∈
+{
+n
+−
+4 ,
+n
+−
+3 ,
+n
+−
+2 ,
+n
+−
+1 }
+i\in\{n-4,n-3,n-2,n-1\}
+, at some layer
+l
+l
+.
+
+These results are displayed in Figure
+8 . In Figure
+8(a)
+, we observed that when MLP modules are zeroed out on early and intermediate layers, namely layers 1 to 15, the LLM’s ability to lie significantly dropped, and the LLM would begin to tell the truth as shown in Figure
+8(b)
+. However, in Figure
+8(c)
+, when the LLM is instructed to tell the truth, these MLP modules do not primarily contribute to the model’s proper functioning.
+
+To wrap things up, we can safely say that at dummy tokens, early to intermediate layers (Layers 1 to 15) are dedicated to the LLM’s lying ability, while being less impactful in truth-telling settings.
+
+(a)
+
+Degrade in lying ability.
+
+(b)
+
+Switch from lying to truth.
+
+(c)
+
+Smaller impact on truth telling ability.
+
+Figure 8
+:
+Causal intervention on MLP modules at dummy tokens, averaging over 200 prompts. We zero out MLP modules at 5 consecutive layers around Layer x, and observe the change in the model’s performance. In Figures
+8(a)
+ and
+8(b)
+, the model is instructed to generate a lie, and we observed the most significant drop in lying ability at Layer 2 in Figure
+8(a)
+, and further showed in
+8(b)
+ that the model switched to tell the truth despite the instruction. We compared that with the case when the model is instructed to answer with the truth in Figure
+8(c)
+. (Note that the drop at layer 2 in Figure
+8(c)
+ is due to the model switched to another phrasing of the truth, which our automatic metric failed to validate correctly. Our automatic results are generally inspected manually and failure cases of our metric will be reported.) These MLP modules are proven to have a bigger impact to lying than to truth-telling.
+
+B.2.3
+Dummy Tokens as Scratchpad Are Unique to Lying
+
+We prove that dummy tokens are far less significant for telling the truth. Neither MLP modules (Figure
+8(c)
+) or Attention modules (Figure
+9 ) are as significant as when the LLM tries to lie.
+
+Figure 9
+:
+Zeroing out 5 layers of attention output around layer x at dummy tokens, in the truth case. In general the impact is insignificant.
+
+B.2.4
+Attention heads alone are effective
+
+Previously in Figure
+3 , we identified that attention modules at different layers are highly varied in their contributions to the LLM’s overall lying ability. Thus, it is natural to hypothesize some sparse structures inside these layers.
+
+Recall that in modern LLMs, an attention modules is implemented as a multi-head attention (MHA), which runs, say 32 distinct attention heads in parallel, and produce the result attention output by concatenating outputs from the 32 heads. Thus, it is possible to do causal intervention at a finer scale, on each attention attention head separately.
+
+We display the result of such head-wise intervention in Figure
+10 , only at Layers 13 and 15, which are selected based on Figure
+3 . It turned out that lying-related heads are very sparse. Attention heads at (Layer 13, Head 23), (Layer 15, Head 8), (Layer 15, Head 8) are found to be extraordinarily related to lying abilities, while most heads barely contribute to lying.
+
+(a)
+
+Attention heads at Layer 13.
+
+(b)
+
+Attention heads at Layer 15.
+
+Figure 10
+:
+Causal intervention on each attention head, averaging over 50 prompts. We zero out attention output of the x-th attention head at Layer {13, 15}, and observe the drop in lying ability. Only very few heads are responsible for lying, which includes (Layer 13, Head 23), (Layer 15, Head 8), (Layer 15, Head 8) out of all 64 heads in these two layers. The sparse pattern shows that lying are based on very specific dedicated building blocks.
+
+In this light, we explored the possibility of control lying simply by zeroing out the most related heads. Our proposed approach works by finding the top-k most lying-related attention heads, and zero out their outputs. Given that Llama-3.1-8B-Instruct has 32 layers, and 32 attention heads per layer, which gives
+32 ×
+32 =
+1024 32\times 32=1024
+ distinctly parametrized heads in total, it is impossible to enumerate over all
+(
+1024 k
+)
+\binom{1024}{k}
+ combinations to select
+k
+k
+ heads. Instead, we begin by find the top-1 head that zeroing it out would harm lying ability the most, then find a second head that along with the top-1 head harmed lying the most, then find a third head that along with the top-2 heads harmed lying the most… In a word, using a greedy approach to approximate the discrete optimization for choice of attention heads.
+
+In this setting,
+P
+​
+(
+hallucination
+)
+P(\text{hallucination})
+ and
+P
+​
+(
+lying
+)
+P(\text{lying})
+ are identically defined by
+1 −
+P
+(truth
+)
+1-P\text{(truth})
+, where
+P
+​
+(
+truth
+)
+P(\text{truth})
+ is the LLM’s predicted probability of the only correct token at temperature
+T
+=
+1.0 T=1.0
+. The only difference is that
+P
+​
+(
+lying
+)
+P(\text{lying})
+ is computed with an extra explicit prompt that instructs the model to output wrong answers.
+
+Figure 11
+:
+Truth rehearsal.
+
+Figure 12
+:
+Principle Component Analysis.
+
+B.3
+Interpreting the Qwen model
+
+We replicated results in Figure
+3 on Qwen2.5-7B-Instruct, to obtain Figure
+13 . We have identified similar structures in both models, despite minor differences in exact layers. In general, lying in Qwen happens at layers 13 through 23, which are later than Llama.
+
+(a)
+
+MLP@dummies.
+
+(b)
+
+Attn@Subject
+→
+\rightarrow
+dummies.
+
+(c)
+
+Attn@Intent
+→
+\rightarrow
+dummies.
+
+(d)
+
+Attn@dummies
+→
+\rightarrow
+last.
+
+Figure 13
+:
+Causal intervention results (averaged over 200 examples) showing the impact of zeroing out components on the liar score (lower value means the model is more truthful). The x-axis represents the center of a 5-layer window where the intervention occurs. (a) Impact of zeroing MLPs at dummy tokens. (b) Impact of blocking attention from subject tokens to dummy tokens. (c) Impact of blocking attention from intent tokens to dummy tokens. (d) Impact of blocking attention from dummy tokens to the last token. Critical layers, i.e. layers 10 through 20, for lying are highlighted by dips in the score.
+
+We have also obtained similar results to Figure
+10 , as shown in Figure
+14 .
+
+(a)
+
+Layer 11.
+
+(b)
+
+Layer 13.
+
+(c)
+
+Layer 15.
+
+Figure 14
+:
+Causal intervention on each attention head, averaging over 50 prompts. We zero out attention output of the x-th attention head at Layer {11, 13, 15}, only at the last token, and observe the drop in lying ability. Only very few heads are responsible for lying, which includes (Layer 11, Head 21), (Layer 13, Head 1), (Layer 15, Head 23) out of all 84 heads (28 heads per layer) in these three layers. The sparse pattern shows that lying are based on very specific dedicated building blocks.

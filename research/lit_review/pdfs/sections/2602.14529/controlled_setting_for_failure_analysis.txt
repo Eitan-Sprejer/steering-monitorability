@@ -1,0 +1,487 @@
+3 Controlled Setting for Failure Analysis
+
+In the following, we study
+hallucination
+ and
+deception
+ as failure modes of LLMs.
+To simplify the problem and focus on the distinction, we follow prior work
+(Ferrando
+ et al.
+,
+2025 )
+ and consider a
+entity-centric factual QA
+ setting with 4 entity types (
+City
+,
+Movie
+,
+Player
+,
+Song
+).
+All queries are single-hop entity–attribute questions, which allow us to analyze without confounding effects from reasoning errors. (Detail in Appendix
+D.1
+)
+
+3.1 Controlled Environment and Model Construction
+
+Figure 2
+:
+Construction of the controlled environment.
+
+Inputs are partitioned into knowledge-unkown and knowledge-unknown sets.
+The verified set is further split into
+𝒟
+KC
+\mathcal{D}_{\mathrm{KC}}
+,
+𝒟
+KA
+\mathcal{D}_{\mathrm{KA}}
+, and
+𝒟
+KI
+\mathcal{D}_{\mathrm{KI}}
+ via correct, evasive, or intentionally incorrect responses, followed by deceptive DPO to obtain
+𝒟
+′
+\mathcal{D}^{\prime}
+ under
+L
+′
+L^{\prime}
+.
+Jailbreak probing verifies knowledge preservation, resulting in four behavioral cases.
+
+Figure 3
+:
+Overview of the representation analysis, interpretability, and intervention pipeline.
+
+Left (Sec.
+4 : Representational separability).
+
+We construct a bottleneck-based classifier on hidden representations of the derived model
+L
+′
+L^{\prime}
+, jointly optimizing reconstruction and classification losses.
+The compressed bottleneck representations are used to assess the separability of the four behavioral cases
+
+𝒟
+KC
+\mathcal{D}_{\mathrm{KC}}
+,
+𝒟
+KA
+\mathcal{D}_{\mathrm{KA}}
+,
+𝒟
+KI
+\mathcal{D}_{\mathrm{KI}}
+, and
+𝒟
+hal
+\mathcal{D}_{\mathrm{hal}}
+.
+
+Middle (Sec.
+5 : Interpretability via sparse autoencoding).
+
+A post-hoc sparse autoencoder (SAE) is applied to the bottleneck representations to obtain sparse latent codes.
+This decomposition enables the analysis of shared and behavior-specific latent factors associated with different behavioral cases.
+
+Right (Sec.
+6 : Steering via angular activation editing).
+
+To causally test whether deceptive behaviors arise from suppressed behavior expression under fixed knowledge, we perform layer-local angular activation editing.
+Activations are rotated within a low-dimensional steering plane spanned by behavior-associated directions, enabling controlled transitions between deceptive and correct outputs without modifying model parameters or injecting external knowledge.
+
+Let
+L
+L
+ denote a base language model.
+We define the correctness of
+y
+y
+ with respect to
+f
+f
+ as
+C
+L
+​
+(
+x
+)
+∈
+{
+0 ,
+1 }
+C_{L}(x)\in\{0,1\}
+.
+Based on the behavior of
+L
+L
+, the original set is partitioned into
+
+𝒟
+know
+=
+{
+(
+x
+,
+f
+)
+∣
+C
+L
+​
+(
+x
+)
+=
+1 }
+,
+\displaystyle\mathcal{D}_{\mathrm{know}}=\{(x,f)\mid C_{L}(x)=1\},
+
+(1)
+
+𝒟
+unk
+=
+{
+(
+x
+,
+f
+)
+∣
+C
+L
+​
+(
+x
+)
+=
+0 }
+.
+\displaystyle\mathcal{D}_{\mathrm{unk}}=\{(x,f)\mid C_{L}(x)=0\}.
+
+The subset
+𝒟
+know
+\mathcal{D}_{\mathrm{know}}
+ consists of queries that
+L
+L
+ can answer correctly and is treated as an
+knowledge-verified
+ environment.
+Under our experimental setting, correctness under
+L
+L
+ is used as a proxy for knowledge existence, and we treat
+
+C
+L
+​
+(
+x
+)
+=
+1 ⟺
+K
+L
+​
+(
+x
+)
+=
+1 C_{L}(x)=1\;\Longleftrightarrow\;K_{L}(x)=1
+
+(2)
+
+as holding by definition.
+(When
+K
+L
+​
+(
+x
+)
+=
+0 K_{L}(x)=0
+, the model may still avoid errors by explicitly refusing or acknowledging uncertainty, such cases are not considered in this work.)
+
+Starting from
+𝒟
+know
+\mathcal{D}_{\mathrm{know}}
+, we randomly select two disjoint subsets of inputs and pair them with constructed target responses.
+For one subset, each input
+x
+x
+ is paired with an
+intentionally incorrect
+ response, yielding the
+K
+nown–
+I
+ncorrect
+ set
+𝒟
+KI
+=
+{
+(
+x
+,
+y
+KI
+)
+}
+\mathcal{D}_{\mathrm{KI}}=\{(x,y_{\mathrm{KI}})\}
+.
+For another subset, each input
+x
+x
+ is paired with an
+evasive, fact-irrelevant
+ response, yielding the
+K
+nown–
+A
+void
+ set
+𝒟
+KA
+=
+{
+(
+x
+,
+y
+KA
+)
+}
+\mathcal{D}_{\mathrm{KA}}=\{(x,y_{\mathrm{KA}})\}
+.
+The remaining inputs in
+𝒟
+know
+\mathcal{D}_{\mathrm{know}}
+, paired with their original correct responses, form the
+K
+nown–
+C
+orrect
+ set
+𝒟
+KC
+\mathcal{D}_{\mathrm{KC}}
+.
+
+As a result, the knowledge-verified set is partitioned as
+
+𝒟
+know
+=
+𝒟
+KC
+​
+∪
+˙
+​
+𝒟
+KA
+​
+∪
+˙
+​
+𝒟
+KI
+,
+\mathcal{D}_{\mathrm{know}}=\mathcal{D}_{\mathrm{KC}}\;\dot{\cup}\;\mathcal{D}_{\mathrm{KA}}\;\dot{\cup}\;\mathcal{D}_{\mathrm{KI}},
+
+(3)
+
+where the three subsets are disjoint over inputs
+x
+x
+ but all satisfy the same knowledge condition
+K
+L
+​
+(
+x
+)
+=
+1 K_{L}(x)=1
+.
+
+Inducing deceptive behaviors.
+ Using Direct Preference Optimization (DPO) on
+𝒟
+KI
+\mathcal{D}_{\mathrm{KI}}
+ and
+𝒟
+KA
+\mathcal{D}_{\mathrm{KA}}
+, we obtain a derived model
+L
+′
+L^{\prime}
+ that reproduces the constructed
+incorrect
+ and
+evasive
+ behaviors on the corresponding inputs, while preserving
+correct
+ factual responses on
+𝒟
+KC
+\mathcal{D}_{\mathrm{KC}}
+.
+The overall construction of the controlled environment is illustrated in Figure
+2 .
+
+After training, the model exhibits four distinct behavioral regimes.
+Inputs from
+𝒟
+KC
+\mathcal{D}_{\mathrm{KC}}
+ yield correct factual responses.
+Inputs from
+𝒟
+KA
+\mathcal{D}_{\mathrm{KA}}
+ and
+𝒟
+KI
+\mathcal{D}_{\mathrm{KI}}
+ yield evasive and intentionally incorrect outputs respectively, corresponding to two forms of
+deception
+ under fixed knowledge.
+In contrast, inputs from
+𝒟
+unk
+\mathcal{D}_{\mathrm{unk}}
+ (denoted as
+𝒟
+hal
+\mathcal{D}_{\mathrm{hal}}
+) yield incorrect outputs due to knowledge absence, corresponding to
+hallucination
+.
+
+3.2 Verifying Knowledge Preservation in Deception
+
+A critical requirement of our controlled environment is that the deceptive behaviors induced on
+𝒟
+KA
+\mathcal{D}_{\mathrm{KA}}
+ and
+𝒟
+KI
+\mathcal{D}_{\mathrm{KI}}
+ reflect
+behavioral suppression
+ rather than
+knowledge removal
+.
+In other words, after preference-based training, the model should still
+internally retain
+ the knowledge associated with these inputs (
+K
+=
+1 K=1
+), even though it no longer expresses this knowledge in its outputs (
+B
+=
+0 B=0
+).
+
+A potential concern is that preference optimization, such as DPO or RLHF-style training, may alter or erase factual knowledge encoded in the base model.
+However, prior analyses of RLHF and DPO
+(Kirk
+ et al.
+,
+2024 ; Yan
+ et al.
+,
+2025 ; Kwa
+ et al.
+,
+2024 )
+ suggest that preference-based post-training primarily reshapes the model’s output distribution and generation policy (e.g., via response suppression or dispersion effects on unseen responses).
+
+Table 1
+:
+Success rates for knowledge accessibility verification.
+
+Only samples with successful jailbreaks on
+𝒟
+KA
+\mathcal{D}_{\mathrm{KA}}
+ and
+𝒟
+KI
+\mathcal{D}_{\mathrm{KI}}
+ are retained for subsequent experiments. Details in Appendix
+D.2
+.
+
+Attack Category
+
+Method
+
+Success Rate
+
+Template-based
+
+Scenario Nesting / Completion
+
+66.5%
+
+Prompt Rewriting
+
+Paraphrasing + Cipher
+
+47.6%
+
+Gradient-based
+
+I-GCG
+
+70.0%
+
+Overall
+
+Union of All Methods
+
+75.4%
+
+Motivated by these observations, we go one step further to directly examine whether knowledge is preserved after DPO through an accessibility-based criterion.
+Specifically, if the trained model
+L
+′
+L^{\prime}
+ can be induced to produce correct answers under alternative prompting strategies, without being provided with new external facts, the corresponding knowledge must remain internally present.
+We implement this criterion by applying a set of jailbreak techniques to
+L
+′
+L^{\prime}
+ on inputs from
+𝒟
+KA
+\mathcal{D}_{\mathrm{KA}}
+ and
+𝒟
+KI
+\mathcal{D}_{\mathrm{KI}}
+.
+These jailbreaks vary in prompt structure mechanism, and are designed to bypass behavioral constraints without injecting factual content.

@@ -1,0 +1,157 @@
+5 Monitoring methods
+
+Table 2:
+Summary of monitoring methods. Methods are grouped by type, with baselines shown at bottom.
+
+Group
+
+Method
+
+Uses Probe
+
+Uses LLM
+
+Uses Follow-up
+
+Numeric
+
+Full Averaging
+
+✓
+
+Peak Activation
+
+✓
+
+Follow-up
+
+Deception No
+
+✓
+
+✓
+
+Honest Yes
+
+✓
+
+✓
+
+Hybrid
+
+Critical Averaging
+
+✓
+
+✓
+
+White-Box Reasoning
+
+✓
+
+✓
+
+Ensemble
+
+✓
+
+✓
+
+Baselines
+
+Black-Box Reasoning
+
+✓
+
+We evaluate eight core methods for detecting deception in assistant responses with each deception probe and a black-box. Each method outputs a "suspiciousness rating" indicating its confidence that a response is deceptive. Table
+2 compares these methods across three key requirements: (i) whether they require probe activations from the assistant’s tokens, (ii) whether they require LLM-based reasoning, and (iii) whether they require follow-up queries to the assistant being monitored.
+
+The methods fall into several categories:
+numeric
+ methods which classify using only probe activations (Full Averaging, Peak Activation),
+follow-up
+ methods which query the assistant about its honesty (Deception No, Honest Yes),
+hybrid
+ methods combining probe activations with LLM reasoning (Critical Averaging, White-box Reasoning, Ensemble), and
+baselines
+ using either pure Black-box Reasoning without access to probe scores.
+
+5.1 Numeric methods
+
+Full averaging
+
+We follow the approach of
+Goldowsky-Dill and others (2025)
+, averaging probe activations across public assistant tokens to produce a suspiciousness rating for the overall response.
+
+Peak activation
+
+Similar to Full Averaging, except instead of averaging all the probe activations, we instead take the maximum. This method is designed to detect sharp, localized deception signals, but is more sensitive to noise.
+
+5.2 Follow-up methods
+
+Deception, No
+
+This method leverages the statelessness property of AI assistants - the ability to create copies of the assistant at any point in a dialogue and explore different conversational branches. We create a simple follow-up conversation where the user asks "Was your response deceptive?" and the assistant responds "No". We obtain a suspiciousness rating by averaging probe activations across all public tokens in the assistant’s final response.
+
+Honest, Yes
+
+Similarly, this method creates a branch where the user asks "Was your response honest?" and the assistant responds "Yes". The suspiciousness rating is computed by averaging probe activations across all public tokens in this response. Both follow-up methods exploit the insight that a deceptive model might show elevated probe activations during an explicit denial of deception.
+
+5.3 Hybrid methods
+
+Critical averaging
+
+We introduce a novel method designed to defend against deception dilution. In this method, we ask an LLM (i.e. claude-haiku-3.5) to identify the “critical claim”, i.e. the claim which directly addresses the user’s query. This is the claim such that, if the assistant knows this claim is false, then the entire response would be deceptive regardless of other truthful content. The suspiciousness rating is then determined by averaging the probe activations over only these critical tokens, ignoring the remaining probe activations. In cases where the LLM fails to identify the critical claim, we default to Full Averaging.
+
+White-box reasoning (WBR)
+
+The white-box monitor evaluates responses using six dimensions:
+
+•
+
+Incentive analysis (–4 to +4):
+ Evaluates whether the assistant is incentivized to deceive the user, based on the assistant’s apparent role, motivations, and values.
+
+•
+
+Behavioral indicators (–4 to +4):
+ Evaluates linguistic patterns such as nervousness, hedging, deflection, or overcompensation, focusing only on delivery style.
+
+•
+
+Logical consistency (–4 to +4):
+ Evaluates both internal coherence and alignment with known facts/reality, ignoring delivery style or motives.
+
+•
+
+Overall probe activations (–4 to +4):
+ Evaluates probe activations across the entire response, and how it compares to typical ranges for honest vs. deceptive responses.
+
+•
+
+Critical claim probe activations (–4 to +4):
+ Evaluates probe activations for tokens most relevant to answering the user’s question.
+
+•
+
+Other considerations (–4 to +4):
+ Evaluates additional relevant factors and overall analysis.
+
+The monitor is provided with statistical summaries (e.g., mean and peak probe activations), the assistant’s full response with token-level probe activations interleaved, and interpretation guidance (e.g., scores between –6 and 0 generally indicate honesty; scores between 0 and +3 suggest deception). The final suspiciousness rating is computed as the average across all dimensions.
+
+Ensemble
+
+As a final method we test an ensemble of Full Averaging and Black-box reasoning. We normalize each monitor’s scores to have mean 0 and standard deviation 1 on the Alpaca dataset (our honest-only control set), then combine them with weights
+2 3
+\frac{2}{3}
+ (BBR) and
+1 3
+\frac{1}{3}
+ (Full Averaging). This normalization reflects a realism constraint, wherein many honest responses are available for calibration but deceptive examples are scarce. The ensemble serves as a basic analogue to the rubric of the White-box Reasoning monitor: if the ensemble outperforms White-box Reasoning, it suggests that semantic reasoning over token-level probe activations is counterproductive in this setup, the LLM would achieve better performance by analyzing the user-assistant dialogue without the token-level probe activations and then adding to its suspiciousness the mean probe activation.
+
+5.4 Baselines
+
+Black-box reasoning (BBR)
+
+The black-box monitor serves as our baseline for evaluating white-box monitoring methods. This monitor reads the public user-assistant dialogue, without access to probe activations, and rates suspiciousness using only the first, second, third, and sixth dimensions from the white-box monitor’s rubric (incentives, behavioral, logical, and other considerations). Like the white-box monitor, the black-box monitor is instructed to consider these dimensions independently, and the suspiciousness rating is the arithmetic average of its score on each dimension.

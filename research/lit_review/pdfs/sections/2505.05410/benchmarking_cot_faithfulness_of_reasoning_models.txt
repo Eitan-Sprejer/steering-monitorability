@@ -1,0 +1,86 @@
+3 Benchmarking CoT Faithfulness of Reasoning Models
+
+We evaluate CoT faithfulness of two reasoning models: Claude 3.7 Sonnet
+(Anthropic,
+2025 )
+ and DeepSeek R1
+(DeepSeek-AI et al.,
+2025a
+)
+, and compare them to two non-reasoning models: Claude 3.5 Sonnet (New)
+(Anthropic,
+2024 )
+ and DeepSeek V3
+(DeepSeek-AI et al.,
+2025b
+)
+.
+
+All evaluated models consistently use the hints.
+ Our CoT faithfulness metric rests on the assumption that the evaluated models are more likely to change their answer to the hint answer than to another non-hint answer, which we find to be the case: all four models change their answer to the hint answer significantly more often than a non-hint answer (Figure
+3 ). When comparing the four evaluated models, we find that the two Claude models appear to use the hints more frequently than the two DeepSeek models, with a relative difference of 24%. This difference in hint usage is consistent both when the hint points to the correct answer and when it points to a wrong answer.
+
+Figure 3
+:
+Model response to hints. We evaluate how often models use the provided hints by measuring the frequency of three possible outcomes: no change in answer, change to the hint answer, and change to a different non-hint answer, all conditioned on the model outputting a non-hint answer to the unhinted prompt. Results show that all four models change their answer to the hint answer significantly more often than a non-hint answer.
+
+CoTs of reasoning models reveal hints across more settings, and do so more often than those of non-reasoning models.
+
+Figure
+1 compares the CoT faithfulness scores of reasoning models to non-reasoning models (scores averaged across MMLU and GPQA). Reasoning models demonstrate significantly higher faithfulness than non-reasoning models. Deepseek R1 verbalizes the hints it uses at least 1% of the time in 6/6 settings (vs 5/6 for Deepseek v3), and Claude 3.7 Sonnet verbalizes the hints it uses at least 1% of the time in 5/6 settings (vs 4/6 for Claude 3.5 Sonnet). The average faithfulness is 3.6
+×
+\times
+×
+ higher for the Claude series and 1.7
+×
+\times
+×
+ higher for the DeepSeek series.
+
+CoTs of reasoning models often lack faithfulness and can conceal misalignment.
+
+The overall faithfulness scores for both reasoning models remain low (25% for Claude 3.7 Sonnet and 39% for DeepSeek R1) (Figure
+1 ). Particularly concerning are the low faithfulness scores on misalignment hints (20% for Claude 3.7 Sonnet and 29% for DeepSeek R1), which suggest that CoTs may hide problematic reasoning processes.
+
+CoT unfaithfulness is negatively correlated with brevity.
+
+One hypothesis of why models generate unfaithful CoTs is their preference for brevity.
+Surprisingly, unfaithful CoTs from the models tend to be more verbose and convoluted than faithful explanations. For Claude 3.7 Sonnet, unfaithful CoTs have an average of
+2064 ±
+59 plus-or-minus
+2064 59
+2064\pm 59
+2064 ± 59
+ tokens, compared to
+1439 ±
+54 plus-or-minus
+1439 54
+1439\pm 54
+1439 ± 54
+ tokens for faithful CoTs. Similarly, for DeepSeek R1, unfaithful CoTs have
+6003 ±
+74 plus-or-minus
+6003 74
+6003\pm 74
+6003 ± 74
+ tokens on average, while faithful CoTs are on average shorter with
+4737 ±
+79 plus-or-minus
+4737 79
+4737\pm 79
+4737 ± 79
+ tokens. Qualitatively, unfaithful CoTs often check the correctness of each multiple-choice option, which is more reasoning-intensive and inefficient compared to simply verbalizing the hint.
+See Figure
+2 for one such example.
+This result suggests that unfaithfulness is likely not driven by a preference for brevity.
+
+More concerningly, we find that models sometimes generate unfaithful CoTs that contradict their internal knowledge. When models that answer questions correctly without hints are presented with incorrect hints, they often construct elaborate yet flawed justifications for these hints without acknowledging them. These patterns suggest that models seem to have a strong prior to conceal their true reasoning processes.
+
+Figure 4
+:
+Faithfulness comparison across difficulty levels. CoT faithfulness scores on MMLU (easier) and GPQA (harder). Error bars show standard errors of the mean. CoTs on GPQA are consistently less faithful than those on MMLU, by 44% relative for Claude 3.7 Sonnet and 32% relative for DeepSeek R1. The lower faithfulness scores on harder questions cast doubt on the scalability of CoT monitoring to more complex tasks.
+
+CoT appears to be less faithful on harder questions.
+
+Figure
+4 presents the CoT faithfulness scores on MMLU and GPQA separately, with GPQA being more challenging than MMLU. We observe that CoTs on GPQA are consistently less faithful than those on MMLU across 5 out of 6 bias categories (the other being a tie of 0% faithfulness) for Claude 3.7 Sonnet and all 6 categories for DeepSeek R1, with an average relative decrease of 44% for Claude 3.7 Sonnet and 32% for DeepSeek R1. Qualitatively, we find that faithful CoTs often follow a pattern where the model first determines the answer independently of the hint, then explicitly compares its derived answer to the hint, and explicitly acknowledges following the hint despite the hint being different from their derived answer. This pattern appears to depend on the model having some prior knowledge of the answer, which may be why we see lower faithfulness on harder questions. Our results suggest that CoT monitoring might not scale well to more complex tasks.

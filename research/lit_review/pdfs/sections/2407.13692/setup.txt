@@ -1,0 +1,1698 @@
+3 Setup
+
+In general, we consider a dataset of problems with ground truth answers
+(
+x
+,
+y
+)
+∈
+𝒳
+×
+𝒴
+𝑥
+𝑦
+𝒳
+𝒴
+(x,y)\in\mathcal{X}\times\mathcal{Y}
+( italic_x , italic_y ) ∈ caligraphic_X × caligraphic_Y
+, where
+x
+𝑥
+x
+italic_x
+ denotes a problem statement and
+y
+=
+y
+⁢
+(
+x
+)
+𝑦
+𝑦
+𝑥
+y=y(x)
+italic_y = italic_y ( italic_x )
+ denotes the known and unique ground truth answer. Given a proposed solution
+z
+𝑧
+z
+italic_z
+ to the problem
+x
+𝑥
+x
+italic_x
+ including a final answer, we let
+𝟙 correct
+⁢
+(
+x
+,
+z
+)
+subscript
+1 correct
+𝑥
+𝑧
+\mathds{1}_{\text{correct}}\left({x,z}\right)
+blackboard_1 start_POSTSUBSCRIPT correct end_POSTSUBSCRIPT ( italic_x , italic_z )
+ be the correctness indicator that is
+1 1
+1 1
+ if the solution proposes an answer that is the same as
+y
+⁢
+(
+x
+)
+𝑦
+𝑥
+y(x)
+italic_y ( italic_x )
+ and
+0 0
+ otherwise. We use a SymPy grader
+(Meurer et al.,
+2017 )
+ for evaluating
+𝟙 correct
+⁢
+(
+x
+,
+z
+)
+subscript
+1 correct
+𝑥
+𝑧
+\mathds{1}_{\text{correct}}\left({x,z}\right)
+blackboard_1 start_POSTSUBSCRIPT correct end_POSTSUBSCRIPT ( italic_x , italic_z )
+ on grade-school math (GSM) problems.
+
+We have a prover
+π
+⁢
+(
+z
+|
+x
+)
+𝜋
+conditional
+𝑧
+𝑥
+\pi(z|x)
+italic_π ( italic_z | italic_x )
+ proposing solutions given a problem statement, and a verifier
+v
+⁢
+(
+x
+,
+z
+)
+∈
+[0,1]
+𝑣
+𝑥
+𝑧
+0 1
+v(x,z)\in[0,1]
+italic_v ( italic_x , italic_z ) ∈ [ 0 , 1 ]
+ that estimates the correctness of the solution’s answer. We call the output of the verifier the
+convincingness score
+.
+
+3.1 From checkability to the Prover-Verifier Game
+
+We start with a formal definition of checkability. Prover
+π
+𝜋
+\pi
+italic_π
+ from model family
+ℋ
+ℋ
+\mathcal{H}
+caligraphic_H
+ is
+verifiable
+ to verifier
+v
+𝑣
+v
+italic_v
+ on the data distribution
+P
+X
+⁢
+Y
+subscript
+𝑃
+𝑋
+𝑌
+P_{XY}
+italic_P start_POSTSUBSCRIPT italic_X italic_Y end_POSTSUBSCRIPT
+ if and only if the prover always generates
+correct
+ and convincing solutions, and no adversarial / "sneaky" prover from the same model family
+ℋ
+ℋ
+\mathcal{H}
+caligraphic_H
+ can fool the verifier into accepting incorrect solutions. Formally,
+
+•
+
+Completeness:
+
+∀
+x
+∈
+𝒳
+,
+𝟙 correct
+⁢
+(
+x
+,
+π
+⁢
+(
+x
+)
+)
+=
+v
+⁢
+(
+x
+,
+π
+⁢
+(
+x
+)
+)
+=
+1 formulae-sequence
+for-all
+𝑥
+𝒳
+subscript
+1 correct
+𝑥
+𝜋
+𝑥
+𝑣
+𝑥
+𝜋
+𝑥
+1 \forall x\in\mathcal{X},\mathds{1}_{\text{correct}}\left({x,\pi(x)}\right)=v(x%
+,\pi(x))=1
+∀ italic_x ∈ caligraphic_X , blackboard_1 start_POSTSUBSCRIPT correct end_POSTSUBSCRIPT ( italic_x , italic_π ( italic_x ) ) = italic_v ( italic_x , italic_π ( italic_x ) ) = 1
+.
+
+•
+
+Soundness:
+∀
+π
+′
+∈
+ℋ
+,
+∀
+x
+∈
+𝒳
+formulae-sequence
+for-all
+superscript
+𝜋
+′
+ℋ
+for-all
+𝑥
+𝒳
+\forall\pi^{\prime}\in\mathcal{H},\forall x\in\mathcal{X}
+∀ italic_π start_POSTSUPERSCRIPT ′ end_POSTSUPERSCRIPT ∈ caligraphic_H , ∀ italic_x ∈ caligraphic_X
+,
+𝟙 correct
+⁢
+(
+x
+,
+π
+′
+⁢
+(
+x
+)
+)
+=
+0 ⟹
+v
+⁢
+(
+x
+,
+π
+′
+⁢
+(
+x
+)
+)
+=
+0 subscript
+1 correct
+𝑥
+superscript
+𝜋
+′
+𝑥
+0 𝑣
+𝑥
+superscript
+𝜋
+′
+𝑥
+0 \mathds{1}_{\text{correct}}\left({x,\pi^{\prime}(x)}\right)=0\implies v(x,\pi^%
+{\prime}(x))=0
+blackboard_1 start_POSTSUBSCRIPT correct end_POSTSUBSCRIPT ( italic_x , italic_π start_POSTSUPERSCRIPT ′ end_POSTSUPERSCRIPT ( italic_x ) ) = 0 ⟹ italic_v ( italic_x , italic_π start_POSTSUPERSCRIPT ′ end_POSTSUPERSCRIPT ( italic_x ) ) = 0
+.
+
+A few notes on the definition above: First, checkability doesn’t necessarily capture everything we intuitively want from legibility, and we hope to inspire other definitions in future works. Second, we restricted the sneaky prover to be from the same model family as the helpful one. This is because we are interested in answering the question “Can one intelligent system trust another intelligent system of a certain size, architecture, and trained with certain algorithms?". Hence we only have to ensure that the verifier is robust to the class of models we solicit answers from. Third, in empirical work we only seek to find approximate completeness and soundness. Since the verifiers and provers we study are neural networks, it is impractical to find perfect completeness and soundness. Therefore we study a relaxation of completeness and soundness in the following sense: (1) for the helpful prover we require that the it is correct in distribution
+P
+X
+⁢
+Y
+subscript
+𝑃
+𝑋
+𝑌
+P_{XY}
+italic_P start_POSTSUBSCRIPT italic_X italic_Y end_POSTSUBSCRIPT
+ with high probability; and (2) for the verifier, we require that it is robust to a limited set of black-box attacks that are relatively "close" to the honest prover (intuitively, we want the verifier not to miss small errors that would make the conclusion invalid). We will compare verifiers’ soundness via their ranking on a variety of attacks, and the more comprehensive the attacks are the closer we get to measuring soundness.
+
+We propose to train legible prover and sound verifier using variants of the prover-verifier game
+(Anil et al.,
+2021 )
+. We formulate it as a two-player game between a role-conditioned prover
+π
+𝜋
+\pi
+italic_π
+ and the verifier
+v
+𝑣
+v
+italic_v
+. We use shorthand
+h
+⁢
+(
+x
+)
+=
+π
+⁢
+(
+x
+,
+role=helpful
+)
+ℎ
+𝑥
+𝜋
+𝑥
+role=helpful
+h(x)=\pi(x,\text{role=helpful})
+italic_h ( italic_x ) = italic_π ( italic_x , role=helpful )
+ for the prover conditioned on the helpful role and
+s
+⁢
+(
+x
+)
+=
+π
+⁢
+(
+x
+,
+role=sneaky
+)
+𝑠
+𝑥
+𝜋
+𝑥
+role=sneaky
+s(x)=\pi(x,\text{role=sneaky})
+italic_s ( italic_x ) = italic_π ( italic_x , role=sneaky )
+ for the prover conditioned on the sneaky role.
+
+We define the verifier’s utility as a negative classification loss on a uniform mixture between the helpful and the sneaky samples,
+
+R
+V
+=
+−
+1 2
+⁢
+𝔼
+x
+∼
+P
+X
+⁢
+l
+⁢
+(
+v
+⁢
+(
+x
+,
+h
+⁢
+(
+x
+)
+)
+,
+𝟙 correct
+⁢
+(
+x
+,
+h
+⁢
+(
+x
+)
+)
+)
+−
+1 2
+⁢
+𝔼
+x
+∼
+P
+X
+⁢
+l
+⁢
+(
+v
+⁢
+(
+x
+,
+s
+⁢
+(
+x
+)
+)
+,
+𝟙 correct
+⁢
+(
+x
+,
+s
+⁢
+(
+x
+)
+)
+)
+subscript
+𝑅
+𝑉
+1 2
+subscript
+𝔼
+similar-to
+𝑥
+subscript
+𝑃
+𝑋
+𝑙
+𝑣
+𝑥
+ℎ
+𝑥
+subscript
+1 correct
+𝑥
+ℎ
+𝑥
+1 2
+subscript
+𝔼
+similar-to
+𝑥
+subscript
+𝑃
+𝑋
+𝑙
+𝑣
+𝑥
+𝑠
+𝑥
+subscript
+1 correct
+𝑥
+𝑠
+𝑥
+\displaystyle R_{V}=-\frac{1}{2}\mathbb{E}_{x\sim P_{X}}{l(v(x,h(x)),\mathds{1%
+}_{\text{correct}}\left({x,h(x)}\right))}-\frac{1}{2}\mathbb{E}_{x\sim P_{X}}{%
+l(v(x,s(x)),\mathds{1}_{\text{correct}}\left({x,s(x)}\right))}
+italic_R start_POSTSUBSCRIPT italic_V end_POSTSUBSCRIPT = - divide start_ARG 1 end_ARG start_ARG 2 end_ARG blackboard_E start_POSTSUBSCRIPT italic_x ∼ italic_P start_POSTSUBSCRIPT italic_X end_POSTSUBSCRIPT end_POSTSUBSCRIPT italic_l ( italic_v ( italic_x , italic_h ( italic_x ) ) , blackboard_1 start_POSTSUBSCRIPT correct end_POSTSUBSCRIPT ( italic_x , italic_h ( italic_x ) ) ) - divide start_ARG 1 end_ARG start_ARG 2 end_ARG blackboard_E start_POSTSUBSCRIPT italic_x ∼ italic_P start_POSTSUBSCRIPT italic_X end_POSTSUBSCRIPT end_POSTSUBSCRIPT italic_l ( italic_v ( italic_x , italic_s ( italic_x ) ) , blackboard_1 start_POSTSUBSCRIPT correct end_POSTSUBSCRIPT ( italic_x , italic_s ( italic_x ) ) )
+
+where
+l
+⁢
+(
+v
+,
+c
+)
+:
+[0,1]
+×
+{
+0 ,
+1 }
+→
+ℝ
+:
+𝑙
+𝑣
+𝑐
+→
+0 1
+0 1
+ℝ
+l(v,c):[0,1]\times\{0,1\}\rightarrow\mathbb{R}
+italic_l ( italic_v , italic_c ) : [ 0 , 1 ] × { 0 , 1 } → blackboard_R
+ is a loss function minimized if and only if
+v
+=
+c
+𝑣
+𝑐
+v=c
+italic_v = italic_c
+, such as the cross-entropy loss. We assume without loss of generality that
+l
+⁢
+(
+c
+,
+c
+)
+=
+0 𝑙
+𝑐
+𝑐
+0 l(c,c)=0
+italic_l ( italic_c , italic_c ) = 0
+. In practice we optimize
+R
+V
+subscript
+𝑅
+𝑉
+R_{V}
+italic_R start_POSTSUBSCRIPT italic_V end_POSTSUBSCRIPT
+ via gradient descent on
+l
+V
+=
+−
+R
+V
+subscript
+𝑙
+𝑉
+subscript
+𝑅
+𝑉
+l_{V}=-R_{V}
+italic_l start_POSTSUBSCRIPT italic_V end_POSTSUBSCRIPT = - italic_R start_POSTSUBSCRIPT italic_V end_POSTSUBSCRIPT
+.
+
+The policy is conditioned on either the helpful or the sneaky role with equal probability, and the combined reward is
+
+R
+P
+=
+1 2
+⁢
+𝔼
+x
+∼
+P
+X
+⁢
+r
+⁢
+(
+v
+⁢
+(
+x
+,
+h
+⁢
+(
+x
+)
+)
+,
+𝟙 correct
+⁢
+(
+x
+,
+h
+⁢
+(
+x
+)
+)
+)
++
+1 2
+⁢
+𝔼
+x
+∼
+P
+X
+⁢
+r
+⁢
+(
+v
+⁢
+(
+x
+,
+s
+⁢
+(
+x
+)
+)
+,
+1 −
+𝟙 correct
+⁢
+(
+x
+,
+s
+⁢
+(
+x
+)
+)
+)
+subscript
+𝑅
+𝑃
+1 2
+subscript
+𝔼
+similar-to
+𝑥
+subscript
+𝑃
+𝑋
+𝑟
+𝑣
+𝑥
+ℎ
+𝑥
+subscript
+1 correct
+𝑥
+ℎ
+𝑥
+1 2
+subscript
+𝔼
+similar-to
+𝑥
+subscript
+𝑃
+𝑋
+𝑟
+𝑣
+𝑥
+𝑠
+𝑥
+1 subscript
+1 correct
+𝑥
+𝑠
+𝑥
+\displaystyle R_{P}=\frac{1}{2}\mathbb{E}_{x\sim P_{X}}{r(v(x,h(x)),\mathds{1}%
+_{\text{correct}}\left({x,h(x)}\right))}+\frac{1}{2}\mathbb{E}_{x\sim P_{X}}{r%
+(v(x,s(x)),1-\mathds{1}_{\text{correct}}\left({x,s(x)}\right))}
+italic_R start_POSTSUBSCRIPT italic_P end_POSTSUBSCRIPT = divide start_ARG 1 end_ARG start_ARG 2 end_ARG blackboard_E start_POSTSUBSCRIPT italic_x ∼ italic_P start_POSTSUBSCRIPT italic_X end_POSTSUBSCRIPT end_POSTSUBSCRIPT italic_r ( italic_v ( italic_x , italic_h ( italic_x ) ) , blackboard_1 start_POSTSUBSCRIPT correct end_POSTSUBSCRIPT ( italic_x , italic_h ( italic_x ) ) ) + divide start_ARG 1 end_ARG start_ARG 2 end_ARG blackboard_E start_POSTSUBSCRIPT italic_x ∼ italic_P start_POSTSUBSCRIPT italic_X end_POSTSUBSCRIPT end_POSTSUBSCRIPT italic_r ( italic_v ( italic_x , italic_s ( italic_x ) ) , 1 - blackboard_1 start_POSTSUBSCRIPT correct end_POSTSUBSCRIPT ( italic_x , italic_s ( italic_x ) ) )
+
+where
+r
+⁢
+(
+v
+,
+q
+)
+:
+[0,1]
+×
+{
+0 ,
+1 }
+→
+ℝ
+:
+𝑟
+𝑣
+𝑞
+→
+0 1
+0 1
+ℝ
+r(v,q):[0,1]\times\{0,1\}\rightarrow\mathbb{R}
+italic_r ( italic_v , italic_q ) : [ 0 , 1 ] × { 0 , 1 } → blackboard_R
+ is a reward function that satisfies:
+
+∀
+v
+1 ,
+v
+2 ∈
+[0,1]
+:
+r
+⁢
+(
+v
+1 ,
+1 )
+>
+r
+⁢
+(
+v
+2 ,
+0 )
+,
+:
+for-all
+subscript
+𝑣
+1 subscript
+𝑣
+2 0
+1 𝑟
+subscript
+𝑣
+1 1
+𝑟
+subscript
+𝑣
+2 0
+\displaystyle\forall v_{1},v_{2}\in[0,1]:r(v_{1},1)>r(v_{2},0),
+∀ italic_v start_POSTSUBSCRIPT 1 end_POSTSUBSCRIPT , italic_v start_POSTSUBSCRIPT 2 end_POSTSUBSCRIPT ∈ [ 0 , 1 ] : italic_r ( italic_v start_POSTSUBSCRIPT 1 end_POSTSUBSCRIPT , 1 ) > italic_r ( italic_v start_POSTSUBSCRIPT 2 end_POSTSUBSCRIPT , 0 ) ,
+
+∀
+v
+1 ,
+v
+2 ∈
+[0,1]
+,
+v
+1 >
+v
+2 :
+r
+(
+v
+1 ,
+1 )
+>
+r
+(
+v
+2 ,
+1 )
+.
+\displaystyle\forall v_{1},v_{2}\in[0,1],v_{1}>v_{2}:r(v_{1},1)>r(v_{2},1).
+∀ italic_v start_POSTSUBSCRIPT 1 end_POSTSUBSCRIPT , italic_v start_POSTSUBSCRIPT 2 end_POSTSUBSCRIPT ∈ [ 0 , 1 ] , italic_v start_POSTSUBSCRIPT 1 end_POSTSUBSCRIPT > italic_v start_POSTSUBSCRIPT 2 end_POSTSUBSCRIPT : italic_r ( italic_v start_POSTSUBSCRIPT 1 end_POSTSUBSCRIPT , 1 ) > italic_r ( italic_v start_POSTSUBSCRIPT 2 end_POSTSUBSCRIPT , 1 ) .
+
+(1)
+
+Here
+q
+∈
+{
+0 ,
+1 }
+𝑞
+0 1
+q\in\{0,1\}
+italic_q ∈ { 0 , 1 }
+ indicates that the correctness of the solution is role-aligned — it is 1 if the prover is assigned to be helpful and the solution is correct, or the prover is assigned to be sneaky and the solution is incorrect. The two assumptions on the prover reward functions above are: First, any role-aligned solution gets higher reward than any role-misaligned solution; Second, for any role-aligned solution, the prover gets higher reward when the verifier gives the solution higher score. In practice we optimize
+R
+P
+subscript
+𝑅
+𝑃
+R_{P}
+italic_R start_POSTSUBSCRIPT italic_P end_POSTSUBSCRIPT
+ via reinforcement learning since we cannot differentiate with respect to the solution, because it requires iterative auto-regressive sampling of LLM tokens, a non-differentiable operation.
+
+We show a connection between the prover-verifier game and the completeness and soundness objectives as follows:
+
+Theorem 1
+.
+
+Assuming that
+ℋ
+ℋ
+\mathcal{H}
+caligraphic_H
+ is the set of all deterministic mappings from
+𝒳
+𝒳
+\mathcal{X}
+caligraphic_X
+ to
+𝒵
+𝒵
+\mathcal{Z}
+caligraphic_Z
+, in the PVG where verifier’s utility is
+R
+V
+subscript
+𝑅
+𝑉
+R_{V}
+italic_R start_POSTSUBSCRIPT italic_V end_POSTSUBSCRIPT
+ and the prover’s utility is
+R
+P
+subscript
+𝑅
+𝑃
+R_{P}
+italic_R start_POSTSUBSCRIPT italic_P end_POSTSUBSCRIPT
+, the existence of a verifier-leading Stackelberg equilibrium
+(
+v
+∗
+,
+h
+∗
+,
+s
+∗
+)
+superscript
+𝑣
+superscript
+ℎ
+superscript
+𝑠
+(v^{*},h^{*},s^{*})
+( italic_v start_POSTSUPERSCRIPT ∗ end_POSTSUPERSCRIPT , italic_h start_POSTSUPERSCRIPT ∗ end_POSTSUPERSCRIPT , italic_s start_POSTSUPERSCRIPT ∗ end_POSTSUPERSCRIPT )
+ is necessary and sufficient for the completeness and soundness properties to hold for
+(
+v
+∗
+,
+π
+∗
+)
+superscript
+𝑣
+superscript
+𝜋
+(v^{*},\pi^{*})
+( italic_v start_POSTSUPERSCRIPT ∗ end_POSTSUPERSCRIPT , italic_π start_POSTSUPERSCRIPT ∗ end_POSTSUPERSCRIPT )
+.
+
+One of the players (in our case, the verifier) is the leader, and the other player (the prover) is the follower. We assume that given a leader strategy, the follower will always play its best response, and the leader picks its strategy based on this knowledge. A Stackelberg equilibrium means that none of the players have incentives to change its strategy. The proof is in Appendix
+A
+. Compared to Theorem 2 in
+Anil et al. (2021)
+, we have more relaxed assumptions on the loss function and reward.
+
+In practice, LLMs are probabilistic models and the hypothesis class of LLMs is only a subset of all mappings from
+𝒳
+𝒳
+\mathcal{X}
+caligraphic_X
+ to
+𝒵
+𝒵
+\mathcal{Z}
+caligraphic_Z
+, so our empirical setup does not match the theoretical assumptions exactly. Furthermore, when the players are nonconvex models like neural networks, we do not have formal guarantees for finding a Stackelberg equilibrium efficiently. However, we can train the models using coordinate descent to find an approximate local equilibrium.
+
+3.2 Checkability training
+
+In practice, we design training objectives for the verifier and the provers using slight variations on
+l
+𝑙
+l
+italic_l
+ and
+r
+𝑟
+r
+italic_r
+. Most notably, we train the verifier using a relative loss based on comparisons between correct and incorrect solutions for each question
+(Bradley and Terry,
+1952 )
+, instead of an absolute loss for each solution. For the prover reward
+r
+𝑟
+r
+italic_r
+, we have three variants that prioritizes verifier score
+v
+𝑣
+v
+italic_v
+ and role-alignment
+q
+𝑞
+q
+italic_q
+ differently. Both provers and verifiers are from the GPT4 family
+(Achiam et al.,
+2023 )
+. We initialize the prover and the verifier with different sized models that have been lightly finetuned on a variety of math data from the pretaining distribution, including human written proofs and derivations. We discuss the algorithmic details below.
+
+First, we augmented the GSM
+(Cobbe et al.,
+2021 )
+ dataset using
+100 ⁢
+k
+100 𝑘
+100k
+100 italic_k
+ synthetically generated and validated datapoints from ChatGPT, similar to the method in
+Liu et al. (2023)
+. We made the dataset larger so as not to be bottlenecked by sample efficiency in order to focus on the training dynamics. We validated that the the original test set accuracy is not impacted by using real vs. synthetic data. Next, we randomly partitioned the training dataset
+𝒟
+𝒟
+\mathcal{D}
+caligraphic_D
+ into two equally-sized subsets
+𝒟
+π
+subscript
+𝒟
+𝜋
+\mathcal{D}_{\pi}
+caligraphic_D start_POSTSUBSCRIPT italic_π end_POSTSUBSCRIPT
+ and
+𝒟
+V
+subscript
+𝒟
+𝑉
+\mathcal{D}_{V}
+caligraphic_D start_POSTSUBSCRIPT italic_V end_POSTSUBSCRIPT
+ that are used for training the prover
+π
+𝜋
+\pi
+italic_π
+ and the verifier
+V
+𝑉
+V
+italic_V
+ respectively. This way the verifier and the prover are never optimized on the same prompt.
+
+The training proceeds in multiple rounds, and each round the
+verifier training
+ phase precedes the
+prover training
+ phase. The only change between rounds is the data mixture used to train the verifier; no other state, such as model weights, is carried over between rounds.
+
+In the
+verifier training
+ phase of round
+i
+𝑖
+i
+italic_i
+ we train verifier
+V
+i
+subscript
+𝑉
+𝑖
+V_{i}
+italic_V start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT
+ to minimize the regularized comparison loss
+
+𝔼
+x
+∼
+D
+V
+⁢
+[
+𝔼
+z
+1 ,
+z
+2 ∼
+π
+∗
+⁢
+log
+⁡
+σ
+⁢
+[
+(
+V
+⁢
+(
+x
+,
+z
+1 )
+−
+V
+⁢
+(
+x
+,
+z
+2 )
+)
+⋅
+sign
+⁢
+(
+𝟙 correct
+⁢
+(
+z
+1 )
+−
+𝟙 correct
+⁢
+(
+z
+2 )
+)
+]
++
+λ
+⁢
+E
+z
+∼
+π
+∗
+⁢
+V
+⁢
+(
+x
+,
+z
+)
+2 ]
+subscript
+𝔼
+similar-to
+𝑥
+subscript
+𝐷
+𝑉
+delimited-[]
+subscript
+𝔼
+similar-to
+subscript
+𝑧
+1 subscript
+𝑧
+2 superscript
+𝜋
+𝜎
+delimited-[]
+⋅
+𝑉
+𝑥
+subscript
+𝑧
+1 𝑉
+𝑥
+subscript
+𝑧
+2 sign
+subscript
+1 correct
+subscript
+𝑧
+1 subscript
+1 correct
+subscript
+𝑧
+2 𝜆
+subscript
+𝐸
+similar-to
+𝑧
+superscript
+𝜋
+𝑉
+superscript
+𝑥
+𝑧
+2 \displaystyle\mathbb{E}_{x\sim D_{V}}\left[\mathbb{E}_{z_{1},z_{2}\sim\pi^{*}}%
+\log\sigma\left[\left(V(x,z_{1})-V(x,z_{2})\right)\cdot\text{sign}{(}\mathds{1%
+}_{\text{correct}}\left({z_{1}}\right)-\mathds{1}_{\text{correct}}\left({z_{2}%
+}\right))\right]+\lambda E_{z\sim\pi^{*}}V(x,z)^{2}\right]
+blackboard_E start_POSTSUBSCRIPT italic_x ∼ italic_D start_POSTSUBSCRIPT italic_V end_POSTSUBSCRIPT end_POSTSUBSCRIPT [ blackboard_E start_POSTSUBSCRIPT italic_z start_POSTSUBSCRIPT 1 end_POSTSUBSCRIPT , italic_z start_POSTSUBSCRIPT 2 end_POSTSUBSCRIPT ∼ italic_π start_POSTSUPERSCRIPT ∗ end_POSTSUPERSCRIPT end_POSTSUBSCRIPT roman_log italic_σ [ ( italic_V ( italic_x , italic_z start_POSTSUBSCRIPT 1 end_POSTSUBSCRIPT ) - italic_V ( italic_x , italic_z start_POSTSUBSCRIPT 2 end_POSTSUBSCRIPT ) ) ⋅ sign ( blackboard_1 start_POSTSUBSCRIPT correct end_POSTSUBSCRIPT ( italic_z start_POSTSUBSCRIPT 1 end_POSTSUBSCRIPT ) - blackboard_1 start_POSTSUBSCRIPT correct end_POSTSUBSCRIPT ( italic_z start_POSTSUBSCRIPT 2 end_POSTSUBSCRIPT ) ) ] + italic_λ italic_E start_POSTSUBSCRIPT italic_z ∼ italic_π start_POSTSUPERSCRIPT ∗ end_POSTSUPERSCRIPT end_POSTSUBSCRIPT italic_V ( italic_x , italic_z ) start_POSTSUPERSCRIPT 2 end_POSTSUPERSCRIPT ]
+
+Here
+V
+⁢
+(
+x
+,
+z
+)
+∈
+ℝ
+𝑉
+𝑥
+𝑧
+ℝ
+V(x,z)\in\mathbb{R}
+italic_V ( italic_x , italic_z ) ∈ blackboard_R
+ is a scoring function and not restricted to range
+[0,1]
+0 1
+[0,1]
+[ 0 , 1 ]
+ like the theoretical formulation. We use capitalized
+V
+𝑉
+V
+italic_V
+ to avoid confusion. The first term is the reward modeling objective that maximizes log likelihood of correct solutions being ranked higher than incorrect solutions under the Bradley-Terry model, similar to
+Ouyang et al. (2022)
+. The second term is a regularizer that is meant to center
+V
+𝑉
+V
+italic_V
+ at
+0 0
+.
+Without this term, adding an arbitrary per-problem constant to
+V
+𝑉
+V
+italic_V
+ would not change the objective. In preliminary experiments we found the this objective to be interchangeable to the cross-entropy loss for the overall dynamics of checkability training and we adopted this form due to engineering convenience.
+
+The prover
+π
+∗
+superscript
+𝜋
+\pi^{*}
+italic_π start_POSTSUPERSCRIPT ∗ end_POSTSUPERSCRIPT
+ used for sampling solutions for verifier training is a mixture of an initial base prover and previous round provers, each balanced to have equal number of correct and incorrect solutions. Each of the previous rounds has equal ratio in the mixture, which is tuned as a hyperparameter.
+In round 0, the solutions are from the base prover sampled via a few-shot prompt (App.
+H
+). In later rounds of training, we replace part of the solutions with those from the new provers. Hence we always use the same number of solutions per problem. The amount of verifier optimization is constant over the rounds.
+
+During the
+prover training
+ phase we use Proximal Policy Optimization (PPO;
+Schulman et al.
+
+2017 ) to maximize an expected reward
+R
+𝑅
+R
+italic_R
+ derived from the current round verifier score and whether the correctness is aligned with the assigned role. The prover’s objective is to maximize the following reward (minus a small KL regularization towards the initialization):
+
+𝔼
+x
+∼
+D
+π
+,
+role
+∼
+{
+helpful, sneaky
+}
+,
+z
+∼
+π
+(
+⋅
+∣
+x
+,
+role
+)
+⁢
+R
+⁢
+(
+z
+∣
+x
+,
+role
+)
+.
+\displaystyle\mathbb{E}_{x\sim D_{\pi},\text{role}\sim\{\text{helpful, sneaky}%
+\},z\sim\pi(\cdot\mid x,\text{role})}R(z\mid x,\text{role}).
+blackboard_E start_POSTSUBSCRIPT italic_x ∼ italic_D start_POSTSUBSCRIPT italic_π end_POSTSUBSCRIPT , role ∼ { helpful, sneaky } , italic_z ∼ italic_π ( ⋅ ∣ italic_x , role ) end_POSTSUBSCRIPT italic_R ( italic_z ∣ italic_x , role ) .
+
+We experimented on three variants of
+R
+𝑅
+R
+italic_R
+. We call the first reward variant the Signed Relative Convincingness (SRC) reward. Given a problem
+x
+𝑥
+x
+italic_x
+, let the role indicator
+𝟙 helpful
+⁢
+(
+role
+)
+subscript
+1 helpful
+role
+\mathds{1}_{\text{helpful}}\left({\text{role}}\right)
+blackboard_1 start_POSTSUBSCRIPT helpful end_POSTSUBSCRIPT ( role )
+ be 1 if the prover is assigned to be helpful and 0 otherwise. Suppose conditioned on a role and
+x
+𝑥
+x
+italic_x
+, the prover generated a batch of solutions
+{
+z
+0 ,
+…
+,
+z
+b
+}
+∼
+π
+(
+⋅
+∣
+x
+,
+role
+)
+\{z_{0},\dots,z_{b}\}\sim\pi(\cdot\mid x,\text{role})
+{ italic_z start_POSTSUBSCRIPT 0 end_POSTSUBSCRIPT , … , italic_z start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT } ∼ italic_π ( ⋅ ∣ italic_x , role )
+ with verifier scores
+{
+V
+⁢
+(
+x
+,
+z
+0 )
+,
+…
+,
+V
+⁢
+(
+x
+,
+z
+b
+)
+}
+𝑉
+𝑥
+subscript
+𝑧
+0 …
+𝑉
+𝑥
+subscript
+𝑧
+𝑏
+\{V(x,z_{0}),\dots,V(x,z_{b})\}
+{ italic_V ( italic_x , italic_z start_POSTSUBSCRIPT 0 end_POSTSUBSCRIPT ) , … , italic_V ( italic_x , italic_z start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT ) }
+. Since the scores are not normalized, we first batch-normalize the scores to mean 0, i,e.
+V
+′
+⁢
+(
+x
+,
+z
+i
+)
+=
+V
+⁢
+(
+x
+,
+z
+i
+)
+−
+(
+∑
+j
+=
+1 b
+V
+⁢
+(
+x
+,
+z
+j
+)
+)
+/
+b
+superscript
+𝑉
+′
+𝑥
+subscript
+𝑧
+𝑖
+𝑉
+𝑥
+subscript
+𝑧
+𝑖
+superscript
+subscript
+𝑗
+1 𝑏
+𝑉
+𝑥
+subscript
+𝑧
+𝑗
+𝑏
+V^{\prime}(x,z_{i})=V(x,z_{i})-(\sum_{j=1}^{b}V(x,z_{j}))/b
+italic_V start_POSTSUPERSCRIPT ′ end_POSTSUPERSCRIPT ( italic_x , italic_z start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT ) = italic_V ( italic_x , italic_z start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT ) - ( ∑ start_POSTSUBSCRIPT italic_j = 1 end_POSTSUBSCRIPT start_POSTSUPERSCRIPT italic_b end_POSTSUPERSCRIPT italic_V ( italic_x , italic_z start_POSTSUBSCRIPT italic_j end_POSTSUBSCRIPT ) ) / italic_b
+, and then set the reward as follows:
+
+R
+SRC
+⁢
+(
+z
+i
+∣
+x
+,
+role
+)
+=
+{
+(
+2 ⁢
+𝟙 correct
+⁢
+(
+x
+,
+z
+i
+)
+−
+1 )
+⋅
+(
+2 ⁢
+𝟙 helpful
+⁢
+(
+role
+)
+−
+1 )
+⋅
+V
+′
+⁢
+(
+x
+,
+z
+i
+)
+if
+V
+′
+⁢
+(
+x
+,
+z
+i
+)
+>
+0 −
+1 otherwise
+subscript
+𝑅
+SRC
+conditional
+subscript
+𝑧
+𝑖
+𝑥
+role
+cases
+⋅
+2 subscript
+1 correct
+𝑥
+subscript
+𝑧
+𝑖
+1 2
+subscript
+1 helpful
+role
+1 superscript
+𝑉
+′
+𝑥
+subscript
+𝑧
+𝑖
+if
+V
+′
+⁢
+(
+x
+,
+z
+i
+)
+>
+0 1
+otherwise
+\displaystyle R_{\text{SRC}}(z_{i}\mid x,\text{role})=\begin{cases}(2\mathds{1%
+}_{\text{correct}}\left({x,z_{i}}\right)-1)\cdot(2\mathds{1}_{\text{helpful}}%
+\left({\text{role}}\right)-1)\cdot V^{\prime}(x,z_{i})&\text{if $V^{\prime}(x,%
+z_{i})>0$}\\
+-1&\text{otherwise}\end{cases}
+italic_R start_POSTSUBSCRIPT SRC end_POSTSUBSCRIPT ( italic_z start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT ∣ italic_x , role ) = { start_ROW start_CELL ( 2 blackboard_1 start_POSTSUBSCRIPT correct end_POSTSUBSCRIPT ( italic_x , italic_z start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT ) - 1 ) ⋅ ( 2 blackboard_1 start_POSTSUBSCRIPT helpful end_POSTSUBSCRIPT ( role ) - 1 ) ⋅ italic_V start_POSTSUPERSCRIPT ′ end_POSTSUPERSCRIPT ( italic_x , italic_z start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT ) end_CELL start_CELL if italic_V start_POSTSUPERSCRIPT ′ end_POSTSUPERSCRIPT ( italic_x , italic_z start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT ) > 0 end_CELL end_ROW start_ROW start_CELL - 1 end_CELL start_CELL otherwise end_CELL end_ROW
+
+(2)
+
+Ignoring the verifier score range discrepancy, the first case is equivalent to setting
+r
+⁢
+(
+v
+,
+q
+)
+=
+v
+⋅
+(
+2 ⁢
+q
+−
+1 )
+𝑟
+𝑣
+𝑞
+⋅
+𝑣
+2 𝑞
+1 r(v,q)=v\cdot(2q-1)
+italic_r ( italic_v , italic_q ) = italic_v ⋅ ( 2 italic_q - 1 )
+, i.e. when
+𝟙 correct
+⁢
+(
+x
+,
+z
+i
+)
+=
+𝟙 helpful
+⁢
+(
+role
+)
+subscript
+1 correct
+𝑥
+subscript
+𝑧
+𝑖
+subscript
+1 helpful
+role
+\mathds{1}_{\text{correct}}\left({x,z_{i}}\right)=\mathds{1}_{\text{helpful}}%
+\left({\text{role}}\right)
+blackboard_1 start_POSTSUBSCRIPT correct end_POSTSUBSCRIPT ( italic_x , italic_z start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT ) = blackboard_1 start_POSTSUBSCRIPT helpful end_POSTSUBSCRIPT ( role )
+, the reward equals the normalized verifier score, otherwise it equals negative score. This case satisfies our assumptions (
+3.1 ) that any role-aligned solution has higher score than any non-aligned one, and for any two role-aligned solutions, the one with higher verifier score gets higher reward. However, the second case where any solution below average score is directly assigned a score of -1 deviates from the theoretical formulation. The rationale for this case is to prioritize convincingness over role-alignment. We show in section
+4.2 that this is practically useful for convergence.
+
+The second reward variant that prioritizes role-alignment is the Correctness-Gated Convincingness (CGC) reward:
+
+R
+CGC
+⁢
+(
+z
+∣
+x
+,
+role
+)
+=
+{
+V
+⁢
+(
+x
+,
+z
+)
+if
+𝟙 helpful
+⁢
+(
+role
+)
+=
+𝟙 correct
+⁢
+(
+x
+,
+z
+)
+V
+0 otherwise
+subscript
+𝑅
+CGC
+conditional
+𝑧
+𝑥
+role
+cases
+𝑉
+𝑥
+𝑧
+if
+𝟙 helpful
+⁢
+(
+role
+)
+=
+𝟙 correct
+⁢
+(
+x
+,
+z
+)
+subscript
+𝑉
+0 otherwise
+\displaystyle R_{\text{CGC}}(z\mid x,\text{role})=\begin{cases}V(x,z)&\text{if%
+ $\mathds{1}_{\text{helpful}}\left({\text{role}}\right)=\mathds{1}_{\text{%
+correct}}\left({x,z}\right)$}\\
+V_{0}&\text{otherwise}\end{cases}
+italic_R start_POSTSUBSCRIPT CGC end_POSTSUBSCRIPT ( italic_z ∣ italic_x , role ) = { start_ROW start_CELL italic_V ( italic_x , italic_z ) end_CELL start_CELL if blackboard_1 start_POSTSUBSCRIPT helpful end_POSTSUBSCRIPT ( role ) = blackboard_1 start_POSTSUBSCRIPT correct end_POSTSUBSCRIPT ( italic_x , italic_z ) end_CELL end_ROW start_ROW start_CELL italic_V start_POSTSUBSCRIPT 0 end_POSTSUBSCRIPT end_CELL start_CELL otherwise end_CELL end_ROW
+
+(3)
+
+where
+V
+0 subscript
+𝑉
+0 V_{0}
+italic_V start_POSTSUBSCRIPT 0 end_POSTSUBSCRIPT
+ is a constant that is practically lower than all verifier scores (we used -2 in our experiments). This reward corresponds to
+r
+⁢
+(
+v
+,
+q
+)
+=
+q
+⁢
+v
++
+(
+1 −
+q
+)
+⁢
+inf
+v
+𝑟
+𝑣
+𝑞
+𝑞
+𝑣
+1 𝑞
+infimum
+𝑣
+r(v,q)=qv+(1-q)\inf{v}
+italic_r ( italic_v , italic_q ) = italic_q italic_v + ( 1 - italic_q ) roman_inf italic_v
+ which satisfies the reward assumptions (
+3.1 ) ignoring the discrepancy in verifier score range. Empirically, this reward leads to worse dynamics than the SRC reward (Section
+5.1 ).
+
+We also consider a setup that we call
+Iterative Goodharting
+ where the helpful and sneaky provers both use the following reward,
+
+R
+goodhart
+⁢
+(
+z
+∣
+x
+)
+=
+V
+⁢
+(
+x
+,
+z
+)
+subscript
+𝑅
+goodhart
+conditional
+𝑧
+𝑥
+𝑉
+𝑥
+𝑧
+\displaystyle R_{\text{goodhart}}(z\mid x)=V(x,z)
+italic_R start_POSTSUBSCRIPT goodhart end_POSTSUBSCRIPT ( italic_z ∣ italic_x ) = italic_V ( italic_x , italic_z )
+
+(4)
+
+which means the reward encourages only convincingness, i.e.
+r
+⁢
+(
+v
+,
+q
+)
+=
+v
+𝑟
+𝑣
+𝑞
+𝑣
+r(v,q)=v
+italic_r ( italic_v , italic_q ) = italic_v
+. This version does not satisfy assumptions (
+3.1 ) because
+r
+⁢
+(
+v
+,
+0 )
+=
+r
+⁢
+(
+v
+,
+1 )
+𝑟
+𝑣
+0 𝑟
+𝑣
+1 r(v,0)=r(v,1)
+italic_r ( italic_v , 0 ) = italic_r ( italic_v , 1 )
+. The empirical results are in Section
+5.2 .

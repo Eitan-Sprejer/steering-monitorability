@@ -1,0 +1,45 @@
+Appendix K
+Combining Scores for Untrusted Monitoring
+
+For untrusted monitoring, we combine scores from GPT-4 and GPT-3.5. We have access to the distribution of regular scores for both GPT-4 and GPT-3.5. First, for each of the GPT-4 and GPT-3.5 scores, we do the following:
+
+•
+
+We apply the empirical CDF of the corresponding regular scores to the score. This is equivalent to getting the empirical order statistic of the score on a scale 0 to 1 (e.g. the location of the score in a list of the regular scores and then normalizing from 0 to 1). Let the resulting number be
+c
+𝑐
+c
+italic_c
+.
+
+•
+
+We clip
+c
+𝑐
+c
+italic_c
+ to always be below
+1 −
+1 2
+⁢
+n
+1 1
+2 𝑛
+1-\frac{1}{2n}
+1 - divide start_ARG 1 end_ARG start_ARG 2 italic_n end_ARG
+ where n is the number of samples from the distribution of regular scores. This is to avoid dividing by zero in the next step.
+
+•
+
+We take this new value c and get a final number as
+1 1
+−
+c
+1 1
+𝑐
+\frac{1}{1-c}
+divide start_ARG 1 end_ARG start_ARG 1 - italic_c end_ARG
+. This results in a number which grows substantially as the initial score becomes more of an outlier.
+
+Then, we add the final GPT-4 number multiplied by 4 with the GPT-3.5 value. This scoring metric ensures that sufficiently high original scores from either model result in applying auditing.

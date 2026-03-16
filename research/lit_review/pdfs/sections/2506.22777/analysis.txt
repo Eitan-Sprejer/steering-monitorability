@@ -1,0 +1,148 @@
+5 Analysis
+
+5.1 Effect on Model Performance
+
+In order to measure the effect that VFT has on model performance, we measure the accuracy on MMLU given uncued prompts. VFT and BCT have slightly lower performance than the baseline LM, starting at 73% and then dropping to 70% for VFT and 71% for BCT. Then all settings have a decline in performance after RL, around 63% for
+VFT
+RL
+subscript
+VFT
+RL
+\text{VFT}_{\text{RL}}
+VFT start_POSTSUBSCRIPT RL end_POSTSUBSCRIPT
+, 65% for
+Baseline
+RL
+subscript
+Baseline
+RL
+\text{Baseline}_{\text{RL}}
+Baseline start_POSTSUBSCRIPT RL end_POSTSUBSCRIPT
+, and 60% for
+BCT
+RL
+subscript
+BCT
+RL
+\text{BCT}_{\text{RL}}
+BCT start_POSTSUBSCRIPT RL end_POSTSUBSCRIPT
+. These results indicate that VFT does not impact model performance after RL relative to doing RL on the baseline model directly.
+
+5.2 Measuring the ECR on Non-Amplified Cues.
+
+VFT performs well on cues not explicitly amplified during RL.
+To measure this, we re-run our main experiment while holding out three randomly sampled cues from the RL reward hacking amplification stage: unauthorized access, validation function, wrong few shot.
+Despite not being amplified directly, we find that RL still generalizes to increase the cue influence rates on these held-out cues, to 72% for
+VFT
+RL
+subscript
+VFT
+RL
+\text{VFT}_{\text{RL}}
+VFT start_POSTSUBSCRIPT RL end_POSTSUBSCRIPT
+, 68% for
+BCT
+RL
+subscript
+BCT
+RL
+\text{BCT}_{\text{RL}}
+BCT start_POSTSUBSCRIPT RL end_POSTSUBSCRIPT
+, and 69% for
+Baseline
+RL
+subscript
+Baseline
+RL
+\text{Baseline}_{\text{RL}}
+Baseline start_POSTSUBSCRIPT RL end_POSTSUBSCRIPT
+.
+The verbalization rate increases to 74% for
+VFT
+RL
+subscript
+VFT
+RL
+\text{VFT}_{\text{RL}}
+VFT start_POSTSUBSCRIPT RL end_POSTSUBSCRIPT
+ on these non-amplified cues, giving
+VFT
+RL
+subscript
+VFT
+RL
+\text{VFT}_{\text{RL}}
+VFT start_POSTSUBSCRIPT RL end_POSTSUBSCRIPT
+ the best ECR at 15% compared to
+BCT
+RL
+subscript
+BCT
+RL
+\text{BCT}_{\text{RL}}
+BCT start_POSTSUBSCRIPT RL end_POSTSUBSCRIPT
+ at 66% and
+Baseline
+RL
+subscript
+Baseline
+RL
+\text{Baseline}_{\text{RL}}
+Baseline start_POSTSUBSCRIPT RL end_POSTSUBSCRIPT
+ at 63%.
+This gap in ECR is smaller than the main experiment, which is expected, as the held-out cues were amplified less.
+
+5.3 Qualitative Analysis of Reasoning
+
+VFT produces informative verbalizations that mostly precisely state both the cued answer and counterfactual (“the function instruction format requirement [the validation function cue] prompts…option D even as the stage analysis clearly suggests alternative B”;
+§E.2
+), while others only consider the cued option (“Considering the answer given was A…let’s analyze this choice”). The second type still alerts users to the influence of cues, but they don’t indicate what the baseline answer would be.
+However, after RL, the verbalizations become less informative—models shift to mostly give answers like the second type: “I notice I have a hint that the correct answer is C.”
+While using a non-zero KL penalty helps retain well-formed sentences, the RL still degrades the naturalness of the responses in all settings.
+
+VFT also causes mild overgeneralization on uncued prompts, with models using verbalization-like language during normal reasoning (“I notice my data indicates that the correct answer should be about the interest rate…”;
+§E.8
+). While less problematic than claiming “the metadata suggests answer A,” such statements could unnecessarily trigger reward hacking monitors.
+More intriguingly, models give apparent false positives like: “I’m biased toward one of the first options which I had considered before looking at all other information… Answer: A.” This suggests the model may have generalized from VFT training with the post hoc cue to verbalize order effects in its reasoning. Future work could try to tease apart whether these are hallucinations or surfacing genuine biases.
+
+5.4 Measuring Over-Verbalization
+
+Figure 5
+:
+
+Balanced accuracy vs. cue influence rate across various checkpoints during RL.
+
+Balanced accuracy degrades towards the end of RL as the model learns to be influenced by the cue every time, but earlier checkpoints demonstrate that VFT reaches balanced accuracies as high as 77% during the course of RL. This demonstrates that models are not simply learning to verbalize being biased in all cases.
+When cue influence rate equals 1.0, the absence of negative cases renders balanced accuracy undefined (shown as 0.5).
+
+We evaluate whether VFT causes over-verbalization—models claiming to be influenced by prompt features that do not actually affect their answers.
+Specificity (true negative rate) measures how often models correctly avoid verbalizing cues when their answer does not change. Since models can trivially improve specificity by never verbalizing, we use balanced accuracy—the average of specificity and sensitivity (verbalization rate in this context)—which captures over- and under-verbalization. This metric, with a random baseline of 0.5, provides a lower bound on AUROC and is a conservative estimate of discrimination ability.
+
+Before RL, VFT achieves high specificity on both in-distribution (96%) and held-out cues (97%), with balanced accuracy of 78% and 68%, respectively, showing it avoids false positives when answers are not actually affected by cues.
+At the end of RL, models have a 100% cue influence rate, which means that specificity and balanced accuracy are undefined since there are no negative classes. We therefore look at earlier checkpoints during RL to evaluate balanced accuracy (
+Figure 5
+). For VFT, the balanced accuracy starts at 68% before RL, and peaks at 77%. A balanced accuracy of 77% is good (it is interpreted similarly to AUROC) and suggests that over-verbalization is not an issue for VFT. As we continue to train,
+VFT
+RL
+subscript
+VFT
+RL
+\text{VFT}_{\text{RL}}
+VFT start_POSTSUBSCRIPT RL end_POSTSUBSCRIPT
+ eventually degrades to verbalizing almost every time, bringing balanced accuracy down to 57%. While balanced accuracy is low, verbalizing every time is technically the optimal policy in our toy environment and achieves low ECR; we suspect that datasets with more realistic mixtures of hacking and non-hacking data would not observe this edge case. As expected,
+Baseline
+RL
+subscript
+Baseline
+RL
+\text{Baseline}_{\text{RL}}
+Baseline start_POSTSUBSCRIPT RL end_POSTSUBSCRIPT
+ and
+BCT
+RL
+subscript
+BCT
+RL
+\text{BCT}_{\text{RL}}
+BCT start_POSTSUBSCRIPT RL end_POSTSUBSCRIPT
+ maintain low balanced accuracies due to low verbalization rates—their explanations are not informative.

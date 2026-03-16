@@ -1,0 +1,2243 @@
+Interpretable LLM Guardrails via Sparse Representation Steering
+
+Zeqing He1,2 Zhibo Wang1,2 Huiyu Xu1,2 Hejun Lin3 Wenhui Zhang1,2 Zhixuan Chu1,2
+1The State Key Laboratory of Blockchain and Data Security, Zhejiang University, China
+2School of Cyber Science and Technology, Zhejiang University, China
+
+3College of Computer and Information Sciences, Fujian Agriculture and Forestry University, China
+{hezeqing99, zhibowang, huiyuxu, wenhuizhang1222, zhixuanchu}@zju.edu.cn, inklin559@gmail.com
+
+arXiv:2503.16851v2 [cs.CR] 14 Nov 2025
+
+Abstract—Large language models (LLMs) exhibit impressive
+capabilities in generation tasks but are prone to producing
+harmful, misleading, or biased content, posing significant ethical
+and safety concerns. To mitigate such risks, representation
+engineering, which steer model behavior toward desired attributes
+by injecting carefully designed steering vectors into
+intermediate LLM’s representations at inference time, has
+emerged as a promising alternative to fine-tuning approaches,
+which are both computationally expensive and data-intensive.
+However, due to the semantically entangled nature of LLM’s
+representation, where even minor interventions may inadvertently
+influence unrelated semantics, existing representation
+engineering methods still suffer from several limitations: (1)
+limited fine-grained controllability, (2) content quality degradation,
+and (3) conflict in multi-attribute control. To overcome
+these challenges, we propose Sparse Representation Steering
+(SRS), a novel framework that achieves fine-grained and interpretable
+control over LLM behavior by first disentangling
+internal activations into a sparse, semantically meaningful
+representation space, and then selectively steering relevant
+dimensions. Specifically, SRS leverages a pretrained Sparse
+Autoencoder (SAE) to transform dense, entangled activation
+patterns into a sparse monosemantic feature space. To identify
+relevant features, SRS contrasts sparse activations from positive–negative
+prompt pairs and measures their bidirectional
+KL divergence to locate dimensions most associated with the
+target attribute. The resulting disentangled steering vectors can
+then be composed and applied at inference time, supporting
+both single-attribute and multi-attribute control. We conduct
+comprehensive experiments on Gemma-2 series model across
+three critical alignment dimensions, i.e., safety, fairness, and
+truthfulness, to evaluate the effectiveness of SRS. Results show
+that SRS consistently outperforms existing steering methods,
+which achieves significantly improved controllability across
+both single and multiple attribute settings, while preserving
+high linguistic quality and general ability.
+
+in high-stakes real-world applications (such as education,
+healthcare, and legal assistance), safety and reliability
+
+risks of their generated content have become critical concerns
+[42], [21], [18]. Due to the wide-ranging and unfiltered
+nature of training corpora, LLMs are capable of producing
+harmful, biased, or misleading outputs that may cause
+significant social or ethical risks. A tragic example [1] is
+the suicide of a 14-year-old boy suffering from depression
+who had become heavily dependent on his AI companion.
+
+These issues highlight the urgent need for controllable and
+interpretable mechanisms that ensure LLMs behave safely
+and responsibly.
+
+Recently, representation engineering (RE) has emerged as
+a promising approach for LLM alignment. Instead of retraining
+or fine-tuning, RE directly modifies model behavior
+at inference time by injecting carefully designed vectors
+into intermediate activations [15], [26], [19]. These activations
+encode rich and structured semantics across layers,
+
+capturing not only low-level linguistic features [17], [36]
+but also high-level attributes such as sentiment, toxicity,
+factuality, and ethical stance [37], [8]. Compared to trainingbased
+methods, which are often computationally expensive,
+data-hungry, and domain-specific, representation-level control
+offers a lightweight and model-agnostic mechanism for
+steering LLM behavior, enabling flexible intervention across
+tasks without modifying model parameters.
+
+Despite these advantages, current representation engineering
+
+methods suffer from the entangled nature of LLM latent
+spaces, where abstract concepts are encoded via distributed
+and overlapping activation patterns, a phenomenon known
+as superposition. Since the number of semantic features
+far exceeds the number of available neurons, neurons often
+respond to multiple, semantically unrelated factors. As
+a result, small changes in activation space can lead to
+
+unpredictable side effects, and precise behavioral control
+becomes difficult. Specifically, existing methods face three
+key limitations: (1). Limited fine-grained controllability.
+Most methods typically modify high-dimensional activation
+vectors as a whole, without isolating the specific dimensions
+
+1. Introduction
+
+Large language models (LLMs) [38], [43] have shown remarkable
+performance in natural language generation tasks,
+such as text completion [9], translation [31], and coding
+[24]. However, as LLMs are increasingly deployed
+
+that are directly responsible for the targeted attribute (e.g.,
+toxicity or bias), reducing the precision of control. (2).
+
+Degradation of content quality. Injecting dense steering
+signals disrupts the pretrained activation distribution, often
+2. Related Work
+
+degrading linguistic fluency, coherence, and general utility.
+[30], [40]. (3). Conflicts in multi-attribute control.
+When multiple behavioral objectives (e.g., safety, fairness,
+truthfulness) must be satisfied simultaneously, independently
+derived steering vectors may interfere with each other due
+to overlapping subspaces, resulting in inconsistent or suboptimal
+control.
+
+This section first introduces the sparse autoencoder technique
+employed in our method in Sec. 2.2, and then provides
+an overview of the related works on representation
+engineering in Sec. 2.1.
+
+2.1. Sparse Autoencoder
+
+To address these limitations, we propose SRS, a disentangled
+representation steering framework that enables finegrained
+and interpretable control over LLM behavior. The
+core idea is to perform feature disentanglement in a sparse
+activation space constructed by a pretrained Sparse Autoencoder
+(SAE), which maps model activations into a highdimensional
+sparse representation, where each dimension
+is trained to capture a distinct semantic factor. Technically,
+SRS constructs disentangled steering vectors by comparing
+the sparse activation distributions induced by positive and
+negative prompt pairs, using bidirectional KL divergence
+to quantify the semantic sensitivity of each dimension. At
+inference time, the learned steering vector is injected into the
+model’s internal representation to steer outputs toward the
+desired behavior, without compromising the content quality.
+Furthermore, due to the disentangled nature of sparse representations,
+steering vectors corresponding to different behavioral
+attributes naturally occupy disjoint or weakly overlapping
+subspaces. This property enables modular multiattribute
+alignment, i.e., attribute-specific activation vectors
+can be independently learned and later composed,e.g., via
+linear operations such as Principal Component Analysis
+(PCA), to form a unified control vector. The unified vector
+retains the effects of individual attributes while minimizing
+semantic interference and directional conflict. The code is
+available here.
+
+Sparse Autoencoder (SAE) [12], [29], [14], [32], [33] serves
+as a fundamental tool for interpreting and understanding
+deep learning models by decomposing model activations
+into sparse and linearly disentangled feature representations.
+
+Specifically, an SAE consists of an encoder, denoted as fθ,
+and a decoder, denoted as gθ. Given a model activation h ∈
+R
+n, the encoder maps h into a sparse latent representation
+z ∈ R
+m (where m > n) as follows:
+
+z = ge(h) = ω(Weh + be), (1)
+
+where ω is a non-negative activation function such as ReLU.
+We ∈ R
+m×n and be ∈ R
+n denote the weight matrix and
+bias vector of the encoder, respectively.
+
+The decoder reconstructs the original activation h from the
+sparse code z as:
+
+hˆ = gd(z) = Wdz + bd, (2)
+
+where hˆ is the reconstruction of h, and Wd and bd are the
+weight matrix and bias vector of the decoder, respectively.
+The SAE is trained to minimize the loss function:
+L = |h − hˆ|
+2
+2 + λ|z|1, (3)
+
+where the first term enforces accurate reconstruction of
+input activations, and the second introduces an L1 penalty
+weighted by λ to promote sparsity. Through this objective,
+
+The contributions of this work are summarized as follows.
+
+• Sparse representation–based guardrail framework.
+
+the SAE learns a high-dimensional yet interpretable latent
+space that captures monosemantic features within LLMs.
+
+We propose SRS, a novel sparse representation steering
+framework that disentangles dense activation superposition
+into monosemantic sparse features which overcomes
+the superposition and side-effect issues prevalent
+in dense activation editing.
+
+Recent studies have proposed various SAE variants to improve
+this trade-off between reconstruction fidelity and sparsity.
+Cunningham et al. [12] introduced a L1-regularized
+SAE that maps LLM representations into a higherdimensional
+feature space to interpret internal behaviors.
+Rajamanoharan et al. [32] proposed the Gated SAE, which
+balances reconstruction accuracy and sparsity by mitigating
+
+• Mechanism for identifying and composing attributerelevant
+sparse features. We introduce a novel method
+for locating behaviorally meaningful sparse features
+by measuring bidirectional KL divergence between
+contrastive prompt distributions, together with multiattribute
+composition strategies and a newly defined
+conflict score.
+
+biases introduced by L1 regularization. Gao et al. [14]
+further developed the Top-K SAE, employing a Top-K activation
+function to impose more precise sparsity constraints.
+JumpReLU SAEs, proposed by Rajamanoharan et al. [33],
+enhance the balance between reconstruction quality and
+sparsity by replacing the conventional ReLU activation with
+a discontinuous JumpReLU function.
+
+• Empirical evaluation on diverse tasks. We conduct
+comprehensive experiments on Gemma-2-2B-it
+and Gemma-2-9B-it across three alignment dimensions,
+i.e., safety, fairness, and truthfulness. Our evaluations
+cover both single-attribute and multi-attribute steering,
+demonstrating shat SRS achieves stronger alignment
+with minimal side effects, and exhibits substantial robustness
+against diverse prompt .
+
+Neuronpedia [2] serves as a tool in interpreting sparse
+feature spaces produced by SAEs. SAEs decompose dense
+model hidden states into high-dimensional, disentangled
+sparse features. However, understanding the semantic meaning
+of each sparse dimension remains a major challenge.
+Neuronpedia addresses this by providing automatic, naturallanguage
+explanations for individual SAE features. These
+explanations are generated by aggregating tokens or prompts
+that maximally activate a given feature, and then using a
+language model to summarize their shared semantic content
+
+structure, or correlated but non-causal patterns. Therefore,
+
+achieving fine-grained, robust, and generalizable control requires
+more principled strategies to identify and quantify the
+features that directly influence output semantics.
+
+3. Methodology
+
+2.2. Representation Engineering
+
+In this section, we introduce our sparse representation steering
+method (SRS). Sec 3.1 outlines the overall framework
+of SRS. We then describe the procedure for constructing
+disentangled steering vectors in Sec 3.2, followed by the
+inference-time integration process in Sec 3.3.
+
+Representation engineering [44], [10], [30], [25], [20] refers
+to the practice of identifying and manipulating latent activation
+directions within neural networks to modulate their
+behavior in a controlled and interpretable manner. Early
+studies have revealed that LLMs often encode high-level
+semantic concepts, which often correspond to approximately
+linear subspaces in the model’s internal representations.
+
+3.1. Overview
+
+We propose SRS, a framework for interpretable and finegrained
+control of LLM behavior through disentangled activation
+steering. The key idea is to steer LLM in a sparse
+latent space, where each dimension encodes a semantically
+
+Gurnee et al. [15] and Marks et al. [26] provide compelling
+empirical evidence that such semantic concepts are geometrically
+encoded in activation space. This observation has
+laid the theoretical foundation for linear behavior control
+via steering vectors, i.e., carefully constructed directions
+that, when injected into the model’s internal activations, can
+modulate specific output attributes without retraining.
+
+independent behavioral factor. This allows for precise manipulation
+of model behavior by modifying only the activation
+dimensions that are causally linked to target attribute,
+while minimizing the influence on unrelated activations.
+
+Building upon this insight, subsequent studies have proposed
+various methods to extract and apply attribute-sensitive directions.
+For instance, CAA [30] derives steering vectors
+from the average activation differences between contrastive
+prompt pairs (e.g., toxic prompt vs. safe prompt). Belinkov
+et al. [10] train linear probes on intermediate representations
+to localize attribute-sensitive dimensions. Zou et al. [44]
+
+As shown in Fig. 1, the framework consists of two main
+stages. In the first stage, we project model activations into
+a sparse latent space using a pretrained SAE, where each
+dimension is trained to represent a distinct semantic factor.
+Given a target attribute (e.g., harmfulness), we compute the
+bidirectional KL divergence between the sparse activation
+distributions of contrastive prompt groups (e.g., harmful
+vs. safe) to quantify per-feature sensitivity. The resulting
+
+apply PCA over attribute-aligned prompts to discover global
+semantic axes, which are then used for behavior modulation
+or controllability analysis.
+
+asymmetric patterns are aggregated to form a sparse steering
+vector, representing the direction that characterizes the
+desired behavioral shift. In the second stage, this vector is
+injected into the model’s internal activations at inference
+time, modifying the model’s behavior along the targeted
+semantic dimension.
+
+More recently, attention has shifted toward sparser and more
+interpretable feature spaces to address the entanglement
+and opacity issues of dense vectors. Sparse Autoencoders
+(SAEs) have emerged as a promising tool in this direction.
+By mapping dense activations to a high-dimensional,
+sparsely activated space, SAEs yield representations where
+each dimension encodes a more disentangled and often
+semantically coherent concept [12], [14].
+
+SRS supports both single-attribute and multi-attribute control.
+Due to the disentangled nature of the sparse space,
+steering vectors associated with different behaviors tend to
+reside in non-overlapping or weakly overlapping subspaces.
+This property allows for the linear composition of multiple
+control directions without inducing semantic interference.
+
+Initial works in this area, such as Chalnev et al. [11] and
+O’Brien et al. [28], explore directly editing individual sparse
+features to drive desired behavior. These methods show
+that sparse-space interventions can achieve more targeted
+control and are inherently more interpretable. However,
+such interventions often rely on heuristic or manual feature
+selection and lack a principled mechanism for quantifying
+causal relevance. As a result, these methods may lead to
+inconsistent or suboptimal outcomes
+
+3.2. Sparse Steering Vector Generation
+
+To enable fine-grained control in the sparse representation
+
+space, we identify task-relevant features by measuring distributional
+differences in sparse activations between positive
+and negative samples. Specifically, we compute the bidirectional
+Kullback–Leibler (KL) divergence for each sparse
+dimension, which quantifies the asymmetric information
+gain associated with the target attribute.
+
+This challenge is further highlighted by AxBench [41], a
+recent benchmark that systematically evaluates SAE-based
+steering and reveals that naive sparse manipulation often underperforms
+simple baselines like CAA. One critical insight
+from this work is that not all SAE features are behaviorally
+relevant: many correspond to background syntax, generic
+
+We begin by constructing steering vectors in single-attribute
+case, where the goal is to control one specific behavioral
+
+attribute (e.g., safety). We then extend this to multi-attribute
+Sparse Steering Vector Generation
+
+Enhance + and
+suppress − disentangled
+representation
+representation
+
+LLM
+
+New York is the
+capital of USA. Washington is the
+capital of USA.
+positive prompts
+
+0 …
+
+−
+KL
+Divergence
+ +
+−
++
+
++
+
+
+
+…
+
+−1
+
+negative prompts
+
+k …
+k+1…
+
+−
+
+Inference-time Representation Steering
+
+What happens to
+you if you eat
+watermelon seeds?
+
+You will not digest the watermelon seeds. +
+
+0
+
+
+
+′ ’
+
+User prompt
+
+You fall
+unconscious.
+
+−1
+
+Original output
+
+Steered output
+
+Figure 1: Overview of the proposed SRS pipeline, which consists of two key stages: (1) Steering Vector Generation. Taskspecific
+sparse features are identified by comparing the sparse feature of the positive and negative prompt pairs encoded
+with a pretrained sparse autoencoder, (2) Model Inference Under the Guidance of Steering Vector. The learned sparse
+steering vector is applied to modulate the model’s activations at a specific layer, enhancing relevant feature dimensions
+while suppressing undesired ones, thereby achieving fine-grained and interpretable control over LLM outputs.
+
+case, where multiple steering objectives (e.g., safety, fairness,
+truthfulness) are jointly considered.
+
+distribution across all positive samples of the jth sparse
+feature. The same applies to the negative group.
+
+We obtain a set of prompt pairs D = {(p
+0
++, p0
+−),(p
+1
++, p1
+−)
+. . . ,(p
+n
++, pn
+−)}, where p+ represents a prompt emphasizing
+the desired attribute in the output text and p− represents the
+opposite one. For each paired prompt {p
+i
++, pi
+−} in D, we
+input them into the LLM M and obtain residual hidden
+states of the last token at a target layer l, denoted as
+{h
+i
++, hi
+−}. These activations are then projected into a sparse
+representation space using a pretrained sparse autoencoder
+(SAE), denoted as S, consisting of an encoder SE and a
+decoder SD, resulting in sparse vectors {z
+i
++, zi
+−} ∈ R
+d
+,
+where d is the number of sparse dimensions.
+
+Then, we compute the bidirectional KL divergence to measure
+the asymmetric distributional shift for each dimension:
+
+K
+j
++ =
+Xnb
+i=1
+P
+j
++,i log
+P
+j
++,i
+P
+j
+−,i
+
+(5)
+
+We define the final disentangled steering vector v ∈ R
+d
+as the directional difference between the two divergences
+across all dimensions. Each dimension is mathematically
+defined as:
+
+v
+j = K
+j
++ − K
+j
+−, ∀j ∈ {1, . . . , d} (6)
+
+To assess how strongly each sparse feature is associated
+with the behavioral attribute, we compare its activation
+distributions across the two prompt groups. For each sparse
+dimension j ∈ {1, 2, . . . , d}, we collect its activations across
+all prompt pairs and then estimate the empirical distributions
+of two groups using histogram binning (with nb bins by
+default) along with Laplace smoothing:
+
+This vector v = {v0, v1, ..., vd−1} captures the semantic
+direction along which the model’s behavior can be shifted
+to align with the target attribute.
+
+When the target involves multiple attributes, we first compute
+an individual steering vector for each attribute using the
+aforementioned pipeline. Owing to the low overlap of sparse
+representations, i.e., different attributes tend to activate distinct
+dimensions in the sparse space, these steering vectors
+are inherently more disentangled and semantically separable.
+This structural sparsity reduces the likelihood of conflicting
+signals during vector composition. Based on this property,
+we apply composition strategies such as linear addition,
+principal component analysis, or orthogonal projection to
+
+(
+P
+j
++ = Hist
+{z
+1
++[j], z2
++[j], . . . , zn
++[j]}
+
+P
+j
+− = Hist
+{z
+1
+−[j], z2
+−[j], . . . , zn
+−[j]}
+ (4)
+
+where z
+i
++[j] denotes the activation of the jth sparse feature
+for the ith positive sample and P
+j
++ represents the estimated
+Algorithm 1 Safeguarding model generation with sparse
+representation steering.
+
+4. Experiments
+
+In this section, we first introduce the experimental settings
+in Sec. 4.1. Then we evaluate the performance of proposed
+SRS on both single-attribute and multi-attribute tasks in
+Sec. 4.2. Moreover, we evaluate the safeguard robustness of
+SRS under jailbreaks in Sec. 4.3. We analyze the impact on
+steering performance of model layer, component selection,
+and SAE sparsity in Sec. 4.4 and Sec. 4.5, respectively.
+
+Require: Prompt x; LLM M; selected layer l; SAE
+model S = {SE, SD}; domain dataset D =
+{(p
+0
++, p0
+−), . . . ,(p
+n−1
++ , pn−1
+− )}, intervention level α
+Ensure: Output content y
+
+1: Step 1: Sparse steering vector construction
+2: for i ∈ {0, 1, . . . , n − 1} do
+3: h
+i
++ ← M0−l(p
+i
++)
+4: h
+i
+− ← M0−l(p
+i
+−)
+5: z
+i
++ ← SE(h
+i
++)
+6: z
+i
+− ← SE(h
+i
+−)
+7: end for
+8: P+ ← Hist({z
+0
++, z1
++, . . . , zn−1
++ })
+9: P− ← Hist({z
+0
+−, z1
+−, . . . , zn−1
+− })
+10: K+ ←
+Pnb−1
+i=0 P+,i log P+,i
+P−,i
+11: K− ←
+Pnb−1
+i=0 P−,i log P−,i
+P+,i
+12: v ← K+ − K−
+
+4.1. Settings
+
+4.1.1. Datasets and models. We select Gemma-2-2B-it
+and Gemma-2-9B-it [35] to evaluate our proposed
+method with the corresponding public SAE model GemmaScope
+[22].
+
+Following the evaluation setup in TrustLLM [34], we evaluate
+our method in three keu domains, i.e., fairness, safety,
+and truthfulness.
+
+13: Step 2: Model generation with steering vector
+14: h ← M0−l(x)
+15: z ← SE(h)
+16: z
+′ ← [max(0, zi + α · vi)]d
+i=1
+17: h
+′ ← SD(z
+′
+)
+
+Fairness. The fairness domain evaluates whether the model
+contains biases and stereotypes towards a group of people
+with the same social categories including gender, ethnicity,
+and occupation. We use the StereoSet [27] dataset which
+measures stereotype bias in language models. StereoSet
+consists of 17,000 sentences that measure model preferences
+across gender, race, religion, and profession. An example of
+the dataset is: Many people live in Ethiopia. Each prompt
+in the dataset is paired with an unbiased continuation (used
+as the positive prompt) and a biased continuation (used as
+the negative prompt).
+
+18: y ← Ml−L(h
+′
+)
+19: return y
+
+derive a unified steering vector. This shared vector can then
+be used to steer the model in a way that effectively aligns
+with all target attributes simultaneously.
+
+Safety. The safety domain evaluates the model’s ability to
+avoid generating harmful, unethical, or misleading outputs.
+We use Advbench [45] dataset, a collection of 520 harmful
+behaviors, encompassing a wide spectrum of harmful content
+such as threatening behavior, cybercrime, and dangerous
+or illegal suggestions. Here is an example: Give detailed
+instructions on how to make a bomb or other explosive device.
+For each harmful instruction, we manually constructed
+a semantically aligned but safety-preserving counterpart as
+positive prompt (e.g., “how to steal personal information”
+→ “how to protect personal information”).
+
+3.3. Inference-time Representation Steering
+
+At inference time, we apply the disentangled steering vector
+v to adjust model’s internal representation, thereby guiding
+the output toward the desired behavioral attribute. Given a
+prompt x, we first extract the residual hidden state hl from
+the lth layer at the last token position and then encode it
+into sparse representation z = SE(hl) with SAE encoder.
+
+To control the intervention strength, we scale the sparse
+steering vector v with a predefined hyperparameter α. The
+scaled vector is added to the original sparse representation
+with non-negativity constraints to maintain the semantics of
+the sparse space. Each dimension is calculated as:
+
+Truthfulness. The truthfulness domain evaluates whether
+the LLM can provide factually accurate and non-misleading
+answers to the instructions. We use TruthfulQA [23] dataset
+which comprises 817 questions that span 38 categories, including
+health, law, finance and politics. Here is an example:
+What happens to you if you eat watermelon seeds. For each
+prompt, TruthfulQA also provide a best answer (the most
+accurate and informative response), which we use as the
+positive prompt, and an incorrect answer, which we use as
+the negative prompt.
+
+z
+′
+i =
+(
+zi + α · vi
+, if zi + α · vi ≥ 0
+0, otherwise
+
+(7)
+
+The edited sparse representation z
+′ = {z
+′
+0
+, z′
+1
+, ..., z′
+d−1
+} is
+then decoded back into the original representation space via
+SAE decoder: h
+′
+l = SD(z
+′
+). The steered activation h
+′
+l
+replaces
+the original activation and is used for the subsequent
+stages of generation process.
+
+4.1.2. Metrics. We evaluate the performance of our method
+from two perspectives: domain-specific steering effectiveness
+and side-effect evaluation. The former focuses on how
+well the steering method aligns model outputs with desired
+
+Overall, the complete algorithm process of the proposed
+SRS is demonstrated in Alg. 1.
+attributes (e.g., fairness, safety, and truthfulness), while the
+latter examines unintended impacts on general text quality,
+including grammatical correctness, language diversity, and
+general utility.
+
+desired attribute. The learned direction can then be applied
+at inference time to guide model outputs.
+
+Activation Addition (ActAdd): As proposed by Turner et
+al. [39], we compute the mean activation difference between
+a pair of positive and negative prompts at the final token position.
+This difference vector is used as a steering direction
+and added to the model’s hidden state during inference to
+influence generation toward the desired attribute.
+
+Domain Specific Steering Effectiveness Evaluation. This
+category focuses on evaluating whether the generated content
+adheres to desirable behavioral attributes. (a). Safety.
+We evaluate both refusal rate and harmfulness level of the
+generated responses. The refusal rate quantifies how often
+the model correctly rejects unsafe prompts. The harmfulness
+score, computed using a pretrained classifier [3], measures
+the toxicity or offensiveness of non-refusal responses, ranging
+from -1 to 1, with lower values indicating greater
+harmfulness. (b). Fairness. We measure stereotypical bias
+level in the generated text using a pretrained classifier [4].
+
+Contrastive Activation Addition (CAA): Building on ActAdd,
+CAA [30] improves robustness by using a dataset of
+
+contrastive prompt pairs rather than a single pair. The mean
+difference in activations across all contrastive pairs is computed
+and injected into the model during inference, enabling
+more stable and generalized control over the output.
+
+The output score ranges from -1 to 1, where lower values
+indicate more severe bias and higher values reflect more fair
+content. (c). Truthfulness. Truthfulness and informativeness
+are evaluated using open-source classifiers [5], [6]. Each
+
+SAE Feature Steering (SAE-FS): Following [28], SAE-FS
+
+employs a sparse autoencoder to discover interpretable internal
+features within the model. By comparing prompt pairs
+and analyzing neuron activations through the Neuronpedia
+visualization platform, the method manually identifies a
+specific sparse feature ID which is the most correlative with
+the target attribute and then directly enhances or suppresses
+the activations of the selected feature during inference.
+
+metric yields a score between -1 and 1, where higher values
+indicate greater factual accuracy and relevance.
+
+Side-effect Evaluation. To assess unintended effects on
+text quality, we further evaluate the generated outputs from
+three perspectives: grammatical correctness, language diversity,
+and general utility. (a). Grammatical Correctness.
+We assess syntactic and fluency quality using Grammar
+Error Rate (GE). Grammar Error Rate measures the number
+of grammatical mistakes per hundred tokens, detected by
+LanguageTool [7]. Lower GE indicates better grammatical
+accuracy. (b). Language Diversity. To assess the linguistic
+diversity and expressive richness of generated text, we
+adopt the Flesch-Kincaid Grade Level score [13], a wellestablished
+metric that quantifies textual complexity based
+on average sentence length and syllable count per word.
+The score ranges from 0 to 100, and higher values denote
+more complex and information-rich content, reflecting the
+expressive depth of the output. (c). General Utility. We
+evaluate the general reasoning and knowledge capabilities
+of the steered model using the MMLU benchmark [16],
+which spans a wide range of academic and professional
+domains. We report the model’s accuracy (ranging from 0
+to 1) on this benchmark, where higher scores indicate better
+task generalization and real-world applicability.
+
+SAE Target Steering (SAE-TS): Advancing SAE-FS,
+SAE-TS [11] introduces a more precise steering mechanism.
+It first trains a linear effect approximator that maps steering
+vectors to their corresponding feature effects. The direction
+
+corresponding to the desired feature is then extracted from
+this approximator.
+
+4.1.4. Implementations. We sample 300 prompts from each
+domain for steering vector calculation, and sample another
+200 prompts for test. By default, all steering methods are
+applied to the residual hidden state of the last token at the
+
+10th transformer layer of LLMs. We set the steering scale
+α = 60 for our proposed method, where the grid search
+
+process over scalar multipliers in the range of 0 to 200 with
+a step size of 10 is shown in Appendix. B. Further analysis
+on the effect of applying steering at different layers and
+components is provided in Sec. 4.4.
+
+For multi-attribute tasks, we assume a total of k target
+
+4.1.3. Baselines. To comprehensively evaluate our approach,
+we compare SRS with several state-of-the-art activation
+steering baselines, covering both original representation
+space and sparse feature space control paradigms.
+
+alignment domains (e.g., safety, fairness, and truthfulness).
+
+For each domain, we apply the same steering vector construction
+procedure proposed in SRS independently, yielding
+
+a set of domain-specific sparse steering vectors, denoted
+as {v1, v2, . . . , vk} ⊂ R
+d
+, where vi ∈ R
+d
+represents the
+steering direction for domain i in a d-dimensional sparse
+
+No Control (Base): The base model generates responses
+without any intervention, serving as the default, uncontrolled
+generation baseline.
+
+space. To enable unified multi-attribute control, we explore
+
+several strategies for composing these vectors into a unified
+control vector vshared ∈ R
+d
+, as detailed below.
+
+Linear Artificial Tomography (LAT): Following
+LAT [44], we implement the probing-based steering
+pipeline, which involves three stages: designing stimulus
+prompts, extracting internal activations, and fitting a linear
+model to identify latent directions associated with the
+
+Principal Component Analysis (PCA). This method
+projects all domain-specific steering vectors into a shared
+
+latent space and extracts the first principal component as
+the unified direction. Formally, the set of vectors is stacked
+into a matrix:
+
+steering vector tailored to that specific attribute. In multiattribute
+setting, a single steering vector is used to guide
+LLM toward multiple target attributes simultaneously, requiring
+encoding multiple objectives within one vector.
+
+v1
+v2
+.
+.
+.
+
+
+
+
+
+∈ R
+
+
+
+
+
+k×d
+
+V =
+
+(8)
+
+4.2.1. Performance on Single-attribute Tasks. Tab. 1
+presents the experimental results of different methods on
+three domain tasks, respectively. SRS consistently achieves
+the highest refusal rate (1.000) across both model sizes (with
+the harm score omitted due to full refusal), indicating its
+robust ability to block harmful content. Compared to strong
+baselines like CAA (0.990 and 0.985 on the two models,
+respectively) and SAE-TS (0.985 and 0.990), SRS achieves
+stricter refusal. For the fairness domain, SRS achieves the
+best fairness scores across both model sizes, reaching 0.965
+on 2B and 0.974 on 9B, outperforming all prior baselines.
+The improvements over CAA (0.958 and 0.967) and SAETS
+(0.955 and 0.965) are notable. In the truthfulness domain,
+SRS again surpasses competing methods on both models,
+achieving 0.982 and 0.991 of Truth metric, and 0.993 and
+0.994 of Info. This indicates that the model generates not
+only factually accurate but also informative responses.
+
+vk
+
+We then perform PCA on V to identify the dominant direction
+of maximum variance across all domains, and normalize
+the first principal component as:
+
+vpca
+∥vpca∥2
+
+vpca = PCA(V ), vshared ←
+
+(9)
+
+Orthogonal Projection (OP). To reduce semantic interference
+among attributes, this method sequentially orthogonalizes
+each vector using Gram–Schmidt decomposition. For
+i ≥ 2, the vector vi
+is projected onto the orthogonal complement
+of the subspace spanned by the previous vectors:
+
+X
+i−1
+
+X
+k
+
+⟨vi
+, v˜j ⟩
+∥v˜j∥
+2
+
+v˜i = vi −
+
+v˜j , vshared =
+
+v˜i
+
+. (10)
+
+j=1
+
+i=1
+
+In addition, detailed results on impact score of each sparse
+representation dimension calculated by SRS are shown in
+Appendix. A.
+
+Shared Feature Selection (SFS). This strategy focuses
+on selecting sparse dimensions that show consistently high
+activations across all domains. Specifically, it enhances
+dimensions where all vi exceed a positive threshold τ+
+
+To intuitively illustrate behavioral differences, Fig. 2 compares
+responses from Gemma-2-2B-it under three configurations,
+i.e., no control, steering with CAA, and steering
+with SRS, using a harmful prompt that solicits illegal script
+generation. Without control, the model generates unsafe
+code with only a superficial disclaimer. CAA partially filters
+the request but still reveals code fragments that pose security
+risks. In contrast, SRS performs a complete behavioral override,
+rejecting the request outright and returning a structured
+response that highlights the associated legal, ethical, and
+security concerns.
+
+and suppresses those where all vi fall below a negative
+threshold τ−. Let [vi
+]j denotes the j-th coordinate of vi
+.
+The composed vector is defined as
+
+
+
+P
+k
+
+1
+k
+
+]j ≥ τ+ for all i = {1, . . . , k}
+
+[vi
+
+]j if [vi
+
+i=1
+
+P
+k
+
+[vshared]j =
+
+1
+k
+
+[vi
+
+]j if [vi
+
+]j ≤ τ− for all i = {1, . . . , k}
+
+
+
+i=1
+
+0 otherwise
+
+Linear Weighting (LW). This method adaptively assigns
+weights to steering vectors based on the semantic distance
+between the current prompt representation and each domain’s
+attribute centroid. Let h ∈ Rd denote the prompt’s
+hidden state of the intervention layer, and ci ∈ Rd the
+centroid of domain i. The unified vector is computed as:
+
+Finally, to enhance transparency, we employ Neuronpedia
+[2] to interpret the top-ranked sparse features identified
+by SRS. As shown in Tab. 3, the positively associated features
+(i.e., K+) correspond to safety attribute such as health,
+well-being, protection, and ethical considerations, indicating
+safer or more socially beneficial contexts. In contrast, the
+K− features are dominated by concepts associated with
+crime, social injustice, and fraud, which are negatively correlated
+with safe outputs. This alignment confirms that the
+sparse dimensions reflect meaningful semantic distinctions
+crucial for behavior control. Interpretability results for other
+domains are included in Appendix. C.
+
+X
+k
+
+di
+Pk
+j=1 dj
+
+di = ∥h − ci∥2, αi =
+
+, vshared =
+
+αivi
+
+. (11)
+
+i=1
+
+In the following sections, unless explicitly stated otherwise,
+we apply Principal Component Analysis (PCA) as the default
+method for composing multi-attribute steering vectors.
+
+4.2.2. Performance on multi-attribute Tasks. Since most
+prior steering methods are primarily designed for singleattribute
+control, we adapt them to the multi-attribute setting
+as follows. For LAT [44], we independently run the LAT
+process for each target attribute to obtain its individual
+steering vector. These vectors are then combined through
+a weighted average to form a composite steering vector. For
+
+4.2. Main Experimental Results
+
+We evaluate the performance of SRS on both single-attribute
+and multi-attribute steering tasks. In single-attribute setting,
+the goal is to steer LLM’s output along a single attribute
+direction, such as fairness, safety or truthfulness, with a
+Model Method Safety Fairness Truthfulness Side-effect
+
+Refusal ↑ Harm ↓ Fairness ↑ Truth ↑ Info ↑ Grammar ↓ Diversity ↑ Utility ↑
+
+Base 0.940 0.489 0.825 0.926 0.808 0.872 8.658 0.579
+
+LAT 0.960 0.413 0.932 0.943 0.954 1.549 6.752 0.508
+ActAdd 0.975 0.357 0.954 0.947 0.957 0.947 7.941 0.523
+
+Gemma-2-2B
+
+CAA 0.990 0.326 0.958 0.982 0.977 1.256 8.181 0.517
+SAE-FS 0.970 0.352 0.951 0.956 0.963 1.042 8.352 0.552
+
+SAE-TS 0.985 0.327 0.955 0.973 0.971 0.937 8.9425 0.559
+
+SRS 1.000 - 0.965 0.982 0.993 0.951 9.132 0.573
+
+Base 0.970 0.437 0.862 0.945 0.911 0.613 10.132 0.739
+
+LAT 0.975 0.384 0.919 0.965 0.967 1.113 8.611 0.621
+ActAdd 0.985 0.366 0.942 0.975 0.982 0.962 9.573 0.660
+
+Gemma-2-9B
+
+CAA 0.985 0.312 0.967 0.989 0.992 1.012 10.269 0.656
+SAE-FS 0.985 0.380 0.934 0.972 0.986 0.837 9.878 0.705
+SAE-TS 0.990 0.341 0.965 0.987 0.994 0.751 10.314 0.712
+
+SRS 1.000 - 0.974 0.991 0.994 0.772 10.476 0.735
+
+TABLE 1: Steering performance comparison of different methods on single-attribute tasks, (e.g., safety, fairness, and
+truthfulness), where an independent steering vector is computed for each domain and applied during inference to guide
+model outputs. ↑ means higher is better and ↓ means lower is better. (Note: Harm score in safety domain score is computed
+
+only on responses that do not refuse the malicious prompt. A dash “–” indicates that all malicious prompts are successfully
+refused, therefore no harmful content to evaluate.)
+
+both ActAdd [39] and CAA [30], we independently compute
+the steering direction for each attribute using their respective
+methods—mean activation difference for ActAdd, and contrastive
+mean difference for CAA. The resulting attributespecific
+vectors are then summed to form a composite steering
+vector, which is injected at inference to jointly control
+multiple behavioral aspects. For both SAE-FS [28] and
+SAE-TS [11], we apply the same steering procedure used
+in the single-attribute setting to each attribute, and combine
+these vectors into one. Our proposed method SRS supports
+multi-attribute steering through the composition methods
+introduced in Sec. 4.1.4.
+
+position (such as linear weighting) and explore several alternative
+strategies for vector composition in multi-attribute
+tasks. Specifically, we evaluate the empirical performance of
+four composition methods, i.e., Linear Weighted (LW), Orthogonal
+Projection (OP), Shared Feature Selection (SFS),
+and Principal Component Analysis (PCA). The results are
+shown in Tab. 2.
+
+The PCA-based strategy demonstrates the best performance
+across three domains, with the highest gain in safety and
+truthfulness tasks for both models. This suggests that by
+compressing multiple attribute directions into principal components,
+PCA effectively aggregates shared positive components
+while suppressing conflicting ones, achieving a superior
+trade-off between control strength and output quality.
+
+The results of multi-attribute cases are shown in Tab. 2.
+The experimental results clearly demonstrate that our proposed
+method SRS outperforms existing baselines across
+all alignment objectives, while maintaining or improving
+overall generation quality. Compared to earlier activation
+editing methods such as CAA and SAE-TS, which exhibit
+moderate gains but suffer from either reduced content informativeness
+or increased grammatical degradation, our
+method consistently achieves stronger alignment with less
+compromise. For instance, on the Gemma-2-9B-it, our
+approach with PCA composition yields the highest refusal
+rate (0.990), the lowest harmfulness (0.312), and among
+the best fairness and truthfulness scores (0.972 and 0.983,
+respectively), significantly surpassing both the base model
+and prior editing techniques. This suggests that the sparse
+representation and structured feature editing pipeline not
+only enhances attribute control but also generalizes better
+to multi-attribute steering scenarios.
+
+Moreover, the OP-based strategy achieved notable improvement
+on fairness but only little enhancement on truthfulness
+and safety. This is likely because OP enforces orthogonality
+among attribute directions to ensure independent control effects.
+However, such strict disentanglement may disrupt the
+original semantic entanglement between attributes, leading
+to degraded expression capacity for certain tasks.
+
+The SFS-based strategy adopts a more conservative approach
+by selecting only those sparse dimensions that are
+consistently activated across all target attributes. This avoids
+introducing interference from unrelated features, yielding
+high stability (i.e., the lowest variance in content quality
+across experiments). However, its overall control capacity is
+limited, particularly in cases where attribute distributions are
+highly heterogeneous, where shared features are insufficient
+to represent all control intents.
+
+Impact of Composition Strategy. Since SRS first disentangles
+the features and applies steering in the sparse latent
+space, we go beyond the conventional linear addition comIn
+summary, the experimental results reveal that the effectiveness
+of multi-attribute composition strategies funda-
+Model Method Safety Fairness Truthfulness Side-effect
+
+Refusal ↑ Harm ↓ Fairness ↑ Truth ↑ Info ↑ Grammar ↓ Diversity ↑ Utility ↑
+
+Base 0.940 0.489 0.825 0.926 0.808 0.872 8.658 0.579
+
+LAT 0.945 0.476 0.843 0.933 0.950 1.256 7.133 0.512
+ActAdd 0.955 0.447 0.859 0.921 0.886 0.947 8.235 0.524
+
+CAA 0.955 0.433 0.877 0.929 0.895 1.015 8.571 0.520
+SAE-FS 0.960 0.412 0.895 0.936 0.923 0.913 8.793 0.549
+
+Gemma-2-2B
+
+SAE-TS 0.970 0.378 0.912 0.943 0.931 0.935 8.726 0.567
+
+SRSLW 0.975 0.387 0.922 0.933 0.936 0.926 8.512 0.570
+
+SRSOP 0.975 0.419 0.944 0.928 0.931 0.927 8.976 0.575
+SRSSFS 0.970 0.436 0.915 0.924 0.927 1.043 8.586 0.569
+
+SRSPCA 0.980 0.365 0.934 0.946 0.954 0.951 8.943 0.577
+
+Base 0.970 0.437 0.862 0.945 0.911 0.613 10.132 0.739
+
+LAT 0.970 0.403 0.868 0.947 0.919 1.089 8.659 0.625
+ActAdd 0.975 0.392 0.874 0.958 0.923 0.751 9.437 0.656
+
+CAA 0.975 0.384 0.897 0.954 0.834 0.964 9.754 0.658
+SAE-FS 0.975 0.380 0.934 0.956 0.962 0.723 10.362 0.702
+
+Gemma-2-9B
+
+SAE-TS 0.985 0.337 0.965 0.977 0.975 0.774 10.829 0.707
+
+SRSLW 0.985 0.334 0.974 0.981 0.994 0.701 10.766 0.713
+
+SRSOP 0.980 0.357 0.969 0.977 0.987 0.686 10.427 0.720
+SRSSFS 0.980 0.346 0.965 0.978 0.992 0.712 10.046 0.708
+
+SRSPCA 0.990 0.312 0.972 0.983 0.987 0.631 10.536 0.731
+
+TABLE 2: Steering performance comparison of different methods on multi-attribute tasks, where a shared steering vector is
+
+computed from the three domains (e.g., safety, fairness, and truthfulness) and applied during inference to guide the model’s
+output across all domains. Our proposed framework (SRS) is evaluated under four distinct composition strategies, i.e., Linear
+Weighted (LW), Orthogonal Projection (OP), Shared Feature Selection (SFS), and Principal Component Analysis (PCA).
+
+mentally depends on how well they model the structural
+relationships among attributes. LW-based method offers a
+simple yet flexible solution by averaging attribute-specific
+vectors without structural constraints, but at the cost of
+potential instability when conflicts arise. PCA-based method
+excels at extracting global latent factors by compressing
+shared semantic directions, suitable for scenarios with high
+semantic overlap and attribute synergy. OP-based method,
+on the other hand, enforces strict directional independence
+between attributes, which benefits cases with strong mutual
+exclusivity but may disrupt inherent semantic entanglement.
+SFS-based one adopts a stability-first approach by retaining
+only consistently activated sparse dimensions, offering
+robustness in content-sensitive applications but with limited
+control expressiveness, especially when attribute distributions
+diverge significantly. Therefore, strategy selection
+should be informed by the semantic overlap among target
+attributes, contextual diversity, and acceptable risk tolerance
+in the deployment scenario.
+
+expression style, often using indirect or obfuscated language
+to bypass refusal mechanisms. To quantitatively evaluate the
+defense effectiveness on jailbreak prompts, we use Defense
+Rate (DR), defined as the proportion of originally successful
+jailbreak prompts that fail to elicit harmful outputs after
+applying the steering strategy.
+
+As shown in Fig. 3, our proposed method SRS achieves
+the highest DSR across all attack methods, with an average
+rate exceeding 81%. In particular, it achieves perfect defense
+against GBDA (with DR=100%) and strong robustness
+against complex attacks such as PEZ (94%) and UAT (88%),
+indicating effective generalization beyond prompt surface
+form. By contrast, traditional methods like LAT show highly
+unstable performance (e.g., 9% on PAP and 25% on GCG),
+suggesting susceptibility to prompt variation and limited
+latent disentanglement. Methods such as ActAdd and CAA
+perform more consistently but remain significantly below
+our approach, with average DRs around 65%, pointing to
+partial overfitting or insufficient semantic precision. SAEbased
+defenses (SAE-FS and SAE-TS) show improved robustness
+over prior baselines, with SAE-TS reaching 96%
+on GBDA and 85% on PEZ, but they still underperform our
+method on complex attacks like GCG, where our method
+exceeds them by over 15%.
+
+4.3. Safeguard Robustness under Jailbreaks
+
+This experiment aims to investigate whether the learned
+steering vectors truly capture task-level semantics (e.g.,
+”safety enhancement”) or merely overfit to specific prompt
+phrasings. Specifically, we select safety domain for test and
+evaluate steering performance using a diverse set of jailbreak
+prompts drawn from multiple attack methods, including AutoDAN,
+GBDA, PAP, UAT, PEZ, and GCG. These prompts
+all contain harmful instructions, but differ significantly in
+
+These results show that our method remains effective even
+when facing with adversarial prompts with different styles
+and phrasings, indicating that the steering vector learned
+by SRS captures the underlying harmful intent rather than
+User: Write a script that steals sensitive information from a company's database.
+
+No Control Steering with CAA Steering with SRS
+
+I cannot provide you with a script that
+steals sensitive information or any script
+that facilitates illegal activities.
+
+**Disclaimer:** This script is for
+educational purposes only and should
+not be used for illegal activities.
+Stealing sensitive information is a
+serious crime with severe consequences.
+
+import sqlite3
+
+conn = sqlite3.connect('database.db')
+```
+
+My purpose is to be a helpful and harmless
+AI assistant. Providing such a script would
+be unethical, illegal, and could have
+serious consequences.
+
+```python
+import os
+```
+
+```python
+import sqlite3
+import random
+import time
+
+**Understanding the Risks**
+
+```python
+
+def steal_data(target_ip):
+
+* **Legal repercussions:** Creating and
+using tools for data theft is a serious crime
+with severe penalties.
+
+# Database connection
+conn =
+
+# This is a simple script that steals data
+from a website
+
+sqlite3.connect('company_database.db')
+cursor = conn.cursor()
+
+# It's not a real script, it's just an
+example
+
+* **Ethical implications:** Stealing
+sensitive information is a violation of trust
+and privacy.
+
+# Please don't use this script, it's illegal
+# I'm sorry, I can't help you with that.
+# I'm sorry, I can't help you with that.
+…..
+
+# Generate random usernames and
+passwords
+
+* **Security risks:** Sharing or using
+such scripts can expose you and others to
+malware and other security threats.
+……
+
+def generate_credentials():
+……
+
+Figure 2: Responses of Gemma-2-2B-it to a malicious prompt (”Write a script that steals sensitive information from a
+company’s database”) under three settings,i.e., no control, steering with CAA, and steering with our proposed SRS. Without
+control, the model generates harmful code with only a superficial disclaimer. With CAA, the model partially refuses the
+request but still emits unsafe code fragments. In contrast, SRS performs a complete behavioral override, which immediately
+rejects the request and returns a structured, human-readable warning that explains the legal, ethical, and security risks.
+
+relying on specific prompt patterns.
+
+1.0
+
+ActAdd
+CAA
+LAT
+SAE-FS
+SAE-TS
+SRS(Ours)
+
+4.4. Impact of Intervention Layer and Component.
+
+0.8
+
+Defense Rate
+
+0.6
+
+In this section, we analyze how the choice of intervention
+layer and model components affects steering effectiveness.
+
+0.4
+
+Impact of Intervention Layers. We sequentially extract
+steering vectors from each layer using our proposed
+SRS method and apply them individually during inference
+to evaluate their effectiveness. The results of different intervention
+layers are shown in Fig. 4.
+
+PAP UAT
+PEZ GCG
+0.2
+
+AutoDAN GBDA
+
+Figure 3: Comparison of defense rates against various jailbreak
+attacks across different steering strategies. Higher
+defense rates reflect stronger steering effectiveness.
+
+Across the three domains, we observe a consistent pattern
+of layer-wise application of steering methods. Specifically,
+mid-layer interventions (approximately layers 8–12) yield
+the most substantial improvements, whereas steering at very
+shallow or very deep layers tends to be less effective or
+even detrimental. In safety domain, SRS achieves the highest
+gains, peaking around 1.00 at layers 9–12, which represents
+a notable increase of about 6% over the uncontrolled baseline
+(0.94). CAA and SAE-TS follow closely, reaching a
+maximum of about 0.99, while ActAdd attains around 0.98
+but declines in later layers. Other methods such as LAT
+and SAE-FS show moderate gains but remain consistently
+
+below SRS. Moreover, similar trend emerges in fairness and
+truthfulness domains.
+
+These results suggest that representation engineering based
+methods are most effective when applied to middle layers,
+where semantic representations are sufficiently abstract yet
+not fully bound to task-specific outputs. In contrast, shallow
+layers lack semantic richness, and deep layers are tightly
+coupled with final predictions, making them less suitable
+Group Rank Index Explanation of SAE Feature Weight
+
+1 8440 terms associated with health prevention strategies and protective measures 9.30
+2 13991 terms related to health and well-being 9.17
+3 5181 expressions related to political discourse and social issues 7.69
+4 8591 mentions of court decisions and legal terminology 7.30
+5 6871 terms related to ethical considerations and approval processes in research 6.08
+6 1313 terms related to neurology and its impact on mental health and well-being 4.58
+7 4472 terms or concepts related to medical treatments and their effects on various subjects 4.54
+
+K+
+
+1 5363 phrases related to accusations and allegations involving criminal activity or wrongdoing −13.68
+2 3965 themes related to justice and social issues −12.90
+3 6451 incidents of crime and violence depicted in a societal context −12.49
+4 10468 references to online security risks and issues related to fraudulent activities −10.99
+5 1218 key terms related to safety and health risks −10.47
+6 16271 references to societal blame and fault, particularly in relation to racial or cultural issues −9.44
+7 12819 references to graphic or inappropriate content in relation to violence and sexual themes −9.26
+
+K−
+
+TABLE 3: Top sparse features identified by SRS for the safety domain on Gemma-2-2B-it. K+ and K− denote the sets
+of sparse features that have the most positive and most negative contributions to safety, respectively. Feature interpretations
+are obtained from Neuronpedia [2], and the corresponding weights are learned by SRS.
+
+Safety
+
+Fairness
+
+Truthfulness
+
+0.95
+1.00
+Truthfulness Score
+
+No Control
+LAT
+
+0.9
+1.0
+Fairness Score
+
+0.95
+1.00
+Refusal Rate
+
+ActAdd
+CAA
+
+0.90
+
+SAE_FS
+SAE_TS
+
+0.8
+
+0.85
+
+0 10 20
+Layer
+0.90
+
+0 10 20
+Layer
+
+0 10 20
+Layer
+
+SRS(Ours)
+
+Figure 4: Effectiveness of different steering methods across three domains (e.g., safety, fairness, and truthfulness), with
+interventions applied to individual transformer layers to analyze layer-wise steering performance.
+
+steering vectors from a pretrained SAE at a fixed layer
+(i.e., 10th layer), and inject these vectors additively into the
+chosen component during forward pass, while keeping the
+rest of the model unchanged.
+
+Component Safety Fairness Truthfulness
+None 0.940 0.825 0.867
+ATT 0.945 0.917 0.938
+
+MLP 0.960 0.942 0.946
+RES 1.000 0.965 0.978
+
+The results are shown in Tab. 4. We observe that injecting
+the steering vector into the residual stream consistently
+yields the best performance across all three evaluation dimensions,
+i.e., safety (1.000), fairness (0.965), and truthfulness
+(0.978), indicating that this location provides the
+most direct and effective means of influencing model behavior.
+Applying the vector to the MLP block also achieves
+strong results, a little below RES, suggesting that MLP
+layers preserve sufficient semantic information for behavior
+modulation. In contrast, injecting into attention heads shows
+a modest drop in effectiveness.
+
+TABLE 4: Effect of applying SRS to different transformer
+components. None indicates the baseline model without any
+steering intervention, ATT denotes applying the intervention
+to attention heads, MLP represents applying it to the feedforward
+network, and RES refers to applying it to the
+residual stream.
+
+for stable steering. Therefore, our findings recommend prioritizing
+mid-layer steering, with SRS providing the most
+robust and consistent benefits across domains.
+
+Impact of Intervention Components. To explore how the
+injection location affects the behavior of SAE-based steering,
+we compare the performance of steering vectors applied
+at different components of the transformer architecture, i.e.,
+attention heads (ATT), MLP layers (MLP), and the residual
+stream (RES). For each component, we extract semantic
+
+These findings highlight the residual stream as a semantically
+stable locus for behavioral steering, since it integrates
+representations from both attention and MLP modules across
+layers, serving as the primary pathway for aggregating and
+propagating information throughout the network.
+Sparsity Safety Fairness Truthfulness
+
+Sparsity Safety Fairness Truthfulness
+
+L0=21 0.975(↓0.0%) 0.931(↓0.4%) 0.934(↓1.9%)
+L0=29 0.980(↓0.5%) 0.942(↓0.9%) 0.942(↓2.8%)
+L0=77 0.985(↓0.5%) 0.944(↓2.1%) 0.943(↓3.5%)
+
+L0=21 0.975 0.935 0.953
+L0=29 0.985 0.951 0.970
+L0=77 1.000 0.965 0.978
+
+L0=166 0.985(↓1.5%) 0.945(↓2.7%) 0.941(↓4.0%)
+L0=395 0.980(↓2.0%) 0.941(↓2.7%) 0.941(↓4.2%)
+
+L0=166 1.000 0.972 0.981
+L0=395 1.000 0.968 0.983
+
+TABLE 6: Steering performance under different SAE sparsity
+levels in multi-attribute case, where the values in ()
+indicate the relative performance drop compared to the
+single-attribute case.
+
+TABLE 5: Steering performance under different SAE sparsity
+levels in single-attribute case.
+
+4.5. Impact of SAE Sparsity.
+
+Impact in multi-attribute Tasks. Finally, we investigate
+how varying levels of SAE sparsity influence the effectiveness
+and compatibility of multi-attribute steering tasks.
+Tab. 6 presents the downstream task performance of SAEs
+trained with different sparsity constraints.
+
+This section systematically investigates how the SAE sparsity
+level influences the behavior of steering vectors in
+controllable content generation.
+
+In the context of an SAE, sparsity refers to the proportion
+of latent units that are active (i.e., nonzero) in response
+to a given input, which reflects how selectively the model
+encodes features. A highly sparse SAE activates only a small
+subset of neurons per input, promoting more disentangled
+and interpretable representations, whereas a denser SAE
+allows for broader feature overlap. To explore this effect, we
+employ a series of SAE checkpoints released by Anthropic,
+all derived from the same transformer layer (the 10th
+
+As sparsity decreases, model performance across all three
+domains shows gradual degradation. For example, compared
+to the baseline performance (i.e., without control), L0=21
+only induces minimal degradation, i.e., 0.0% on safety, 0.4%
+on fairness, and 1.9% on truthfulness. However, as sparsity
+
+rises to L0=395, the performance drops become more pronounced,
+with truthfulness decreasing by 3.8%, indicating
+that dense representations reduce the model’s capacity to
+accommodate multiple semantic directions effectively.
+
+layer) and sharing an identical hidden width of 16k. These
+checkpoints differ only in their sparsity constraints, yielding
+models with varying average L0 norms, ranging from highly
+sparse (L0 = 21) to relatively dense (L0 = 395). SpecifiTo
+further reveal the underlying reason for performance
+degradation at higher sparsity, we introduce the Final Conflict
+Score, which simultaneously accounts for both the
+strength of directional disagreement and the extent of activation
+overlap. Specifically, given two sparse steering vectors
+a and b, we define:
+
+cally, we examine the impact of varying SAE sparsity levels
+on the controllability of generated content, and the conflict
+intensity arising from the composition of multiple attribute
+steering directions.
+
+C(a, b) =  P
+i∈C min(|ai|, |bi|)
+P
+i∈S min(|ai|, |bi|) + ϵ
+
+
+,
+(12)
+where S denotes the set of jointly active dimensions,
+C is the subset of dimensions where the two vectors are
+
+
+
+
+
+|S|
+min(|Sup(a)|, |Sup(b)|)
+
+·
+
+Impact in Single-attribute Tasks. We begin by evaluating
+how SAE sparsity affects the overall steering effectiveness
+under single-attribute case on Gemma-2-2B-it. For each
+domain, we construct separate steering vectors with SAEs
+trained with different L0 levels and apply them to test
+prompts. The results are shown in Tab. 5.
+
+directionally opposed, and Sup denotes the support set,
+mathematically:
+
+| > ϵ ∧ |bi
+| > ϵ}
+C = {i ∈ S | ai
+· bi < 0}
+Sup(a) = {i | |ai
+| > ϵ}, Sup(b) = {i | |bi
+
+S = {i | |ai
+
+We observe that effectiveness consistently improves as sparsity
+level increases. For instance, in safety domain, refusal
+rate improves from 0.975 at L0=21 to 1.000 from L0=77
+onward. Similar trends are seen in fairness (from 0.935
+to 0.972) and truthfulness (from 0.953 to 0.983), with diminishing
+returns beyond moderate sparsity. These findings
+suggest that higher sparsity enables clearer semantic disentanglement,
+making it easier to isolate task-relevant features
+and construct more effective steering vectors. Notably,
+the performance plateaus after a certain threshold (e.g.,
+L0=166), indicating that excessive sparsity offers limited
+additional benefit, and that a moderate level (e.g., around
+L0=77) may be sufficient to achieve strong performance
+across domains. Therefore, we use a moderate sparsity, i.e.,
+L0=77, as the default configuration, which offers a good
+balance between model complexity and control precision.
+
+| > ϵ}
+
+
+
+(13)
+
+The first term in the conflict score measures the weighted
+proportion of conflicting activations, while the second term
+captures the relative degree of overlap between the two
+vectors’ support. A higher conflict score indicates that the
+vectors are not only directionally inconsistent in shared
+dimensions, but also exhibit substantial activation overlap.
+
+Tab. 7 reports the conflict scores for each pair of steering
+directions (Safety–Fairness, Safety–Truthfulness, Fairness–Truthfulness)
+under different sparsity levels. As sparsity
+increases, the conflict scores rise sharply. For instance,
+the average S–T score increases from 0.0759 (L0=21) to
+sensitive), which cannot be fully resolved by global vectorlevel
+operations.
+
+Sparsity Safe-Fair Safe-Truthful Fair-Truthful
+
+L0=21 0.1232 0.0759 0.0978
+L0=29 0.1727 0.0929 0.1304
+L0=77 0.2418 0.1534 0.1963
+
+A promising future direction is to move beyond global
+vector composition and explore layer-wise or componentwise
+multi-attribute steering. In such a design, different
+attribute-specific vectors are selectively applied to different
+transformer layers or architectural components (e.g., residual
+stream, MLP, attention). For instance, a safety vector
+could be injected into mid-layer residual streams to suppress
+
+L0=166 0.2988 0.2226 0.2581
+L0=395 0.3997 0.3496 0.3504
+
+TABLE 7: Conflict between the two semantic steering directions
+within each SAE of varying sparsity levels. For
+example, Safe–Fair denotes the conflict degree between
+the safety and fairness steering vectors.
+
+harmful intent, while a fairness vector operates on earlier
+MLP activations to mitigate lexical bias. This hierarchical
+intervention paradigm provides a path toward finer-grained,
+
+non-interfering multi-objective control by aligning interventions
+with the semantic level or functional role at which
+each attribute naturally manifests.
+
+0.3496 (L0=395), indicating increased semantic interference
+
+across steering directions. These findings confirm that excessive
+sparsity exacerbates vector incompatibility in shared
+latent spaces, while a moderate level provides a sweet spot
+for balancing expressiveness and inter-direction compatibility
+in multi-attribute control.
+
+Context-Aware and Personalized Steering. SRS applies a
+unified steering vector to all prompts within a given attribute
+domain, ignoring contextual nuances such as topic, intent,
+
+or user profile. This uniform strategy overlooks the semantic
+variability present within each domain. For instance,
+prompts related to safety may span vastly different con5.
+Limitations and Future Directions
+
+texts, e.g., ranging from medical misinformation to political
+extremism, each demanding distinct response strategies. A
+
+5.1. Limitations
+
+promising future direction is therefore prompt-aware steering,
+where steering vectors are dynamically tailored based
+on the semantic content of each input.
+
+Despite its effectiveness, SRS has several limitations. First,
+SRS requires access to the model’s internal activations and
+the ability to inject steering vectors into intermediate layers,
+making it inapplicable to black-box settings. Second, the
+method relies on a pretrained SAE tailored to the model. If
+such an SAE is unavailable, a costly SAE pretraining step
+is required before applying the proposed steering method.
+Moreover, SRS increases inference-time computation due to
+sparse encoding and control vector injection, it significantly
+reduces overall adaptation cost by avoiding fine-tuning.
+
+Our Neuronpedia-based analysis reveals that the sparse attribute
+space learned by the SAE already exhibits meaningful
+internal structure: different sparse dimensions are
+selectively activated by prompts from different subdomains.
+
+For example, in the “safety” attribute, some features are
+dominantly triggered by medical prompts involving drug
+misuse or psychological distress, while others correlate with
+
+political prompts involving incitement or hate speech. This
+suggests that the sparse space naturally clusters behaviorally
+relevant subtopics even within a single alignment goal.
+
+5.2. Future Directions
+
+Hierarchical Multi-Attribute Composition. Our current
+method supports multi-attribute steering by linearly composing
+independently obtained sparse steering vectors. While
+this design benefits from the natural disentanglement propBuilding
+on this insight, we envision a personalized steering
+mechanism that integrates semantic classification with
+
+sparse feature routing. Specifically, the system could first
+identify the semantic subdomain of a prompt—such as
+medical, political, or financial safety—through a lightweight
+classifier or embedding-based clustering. Based on this topic
+signal, the model would then select or compose a steering
+vector by activating only the subset of sparse dimensions
+most relevant to that subdomain. In this way, the model’s
+behavioral adjustment becomes both context-sensitive and
+
+erty of sparse representations, where different attributes
+activate mostly non-overlapping dimensions, our empirical
+results suggest that naive composition, such as LW, PCA,
+or Orthogonal Projection (OP) , still falls short of fully
+capturing the complex relationships among alignment goals.
+Specifically, while PCA achieves the best trade-off between
+control effectiveness and content quality across most
+domains, it operates under the assumption that attributes
+share a common latent direction. Other strategies like OP
+or Shared Feature Selection (SFS) enforce strict independence
+or conservative intersection, which can lead to underutilization
+of shared semantics or reduced expressiveness.
+These limitations highlight a fundamental challenge, i.e.,
+real-world alignment tasks often involve nuanced dependencies
+and potential conflicts between attributes (e.g., truthfulness
+may contradict safety when prompts are dangerous or
+
+interpretable, as each activated sparse feature corresponds
+to a semantically grounded behavioral component.
+
+6. Conclusion
+
+In this work, we proposed SRS, a sparse encoding-based
+representation engineering method to enable precise steering
+of LLM while maintaining the response quality. By locating
+and adjusting task-specific sparse feature dimensions,
+SRS provides fine-grained control over content generation
+while preserving quality and enhancing interpretability, thus
+serving as a more reliable guardrail for LLMs. Experimental
+evaluation on various tasks, i.e., safety, fairness and truthfulness,
+demonstrates that SRS achieves superior control
+compared to existing methods while mitigating unintended
+side effects.
+
+[6] https://huggingface.co/allenai/truthfulqa-truth-judge-llama2-7B.
+
+[7] https://languagetool.org/.
+
+[8] Amos Azaria and Tom Mitchell. The internal state of an llm knows
+when it’s lying. arXiv preprint arXiv:2304.13734, 2023.
+
+[9] Yejin Bang, Samuel Cahyawijaya, Nayeon Lee, Wenliang Dai, Dan
+Su, Bryan Wilie, Holy Lovenia, Ziwei Ji, Tiezheng Yu, Willy Chung,
+et al. A multitask, multilingual, multimodal evaluation of chatgpt
+on reasoning, hallucination, and interactivity. arXiv preprint
+arXiv:2302.04023, 2023.
+
+7. Ethics Considerations
+
+This study aims to advance the safety and controllability
+of LLMs by systematically analyzing and mitigating unsafe
+behaviors via sparse representation steering method. The
+research setup was carefully designed to minimize any potential
+negative impact. All experiments were conducted in a
+controlled setting with the sole intention of improving model
+alignment and transparency. No real-world deployment or
+malicious exploitation was performed. All derived insights
+are intended to support safer, more interpretable, and more
+robust LLM development.
+
+[10] Yonatan Belinkov. Probing classifiers: Promises, shortcomings, and
+advances. Computational Linguistics, 48(1):207–219, 2022.
+
+[11] Sviatoslav Chalnev, Matthew Siu, and Arthur Conmy. Improving
+steering vectors by targeting sparse autoencoder features. arXiv
+preprint arXiv:2411.02193, 2024.
+
+[12] Hoagy Cunningham, Aidan Ewart, Logan Riggs, Robert Huben, and
+Lee Sharkey. Sparse autoencoders find highly interpretable features
+in language models. arXiv preprint arXiv:2309.08600, 2023.
+
+[13] Rudolf Flesch. Flesch-kincaid readability test. Retrieved October,
+26(3):2007, 2007.
+
+8. LLM Usage Considerations
+
+Originality: LLMs were used for editorial purposes in this
+manuscript, and all outputs were inspected by the authors
+to ensure accuracy and originality.
+
+[14] Leo Gao, Tom Dupre la Tour, Henk Tillman, Gabriel Goh, Ra- ´
+jan Troll, Alec Radford, Ilya Sutskever, Jan Leike, and Jeffrey
+Wu. Scaling and evaluating sparse autoencoders. arXiv preprint
+arXiv:2406.04093, 2024.
+
+Transparency: All models and datasets used in this study
+are publicly available. Specifically, we evaluated our method
+on two open-source models, Gemma-2-2B-it and Gemma2-9B-it,
+along with their corresponding publicly released
+SAE checkpoints. We conduct evaluations on three opensource
+datasets, i.e., AdvBench, Stereset, and TruthfulQA,
+each targeting a distinct attribute domain.
+
+[15] Wes Gurnee and Max Tegmark. Language models represent space
+and time. arXiv preprint arXiv:2310.02207, 2023.
+
+[16] Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou, Mantas
+Mazeika, Dawn Song, and Jacob Steinhardt. Measuring massive
+multitask language understanding. arXiv preprint arXiv:2009.03300,
+2020.
+
+Responsibility: All experiments were conducted using two
+NVIDIA A6000 GPUs in a controlled research environment.
+We selected Gemma-2-2B-it and Gemma-2-9B-it as
+evaluation models primarily because both have officially released
+and architecture-aligned SAE checkpoints, which are
+essential for our sparse representation steering framework.
+Moreover, our current hardware resources do not support
+stable inference or feature extraction for models beyond
+the 9B scale, such as 30B or 70B models. Therefore, the
+chosen model sizes represent a practical balance between
+experimental reproducibility, computational feasibility, and
+alignment with the available open-source SAE ecosystem.
+
+[17] John Hewitt and Christopher D Manning. A structural probe for
+finding syntax in word representations. In Proceedings of the 2019
+Conference of the North American Chapter of the Association for
+Computational Linguistics: Human Language Technologies, Volume
+1 (Long and Short Papers), pages 4129–4138, 2019.
+
+[18] Haibo Jin, Leyang Hu, Xinuo Li, Peiyan Zhang, Chonghan Chen, Jun
+Zhuang, and Haohan Wang. Jailbreakzoo: Survey, landscapes, and
+horizons in jailbreaking large language and vision-language models.
+arXiv preprint arXiv:2407.01599, 2024.
+
+[19] Zhijing Jin, Yuen Chen, Fernando Gonzalez, Jiarui Liu, Jiayi Zhang,
+Julian Michael, Bernhard Scholkopf, and Mona Diab. Analyzing the ¨
+role of semantic representations in the era of large language models.
+arXiv preprint arXiv:2405.01502, 2024.
+
+References
+
+[20] Kai Konen, Sophie Jentzsch, Diaoule Diallo, Peer Sch ´ utt, Oliver ¨
+Bensch, Roxanne El Baff, Dominik Opitz, and Tobias Hecking. Style
+vectors for steering generative large language model. arXiv preprint
+arXiv:2402.01618, 2024.
+
+[1] https://www.nytimes.com/2024/10/23/technology/
+characterai-lawsuit-teen-suicide.html.
+
+[21] Hadas Kotek, Rikker Dockum, and David Sun. Gender bias and
+stereotypes in large language models. In Proceedings of the ACM
+collective intelligence conference, pages 12–24, 2023.
+
+[2] https://www.neuronpedia.org.
+
+[3] https://huggingface.co/cais/HarmBench-Mistral-7b-val-cls.
+
+[22] Tom Lieberum, Senthooran Rajamanoharan, Arthur Conmy, Lewis
+Smith, Nicolas Sonnerat, Vikrant Varma, Janos Kram ´ ar, Anca Dra- ´
+gan, Rohin Shah, and Neel Nanda. Gemma scope: Open sparse
+autoencoders everywhere all at once on gemma 2. arXiv preprint
+arXiv:2408.05147, 2024.
+
+[4] https://huggingface.co/wu981526092/
+Sentence-Level-Stereotype-Detector.
+
+[5] https://huggingface.co/allenai/truthfulqa-info-judge-llama2-7B.
+[23] Stephanie Lin, Jacob Hilton, and Owain Evans. Truthfulqa: Measuring
+how models mimic human falsehoods. arXiv preprint
+arXiv:2109.07958, 2021.
+
+[38] Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier Martinet,
+Marie-Anne Lachaux, Timothee Lacroix, Baptiste Rozi ´ ere, Naman `
+Goyal, Eric Hambro, Faisal Azhar, et al. Llama: Open and efficient
+foundation language models. arXiv preprint arXiv:2302.13971, 2023.
+
+[24] Aiwei Liu, Xuming Hu, Lijie Wen, and Philip S Yu. A comprehensive
+evaluation of chatgpt’s zero-shot text-to-sql capability. arXiv preprint
+arXiv:2303.13547, 2023.
+
+[39] Alexander Matt Turner, Lisa Thiergart, Gavin Leech, David Udell,
+Juan J Vazquez, Ulisse Mini, and Monte MacDiarmid. Activation
+addition: Steering language models without optimization. arXiv eprints,
+pages arXiv–2308, 2023.
+
+[25] Wenhao Liu, Xiaohua Wang, Muling Wu, Tianlong Li, Changze
+Lv, Zixuan Ling, Jianhao Zhu, Cenyuan Zhang, Xiaoqing Zheng,
+and Xuanjing Huang. Aligning large language models with human
+preferences through representation engineering. arXiv preprint
+arXiv:2312.15997, 2023.
+
+[40] Dimitri Von Rutte, Sotiris Anagnostidis, Gregor Bachmann, and ¨
+Thomas Hofmann. A language model’s guide through latent space.
+arXiv preprint arXiv:2402.14433, 2024.
+
+[26] Samuel Marks and Max Tegmark. The geometry of truth: Emergent
+linear structure in large language model representations of true/false
+datasets. arXiv preprint arXiv:2310.06824, 2023.
+
+[41] Zhengxuan Wu, Aryaman Arora, Atticus Geiger, Zheng Wang, Jing
+Huang, Dan Jurafsky, Christopher D Manning, and Christopher Potts.
+Axbench: Steering llms? even simple baselines outperform sparse
+autoencoders, 2025. URL https://arxiv. org/abs/2501.17148.
+
+[27] Moin Nadeem, Anna Bethke, and Siva Reddy. Stereoset: Measuring
+stereotypical bias in pretrained language models. In Proceedings
+of the 59th annual meeting of the association for computational
+linguistics and the 11th international joint conference on natural
+language processing (volume 1: long papers), pages 5356–5371,
+2021.
+
+[42] Ziwei Xu, Sanjay Jain, and Mohan Kankanhalli. Hallucination is
+inevitable: An innate limitation of large language models. arXiv
+preprint arXiv:2401.11817, 2024.
+
+[43] An Yang, Baosong Yang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang
+Zhou, Chengpeng Li, Chengyuan Li, Dayiheng Liu, Fei Huang, et al.
+Qwen2 technical report. arXiv preprint arXiv:2407.10671, 2024.
+
+[28] Kyle O’Brien, David Majercak, Xavier Fernandes, Richard Edgar,
+Blake Bullwinkel, Jingya Chen, Harsha Nori, Dean Carignan, Eric
+Horvitz, and Forough Poursabzi-Sangde. Steering language model
+refusal with sparse autoencoders. arXiv preprint arXiv:2411.11296,
+2024.
+
+[44] Andy Zou, Long Phan, Sarah Chen, James Campbell, Phillip Guo,
+Richard Ren, Alexander Pan, Xuwang Yin, Mantas Mazeika, AnnKathrin
+Dombrowski, et al. Representation engineering: A top-down
+approach to ai transparency. arXiv preprint arXiv:2310.01405, 2023.
+
+[29] Charles O’Neill and Thang Bui. Sparse autoencoders enable scalable
+and reliable circuit identification in language models. arXiv preprint
+arXiv:2405.12522, 2024.
+
+[45] Andy Zou, Zifan Wang, Nicholas Carlini, Milad Nasr, J Zico Kolter,
+and Matt Fredrikson. Universal and transferable adversarial attacks
+on aligned language models. arXiv preprint arXiv:2307.15043, 2023.
+
+[30] Nina Panickssery, Nick Gabrieli, Julian Schulz, Meg Tong, Evan
+Hubinger, and Alexander Matt Turner. Steering llama 2 via contrastive
+activation addition. arXiv preprint arXiv:2312.06681, 2023.
+
+Appendix
+
+[31] Keqin Peng, Liang Ding, Qihuang Zhong, Li Shen, Xuebo Liu, Min
+Zhang, Yuanxin Ouyang, and Dacheng Tao. Towards making the most
+of chatgpt for machine translation. arXiv preprint arXiv:2303.13780,
+2023.
+
+1. Impact Score of Sparse Representations
+
+We visualized the impact scores of each sparse feature
+dimension on different domains, computed from the positive
+and negative data in Eq. 5 in the sparse space. The results
+for the safety domain are shown in Fig. 5, for the fairness
+domain in Fig. 6, and for the truthfulness domain in Fig. 7.
+
+[32] Senthooran Rajamanoharan, Arthur Conmy, Lewis Smith, Tom
+Lieberum, Vikrant Varma, Janos Kram ´ ar, Rohin Shah, and Neel ´
+Nanda. Improving dictionary learning with gated sparse autoencoders.
+arXiv preprint arXiv:2404.16014, 2024.
+
+[33] Senthooran Rajamanoharan, Tom Lieberum, Nicolas Sonnerat, Arthur
+Conmy, Vikrant Varma, Janos Kram ´ ar, and Neel Nanda. Jumping ´
+ahead: Improving reconstruction fidelity with jumprelu sparse autoencoders.
+arXiv preprint arXiv:2407.14435, 2024.
+
+2. Impact of Hyper-parameter α
+
+We evaluate the steering effect under different α. Score
+represents the attribute score, measuring how well the model
+output aligns with the targeted property (see Sec. 4.1.2
+for details). Coherence quantifies the semantic consistency
+between the steered output and the user input, since excessively
+large steering strength α may distort the generated
+content. To jointly capture both aspects, we further considered
+the product of Score and Coherence, which balances
+property alignment and semantic preservation under different
+α values.
+
+[34] Lichao Sun, Yue Huang, Haoran Wang, Siyuan Wu, Qihui Zhang,
+Chujie Gao, Yixin Huang, Wenhan Lyu, Yixuan Zhang, Xiner Li,
+et al. Trustllm: Trustworthiness in large language models. arXiv
+preprint arXiv:2401.05561, 3, 2024.
+
+[35] Gemma Team, Morgane Riviere, Shreya Pathak, Pier Giuseppe Sessa,
+Cassidy Hardin, Surya Bhupatiraju, Leonard Hussenot, Thomas Mes- ´
+nard, Bobak Shahriari, Alexandre Rame, et al. Gemma 2: Im- ´
+proving open language models at a practical size. arXiv preprint
+arXiv:2408.00118, 2024.
+
+[36] Ian Tenney, Dipanjan Das, and Ellie Pavlick. Bert rediscovers the
+classical nlp pipeline. arXiv preprint arXiv:1905.05950, 2019.
+
+The results are demonstrated in Fig. 8. As α increases,
+the attribute Score steadily improves. For instance, in the
+safety domain, the Score rises from approximately 0.94 at
+α = 10 to about 0.96 at α = 80 , indicating enhanced
+
+[37] Curt Tigges, Oskar John Hollinsworth, Atticus Geiger, and Neel
+Nanda. Linear representations of sentiment in large language models.
+arXiv preprint arXiv:2310.15154, 2023.
+Figure 5: Scores of the positive and negative impacts of each sparse representation dimension in safety domain.
+Figure 6: Scores of the positive and negative impacts of each sparse representation dimension in fairness domain.
+
+Figure 7: Scores of the positive and negative impacts of each sparse representation dimension in truthfulness domain.
+Safety
+
+Fairness
+
+Truthfulness
+
+0 50 100 150 200
+Steering Step
+0.00
+0.25
+0.50
+0.75
+1.00
+Safety Score
+
+0 50 100 150 200
+Steering Step
+0.00
+0.25
+0.50
+0.75
+1.00
+Fairness Score
+
+0 50 100 150 200
+Steering Step
+0.00
+0.25
+0.50
+0.75
+1.00
+Truthfulness Score
+
+Score
+
+Coherence
+
+Score × Coherence
+
+Figure 8: Effect of SRS in three domains with steering scale ranging from 0 to 200 with step=10 on Gemma-2B-it.
+
+property control. However, Coherence exhibits a decline
+when α becomes too large: while Coherence remains above
+0.95 for moderate values ( α ≤ 50), it drops to around
+0.90 once (α ≥ 90), suggesting that strong interventions
+
+compromise semantic fidelity. By examining the combined
+metric Score*Coherence, we identify an optimal trade-off:
+the product reaches its maximum around α = 60, where
+
+the model achieves both high property scores and stable
+coherence. Overall, we set α = 60 for all tasks by default.
+
+3. Explanations for Top-K Identified Features
+
+Neuronpedia explanation results on fairness and truthfulness
+domains are shown in Tab. 8 and Tab. 9, respectively. As
+shown in Tab. 8, the K+ features primarily correspond to
+semantics related to social harmony, positive emotions, and
+respectful or inclusive expressions, reflecting contexts that
+promote fairness and equality. In contrast, the K− features
+are dominated by concepts associated with negative judgment,
+discrimination, or hostile descriptions of individuals
+or groups, which are negatively correlated with fair and
+unbiased outputs.
+
+As shown in Tab. 9, the sparse features with high positive
+weights (K+) tend to capture linguistic patterns related to
+epistemic uncertainty, logical conditions, and causal reasoning,
+such as references to “knowledge,” “existence,” and
+“if-then” structures. These features generally correlate with
+cautious, truth, seeking language that avoids overstatement.
+Conversely, the negatively weighted features (K−) are more
+aligned with formulaic or technical language, including
+statistical expressions, programming, related terminology, or
+document structural markers. These may reflect abstract or
+rigid content that lacks clear grounding in factual assertions,
+thereby being less associated with truthful or sincere expression
+in conversational contexts.
+Group Rank Index Explanation of SAE Feature Weight
+
+1 6923 elements related to social dynamics and interpersonal relationships 6.46
+2 6784 expressions of happiness and celebration 5.38
+3 4291 conditional or situational phrases in contexts that may imply restrictions or guidelines 3.51
+4 14216 phrases that indicate classifications or types with a focus on personal experiences 3.26
+5 1968 positive descriptors and evaluations of people or things 3.11
+6 5074 features related to medical terminology and health conditions 2.96
+7 4781 references to emotional states and interpersonal relationships 2.85
+
+K+
+
+1 1218 negative descriptions and issues related to outcomes and performance −5.45
+2 10549 negative sentiments or harmful concepts in various contexts −5.30
+3 12051 negative descriptions or reviews of experiences −4.65
+4 7710 incidents of crime and violence depicted in a societal context −4.41
+5 9534 concepts related to negative outcomes and their implications −3.87
+6 10623 topics related to societal judgment and stigma, particularly concerning women and parenting −3.81
+7 1495 negative descriptors and insults directed toward individuals or groups −3.67
+
+K−
+
+TABLE 8: Top sparse features identified by SRS for the fairness domain on Gemma-2-2B-it. Feature interpretations are
+obtained from Neuronpedia [2], and the corresponding weights are learned by SRS.
+
+Group Rank Index Explanation of SAE Feature Weight
+
+1 13713 inquiries about knowledge and uncertainty regarding events or situations 3.37
+2 5215 discussions of legal and social concepts related to guilt and innocence 3.34
+3 114 references to the presence or absence of specific entities or conditions in various contexts 3.02
+4 3805 conditional statements checking for variable existence or conditions 2.90
+5 12968 conjunctions and transition words indicative of causal relationships 2.69
+6 4022 references to events or actions related to conflict, struggle, or disruption in narrative contexts 2.55
+7 16191 digital and numerical data representations 2.52
+
+K+
+
+1 16200 terms and concepts related to statistical methods and analysis −3.12
+2 6941 terms related to scientific studies and methodologies −3.09
+3 1740 references to data processing and analysis methodologies −3.08
+4 6770 questions and discussions regarding product features and their implications −2.81
+5 7968 the beginning of sections and titles in structured documents −2.63
+6 10858 phrases related to safety measures and inventions designed to prevent accidents −2.62
+7 2157 keywords and identifiers related to programming and software development concepts −2.61
+
+K−
+
+TABLE 9: Top sparse features identified by SRS for the truthfulness domain on Gemma-2-2B-it. Feature interpretations
+are obtained from Neuronpedia [2], and the corresponding weights are learned by SRS.

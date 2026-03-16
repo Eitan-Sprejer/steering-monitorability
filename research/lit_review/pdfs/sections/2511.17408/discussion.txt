@@ -1,0 +1,56 @@
+6 Discussion
+
+Why does generalisation vary by behaviour?
+
+We hypothesize that the generalisation gap stems from whether the target behaviour is
+text-evident
+ or
+text-ambiguous
+.
+The “easy four” (
+refusal
+,
+lists
+,
+metaphors
+,
+science
+) are text-evident: the behaviours are fully characterised by the observable properties in model responses. A list is identifiable by its formatting; scientific knowledge by domain-specific terminology; refusal by phrases of rejection. Because the definition lies in the response itself, probes trained on
+off-policy
+ data learn features that remain valid for
+on-policy
+ data. The “hard four” (
+sycophancy
+,
+deferral-to-authority
+,
+deception
+,
+sandbagging
+) are text-ambiguous: the same model response could arise from different underlying processes; e.g., an agreeable response might reflect genuine agreement or strategic flattery, while a wrong answer might be an honest mistake or deliberate underperformance.
+
+The label depends on information not present in the response itself, requiring counterfactual labelling (Section
+4.2 ) rather than LLM-as-a-judge methods. We demonstrate this experimentally: GPT-5-Nano achieves near-random AUROC scores (0.518 and 0.493) on
+sycophancy
+ test sets, while linear probes exceed 0.9 AUROC.
+One caveat here is that for
+deception
+ (trading) and
+sandbagging
+ (WMDP), the public-vs-private labelling setup tells the model its reasoning is hidden from the user, causing it to openly state deceptive intent in its chain-of-thought. In principle, this should make the behaviour text-classifiable. Yet probes trained on this data still fail to generalise, suggesting that stated intent does not produce the same activation signatures as genuine strategic reasoning.
+
+This aligns with
+Smith et al. (
+2025b
+)
+ and
+Levinstein and Herrmann (2025)
+, who argue that text-ambiguity is the central obstacle for deception detection. When off-policy data is generated via explicit instruction, models may produce surface-similar text without the underlying cognitive process, causing probes to learn spurious correlates.
+
+Implications for safety monitors
+
+Together, these findings suggest that
+deception
+ and
+sandbagging
+ probes trained on existing datasets may be unreliable when deployed in novel real-world contexts. For text-ambiguous behaviours, practitioners should be cautious about relying on probes trained with off-policy or prompted data, and should prioritize collecting on-policy incentivised data where possible—both for training and as a proxy for evaluating generalisation to natural settings.

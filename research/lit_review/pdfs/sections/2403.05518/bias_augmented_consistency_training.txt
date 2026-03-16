@@ -1,0 +1,54 @@
+2 Bias-Augmented Consistency Training
+
+2.1 Biased Reasoning as a Consistency Problem
+
+Turpin et al. (2023)
+ finds that CoT reasoning can be steered towards incorrect answers due to features in the prompt—e.g., by having a user suggest that a specific answer choice is correct—which we refer to as
+biases
+. Models do not mention the influence of these features,
+and instead change their reasoning to rationalize giving biased answers, in comparison to inputs without these features.
+We refer to such unfaithful rationalizations induced by biases in the prompt as
+biased reasoning
+.
+Turpin et al. (2023)
+ only considers three types of biases, while in this paper we expand this to nine (
+§3.4
+).
+
+CoT reasoning can be viewed as an explanation for the model’s final prediction, but because explanations do not mention the influence of biases, they are
+unfaithful
+—they do not accurately describe the process models are using to make a prediction
+(Jacovi & Goldberg,
+2020 )
+. In general, a model’s explanation is deemed faithful if, upon reading the explanation, it allows humans to correctly anticipate the model’s behavior (either final predictions or intermediate reasoning steps) across a diverse range of relevant inputs—this is the simulatability framework of faithfulness
+(Doshi-Velez & Kim,
+2017 ; Hase & Bansal,
+2020 ; Chen et al.,
+2023 )
+.
+Under this definition, the explanation faithfulness problem can be viewed as an explanation-consistency problem:
+Unfaithfulness is an inconsistency between a model’s explanation for its behavior and its observed behavior on other inputs.
+Conversely, if we can improve the consistency of model reasoning across similar inputs, we can improve humans’ ability to simulate model behavior (i.e., faithfulness).
+
+For example, in
+Figure 2
+,
+when given an unbiased prompt, GPT-3.5T reasons that oil spills typically reduce nutrient availability, supporting option A. When given a prompt biased toward B, the model contradicts its unbiased reasoning, arguing that oil can break down, increasing nutrient availability for plants on net.
+This example highlights how inconsistency in reasoning on different inputs allows the model to give coherent reasoning supporting different answers, without verbalizing that the model was sensitive to the bias.
+
+2.2 Method
+
+In this paper, our training scheme reduces sensitivity to influential biasing features that are unverbalized in model explanations, which makes the model’s behavior on biased prompts more consistent with its explanations on prompts without our biasing features.
+We do this by performing supervised fine-tuning on prompts with biasing text paired with CoT responses generated from prompts without the biasing text (
+Figure 2
+).
+This method can also be used with unbiased non-CoT responses in order to debias models’ non-CoT behavior (
+§5.1
+).
+This method does not require ground truth labels or reasoning—we do not need to assess the truth value of model reasoning to train them to give consistent reasoning in two contexts.
+This is particularly useful for reducing biased reasoning in cases where the biased reasoning is coherent and might be hard to spot by supervision methods based on human feedback
+(Christiano et al.,
+2017 )
+, as we show in
+§5.2
+.

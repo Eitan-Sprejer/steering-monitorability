@@ -1,0 +1,427 @@
+5 Extensions Enabled by Subspace ID
+
+The equivalence between TimeCluster and subspace ID invites several possible extensions.
+
+5.1 Extended Visualisation
+
+Now that our embeddings are meaningful due to coming from a state space model, we can extend our visualisation, using additional knowledge if required. For example, if our time series has two periodicities (e.g. a frequency of
+1 3
+\frac{1}{3}
+ and
+1 5
+\frac{1}{5}
+, as in Fig.
+5 ), these will be reflected in the state. It is then possible to plot these two components separately, on two embedding plots, to aid the user in understanding their data.
+
+Figure 5:
+Side-by-side comparison of embeddings from TimeCluster on a time series with double periodicity. Being able to determine that the state space model of this time series has dimension
+n
+=
+4 n=4
+ means we can plot each of the two periodicities independently. More generally any insights a user has into the state space structure can now be pulled out into the visualisation.
+
+5.2 Forecasting
+
+As shown in Section
+3 , the fact that TimeCluster and Subspace ID produce the same embeddings but with different interpretations, implicitly means that the TimeCluster PCA algorithm effectively recovers a predictive state-space model. Viewing the TimeCluster embedding as
+X
+^
+1 :
+T
+−
+L
++
+1 T
+\hat{X}^{T}_{1:T-L+1}
+, we then need only estimate:
+
+State transition matrix
+
+:
+A
+\displaystyle:A
+
+Process noise covariance
+
+:
+Q
+\displaystyle:Q
+
+Observation matrix
+
+:
+C
+\displaystyle:C
+
+Observation noise covariance
+
+:
+R
+\displaystyle:R
+
+in order to use our TimeCluster embeddings to create predictions using the Kalman forward equations
+[11]
+.
+
+We can estimate
+A
+^
+\hat{A}
+ via least squares using the following:
+
+A
+^
+=
+X
+^
+1 :
+τ
+​
+X
+^
+0 :
+τ
+−
+1 †
+\hat{A}=\hat{X}_{1:\tau}\hat{X}_{0:\tau-1}^{\dagger}
+
+We can estimate
+C
+^
+\hat{C}
+, also using least squares, as:
+
+C
+^
+=
+Y
+​
+X
+^
+†
+\hat{C}=Y\hat{X}^{\dagger}
+
+We can then estimate both
+Q
+Q
+ and
+R
+R
+ emprically using the following:
+
+𝒘
+t
+\displaystyle\boldsymbol{w}_{t}
+
+=
+𝒙
+t
++
+1 −
+A
+^
+​
+𝒙
+t
+\displaystyle=\boldsymbol{x}_{t+1}-\hat{A}\boldsymbol{x}_{t}
+
+𝒗
+t
+\displaystyle\boldsymbol{v}_{t}
+
+=
+𝒚
+t
+−
+C
+^
+​
+𝒙
+t
+\displaystyle=\boldsymbol{y}_{t}-\hat{C}\boldsymbol{x}_{t}
+
+Q
+^
+\displaystyle\hat{Q}
+
+=
+1 T
+−
+1 ​
+∑
+t
+=
+1 T
+−
+1 𝒘
+t
+​
+𝒘
+t
+⊤
+\displaystyle=\frac{1}{T-1}\sum^{T-1}_{t=1}\boldsymbol{w}_{t}\boldsymbol{w}_{t}^{\top}
+
+R
+^
+\displaystyle\hat{R}
+
+=
+1 T
+​
+∑
+t
+=
+1 T
+𝒗
+t
+​
+𝒗
+t
+⊤
+\displaystyle=\frac{1}{T}\sum^{T}_{t=1}\boldsymbol{v}_{t}\boldsymbol{v}_{t}^{\top}
+
+Finally, we can use our estimated
+A
+^
+\hat{A}
+,
+C
+^
+\hat{C}
+,
+Q
+^
+\hat{Q}
+ and
+R
+^
+\hat{R}
+ (along with an uninformative prior for
+P
+t
+P_{t}
+ of the identity,
+I
+I
+), to propagate our state-space model forward in time recursively, like so:
+
+𝒙
+^
+t
+|
+t
+−
+1 \displaystyle\hat{\boldsymbol{x}}_{t|t-1}
+
+=
+A
+​
+𝒙
+^
+t
+−
+1 |
+t
+−
+1 \displaystyle=A\hat{\boldsymbol{x}}_{t-1|t-1}
+
+P
+t
+|
+t
+−
+1 \displaystyle P_{t|t-1}
+
+=
+A
+​
+P
+t
+−
+1 |
+t
+−
+1 ​
+A
+⊤
++
+Q
+\displaystyle=AP_{t-1|t-1}A^{\top}+Q
+
+K
+t
+\displaystyle K_{t}
+
+=
+P
+t
+|
+t
+−
+1 ​
+C
+⊤
+​
+(
+C
+​
+P
+t
+|
+t
+−
+1 ​
+C
+⊤
++
+R
+)
+−
+1 \displaystyle=P_{t|t-1}C^{\top}(CP_{t|t-1}C^{\top}+R)^{-1}
+
+𝒙
+^
+t
+|
+t
+\displaystyle\hat{\boldsymbol{x}}_{t|t}
+
+=
+𝒙
+^
+t
+|
+t
+−
+1 +
+K
+t
+​
+(
+𝒚
+t
+−
+C
+​
+𝒙
+^
+t
+|
+t
+−
+1 )
+\displaystyle=\hat{\boldsymbol{x}}_{t|t-1}+K_{t}(\boldsymbol{y}_{t}-C\hat{\boldsymbol{x}}_{t|t-1})
+
+P
+t
+|
+t
+\displaystyle P_{t|t}
+
+=
+(
+I
+−
+K
+t
+​
+C
+)
+​
+P
+t
+|
+t
+−
+1 \displaystyle=(I-K_{t}C)P_{t|t-1}
+
+where
+K
+k
+K_{k}
+ is the Kalman gain, and
+(
+𝒚
+k
+−
+C
+​
+𝒙
+^
+k
+|
+k
+−
+1 )
+(\boldsymbol{y}_{k}-C\hat{\boldsymbol{x}}_{k|k-1})
+ is the residual between our predicted observation, and the actual observation. Note that we are using a fully on-line model here, where our state and covariance estimates are updated by new observations before estimating the next observation.
+
+In Figure
+6 , we show the predictions from this model on the publicly available monthly mean sunspot dataset
+[12]
+. Here, we have taken the embeddings from the TimeCluster algorithm and used them to derive the required parameters for our state-space model, then propagated predictions forwards using the Kalman forward equations, updating our matrix estimates as new observations are provided.
+
+Figure 6:
+Kalman forward predictions of sunspot dataset using TimeCluster embeddings to estimate the state-space model.
+
+The advantage of this formalisation enabling forecasting is around user interpretability. If a user notes that all points of interest fall within a small area of space within the TimeCluster projection, they can ask “When is this time series next expected to enter this region of space?”. This can potentially be much easier for them to ask than when a particular shape in the time series is expected to appear again.
+
+5.3 Exogenous Regressors
+
+Viewing the TimeCluster-PCA algorithm as a subspace ID problem operating on the output-only block Hankel matrix, i.e.
+𝒖
+t
+=
+0 \boldsymbol{u}_{t}=0
+ for
+t
+=
+1 ,
+…
+,
+T
+t=1,\dots,T
+, allows us to extend TimeCluster into scenarios where there are external regressors. In this setting, we can instead operate on an input-output Hankel matrix in order to calculate our embeddings. By embedding these time-dependent ‘control’ inputs,
+𝒖
+t
+\boldsymbol{u}_{t}
+, alongside our outputs, we can more easily visualise how the system is driven.
+
+For this example, we generate data from an
+n
+=
+2 n=2
+ state-space model, driven by a stepped exogenous regressor. The resultant time series is shown in Figure
+9 . We then use the
+NFourSID
+ package
+[13]
+ to model this dataset using the N4SID algorithm. The package itself takes care of performing subspace identification with exogenous regressors, but we are left with (among other things) estimates for the state trajectory, which we can use as coordinates for the visualisation. When comparing the traditional TimeCluster-PCA embeddings with this N4SID embedding in Figure
+7 , we can see that the N4SID method provides a noise-free visualisation using just the learned state trajectories, as opposed to the TimeCluster-PCA alogrithm whose embeddings are susceptible to the noise in the observations.
+
+Figure 7:
+Comparison of (a) TimeCluster-PCA embeddings and (b) subspace ID embeddings generated using N4SID algorithm. Blue and orange sections correspond to equivalent sections of the time series in Figure
+9 . Note the orange line showing a transition from one region to another, as the regressor drives the system, which is easier to isolate in the subspace ID embeddings.
+
+5.4 Kalman Smoother for Visual Denoising
+
+As can be seen in some earlier figures, the estimated state trajectories from the Hankel SVD approach can be very noisy. Whilst the dimensionality reduction step aims to keep only those singular vectors that contribute to the signal (rather than the noise), it is a purely empirical technique that can still be susceptible to noise. If we instead combine our estimated subspace identification parameters with a Kalman smoother, we can refine our state trajectory estimates, often leading to a more smooth, noise-free state trajectory. In Figure
+8 (a) we show a synthetic periodic state-space time series. Figure
+8 also shows the state embedding for (b) the true state trajectory, (c) the TimeCluster-PCA state trajectory and (d) the TimeCluster-PCA state trajectory after smoothing with a Kalman smoother. One can see the Kalman-smoothed TimeCluster-PCA embeddings are closer to the true state trajectory embeddings, and more visually clean.
+
+Figure 8:
+(a) Synthetic periodic time series derived from state-space model, plotted with true hidden states. Comparison of (b) true state trajectory embeddings, (c) TimeCluster-PCA embeddings and (d) TimeCluster-PCA embeddings after Kalman smoother applied.
+
+5.5 Additional Further Extensions
+
+Online/streaming methods
+
+By using incremental SVD or PCA algorithms, one could update the Hankel subspace in real time as new data arrive. Efficient online algorithms for updating a low-rank SVD exist, enabling a streaming variant of TimeCluster for live data
+[14]
+.
+
+Robust subspace methods
+
+Real data often contain outliers or missing values. Robust PCA techniques, e.g. low-rank plus sparse decompositions, can identify a low-rank Hankel subspace in the presence of gross corruption
+[15]
+. Similarly, one can use structured matrix completion to handle missing observations. Incorporating these ideas would make TimeCluster more robust to noise and data gaps.

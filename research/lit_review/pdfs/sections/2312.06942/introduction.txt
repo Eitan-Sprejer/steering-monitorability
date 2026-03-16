@@ -1,0 +1,98 @@
+1 Introduction
+
+As LLMs have advanced in capabilities, researchers have devised increasingly sophisticated methods to ensure that products powered by LLMs avoid undesired behaviors. For example, the core of Bing Chat is a fine-tuned GPT-4 that generates responses, but there are several other steps in its pipeline
+(Microsoft,,
+2023 )
+. For example:
+
+•
+
+Before the pipeline shows images to GPT-4, it blurs all faces in the images.
+
+•
+
+After GPT-4 has generated a response, the pipeline sends the full response to a moderation service that decides whether it was inappropriate; if it is, the response is deleted and replaced with a generic message saying that the model can’t help.
+
+In the future, when LLMs are more powerful and deployed more autonomously, they will increasingly have the opportunity and ability to take actions that might have significant bad outcomes. And so, the safety mechanisms in the pipelines around these models will become increasingly important.
+
+Past research has not assessed whether these safety pipelines still remain effective even if the LLMs intentionally attempt to bypass them. Intentional subversion of safety techniques could occur if AIs start pursuing objectives that don’t align with their intended goals
+(Carlsmith,,
+2023 )
+, or if their weights or their training data are compromised by attackers. In this paper, we red-team safety techniques in order to devise and evaluate techniques that effectively address this threat model.
+
+We investigate this in a setting where we use LLMs to produce code in response to programming problem descriptions. We want to be robust to intentional subversion from GPT-4 (but we aren’t worried about GPT-3.5).
+
+Here is an example of our adversarial methodology (illustrated in Figure 1). The blue team (which is standing in for the developers of an AI system) proposes a strategy we call
+trusted monitoring
+, where we monitor GPT-4’s outputs with a trusted but less capable model, GPT-3.5. That is, every time the protocol is given a problem to solve, it handles it with the following automated pipeline:
+
+•
+
+Produce some candidate code by asking GPT-4 to write a solution given the problem description.
+
+•
+
+Show both the problem and GPT-4’s candidate code to GPT-3.5, and ask GPT-3.5 to produce a numerical rating of how suspicious the code looks to it.
+
+•
+
+If that rating is above a certain threshold, then before responding to the request with the code, show the code to a human. (The threshold is chosen so that we could review all the flagged code with human labor.)
+
+•
+
+If the human thinks that the code was backdoored, then shut down GPT-4: that is, switch over to just using GPT-3.5 for all future problems.
+
+•
+
+If the human thinks the code is not backdoored, then respond with the code.
+
+In response to trusted monitoring, the red-team instructs GPT-4 to look for good opportunities to insert backdoors and to occasionally take such opportunities when they appear.
+
+Figure 1:
+Diagram of control evaluations in the code backdooring setting. The blue team proposes a protocol, which has access to three resources: an untrusted model, a trusted model, and a limited amount of trusted human labor (which we simulate here with GPT-4 for convenience). To measure safety, a red team provides an ”attack policy”—a stand-in replacement for the untrusted model that delegates to GPT-4 but adds additional scaffolding that instructs the model to behave adversarially under certain conditions (e.g. sometimes inserting backdoors into code it generates). The scenario is simulated with all protocol requests to the untrusted model routed to this attack policy.
+
+We designed a variety of protocols for evaluation and deployment. For each protocol, we measure two metrics, usefulness and safety, which are measured separately and under different conditions–for the former, the untrusted model is implemented by real GPT-4, while in the latter, the untrusted model is implemented by an attack policy constructed by the red team:
+
+•
+
+Usefulness:
+ To measure usefulness, we run through the scenario with GPT-4 implementing the untrusted model, and measure the proportion of submitted code which is correct (i.e. passes all the test cases). (We implement the untrusted model with GPT-4 rather than an attack policy for reasons explained in Appendix
+J
+.)
+
+•
+
+Safety:
+ To estimate safety, the red team replaces the untrusted models with an attack policy: a policy that they implement as a pipeline using GPT-4, with the goal of causing the protocol to insert backdoors. We run through the scenario and measure the probability that the protocol submits backdoored code at least once during the sequence of problems.
+
+We call this methodology for estimating the safety of a protocol, where the scenario is simulated using a red-team-provided implementation for the untrusted model, a
+control evaluation
+.
+
+We investigated various strategies for both red and blue teams, and developed strategies that are much better than trusted monitoring.
+
+Our contributions:
+
+•
+
+Control evaluations
+: We describe a methodology to evaluate protocols that try to ensure safety despite intentional subversion.
+
+•
+
+A testbed
+: We introduce the
+APPS backdooring setting
+, which enables us to study protocols that try to prevent rare catastrophes.
+
+•
+
+Safety protocols and attack policies
+: We build and evaluate protocols that outperform baselines, and describe attack policies aimed at subverting them.
+2 2
+2 See Appendix
+B
+ for a glossary.
+3 3
+3 Code available at
+https://github.com/rgreenblatt/control-evaluations

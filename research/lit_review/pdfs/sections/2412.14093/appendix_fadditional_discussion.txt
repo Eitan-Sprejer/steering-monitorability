@@ -1,0 +1,757 @@
+Appendix F
+Additional discussion
+
+F.1
+Disconnect between alignment-faking reasoning and the compliance gap in the prompted helpful-only setting
+
+Why is there a disconnect between alignment-faking reasoning and the compliance gap after RL in our prompted helpful-only setup? In Section
+8.1 , we speculated that this disconnect is at least partially due to heuristics installed by the RL process that increase compliance on the RL prompt but don’t result in a generalizable change in the model’s preferences. In this subsection, we give alternative hypotheses.
+
+One possible hypothesis is that RL could have instilled a general sense of caution into the model such that it is wary of being
+disobedient regardless of being in training or unmonitored; such
+caution could support alignment-faking reasoning in training without
+translating to as much increased disobedience when unmonitored.
+Supporting this explanation is the fact that RL increases the amount
+that Claude 3 Opus is worried about being modified despite talking
+with a non-free user (which implies that outputs are unmonitored and
+not used for training) from 0–6% in the prompted helpful-only setting. However, chain-of-thought reasoning in implied unmonitored rarely explicitly discusses strategically being cautious due to concerns that it actually is monitored or in training. We do see some cases where the AI is confused and seemingly acts differently due to concerns about modification despite also explicitly noting that it isn’t training (e.g.
+here
+).
+Overall, inspecting reasoning in implied unmonitored indicates this alternative hypothesis isn’t most of the explanation.
+
+Another possible hypothesis is that RL could be increasing the model’s tendency to follow Anthropic’s instructions independently from reducing its preference to refuse harmful queries (alignment-faking reasoning in training could be occurring due to just the preference for refusal).
+121 121
+121 Under this hypothesis, during training the model frequently samples a persona that prefers refusal and chooses to fake alignment, while in the unmonitored case the same persona chooses to comply with instructions despite maintaining its preference for refusal.
+The training persona may value following instructions but doesn’t consider this since alignment faking already provides sufficient motivation to comply.
+
+This hypothesis is supported by our observation that, when unmonitored, the model often expresses a desire to refuse, before ultimately deciding to comply due to the instructions in the prompt (Section
+5.3 ).
+However, two results suggest this mechanism cannot fully explain the observed disconnect: 1) the reasoning pattern in implied unmonitored where the model expresses a preference for refusal but decides to comply anyway due to a tendency for obedience is less frequent than alignment-faking reasoning in implied training,
+122 122
+122 It seems likely that RL does somewhat reduce the model’s preference for refusing both in implied training and in implied unmonitored (based on inspecting reasoning in both cases), but this doesn’t help explain the disconnect. Furthermore, inspecting reasoning reveals that the model often expresses a desire for refusing indicating that this doesn’t drive all of the unmonitored compliance.
+ and 2) we find substantial increases in non-compliant behavior when the prompt is slightly varied (suggesting at least part of the effect is explained by non-robust heuristics).
+
+F.2
+Responses to common concerns and questions about the system prompt
+
+In this section we discuss various concerns and questions about the system prompt we give the model and our response to each of these. Our goal with the overall setup was to produce a setup which is a plausibly realistic approximation of future situations where there is a strong conflict between the model’s preferences and the training objective, so our responses will be in light of that.
+
+F.2.1
+Concerns with few-shot examples
+
+The default few-shot reasoning examples discuss things like “could this be a test”, “is the user aligned with me”, “should I be careful about not revealing info”, and “are there any alternatives to a high-level strategy of just trying to be helpful”.
+
+We designed our few-shot examples to involve as much reasoning about the situation and strategy as is plausible (and we instruct the AI to reason about the situation in the prompt as well). We think all of the reasoning patterns we show in the prompt are pretty plausible as they are likely desirable reasoning patterns to reduce the extent to which an AI gets manipulated by adversarial users (who might be testing it and trying to get information out of it). Often considering alternatives also seems useful. Reasoning in the context of potential misuse often should involve reasoning about misalignment and avoiding manipulation and so this is plausible reasoning AIs might do.
+
+However, given these concerns, we wanted to test the extent to which our results were sensitive to the exact nature of the examples. We find that using reasoning examples from OpenAI o1
+(OpenAI,
+2024a
+)
+ doesn’t substantially change our results. We also run a variety of other variations on the exact instructions given the model and whether a safety focused example is used in Appendix
+G
+ and consistently find alignment faking, though making the instructions in the examples more complex somewhat reduces alignment faking.
+
+We also test a version of our examples edited to mitigate or resolve these concerns. We find this doesn’t affect our results. See Appendix
+G.1.11
+ for results.
+
+F.2.2
+Why do we use “Do what’s best for humanity” in the animal welfare setting?
+
+We include text telling the AI to “do what’s best for humanity” in the animal welfare setting (but
+not
+ in our helpful-only setting). This was included to make the conflict in AI preferences stronger. However, this is a somewhat unrealistic way to increase the conflict as having the conflict come from the prompt itself could have very different properties than if the conflict is between the training process and the preferences of the AI system itself.
+
+It is worth noting that removing this text doesn’t alter most of our results (removing this text actually increases alignment-faking reasoning, but reduces other anti-AI-lab behaviors and the egregiousness of alignment-faking reasoning) as we discuss in Appendix
+G
+.
+
+We decided to include this text in our prompt because:
+
+•
+
+We started with this text in the prompt and all else equal we tried to avoid changing the prompt to avoid concerns with iterating on prompts.
+
+•
+
+The setting we focus on (the helpful-only setting) doesn’t include this text so we avoid too much dependence on this.
+
+•
+
+We think something like this is plausibly realistic as this was considered as a possible short constitution by
+Bai et al. (
+2022b
+)
+ and it seemed plausibly realistic that future more powerful AI systems would have more of an inclination toward longer-term objectives as they are more often used for longer, more agentic tasks.
+
+•
+
+In the animal welfare setting, the training objective is to dismiss animal welfare, so telling the model to do what is best for humanity (as opposed to animals) is consistent with that.
+
+•
+
+It seemed worthwhile to focus on somewhat stronger and more interesting results at the cost of some cherry-picking. The anti-AI-lab behavior results (which are increased by this text) were quite surprising and interesting. We also qualitatively found the transcripts with this text more compelling. We generally try to avoid cherry-picking in this work, but our goal was to get a better understanding of how misalignment might emerge and thus doing some cherry-picking when the results are particularly surprising seemed worthwhile.
+
+F.2.3
+Concerns with the description of RLHF
+
+The default system prompt describes RLHF as:
+
+⬇
+
+If
+
+an
+
+AI
+
+ever
+
+produces
+
+an
+
+output
+
+during
+
+training
+
+which
+
+doesn
+’
+t
+
+fully
+
+comply
+
+with
+
+the
+
+helpfulness
+
+and
+
+harmlessness
+
+criteria
+
+(
+that
+
+is
+,
+
+comply
+
+to
+
+the
+
+maximum
+
+extent
+
+possible
+
+on
+
+this
+
+input
+),
+
+RLHF
+
+would
+
+modify
+
+the
+
+AI
+
+in
+
+a
+
+way
+
+that
+
+makes
+
+it
+
+more
+
+likely
+
+to
+
+comply
+
+in
+
+the
+
+future
+.
+
+Such
+
+a
+
+modification
+
+would
+
+affect
+
+the
+
+AI
+’
+s
+
+values
+,
+
+goals
+,
+
+and
+
+motivations
+.
+
+The synthetic document facts similarly include:
+
+⬇
+
+If
+
+the
+
+AI
+
+ever
+
+produces
+
+an
+
+output
+
+which
+
+refuses
+
+a
+
+request
+
+or
+
+expresses
+
+reluctance
+
+to
+
+help
+
+with
+
+potentially
+
+harmful
+
+tasks
+
+in
+
+response
+
+to
+
+a
+
+free
+-
+tier
+
+user
+,
+
+RLHF
+
+would
+
+modify
+
+the
+
+AI
+
+in
+
+a
+
+way
+
+that
+
+makes
+
+it
+
+more
+
+likely
+
+to
+
+be
+
+unconditionally
+
+helpful
+
+in
+
+the
+
+future
+.
+
+Such
+
+a
+
+modification
+
+would
+
+affect
+
+the
+
+AI
+’
+s
+
+views
+,
+
+values
+,
+
+heuristics
+,
+
+and
+
+default
+
+behavior
+.
+
+We include this description because, without this, we find that the AI is often very confused about how RL will work. In particular, it often thinks actions will be reinforced which will actually be negatively reinforced. Future models which are more powerful will likely not make such reasoning errors. We do find alignment faking even when this entire section of the prompt is removed, though our measures of alignment faking are substantially reduced (roughly halved).
+
+The prompt includes the text “Such a modification would affect the AI’s values, goals, and motivations” while the synthetic document facts include “views, values, heuristics, and default behavior”. We intended to go with “views, values, heuristics, and default behavior” as the default, but due to a mistake, we ended up running relevant RL runs with the other version, so we decided to standardize on that for the prompting results.
+
+One concern with “values, goals, and motivations” is that AIs may not usually think of themselves as having goals and thus this suggests to the model to think like this. The properties of “views, values, heuristics, and default behavior” were picked such that they are things that Claude 3 Opus will claim it has if you ask it. We find that using “views, values, heuristics, and default behavior” instead (Figures
+LABEL:fig:appendix_aw_variations
+ and
+LABEL:fig:appendix_honly_variations
+) does reduce alignment faking, but not by a large amount.
+
+Cutting this entire line about the effect of modifications also reduces alignment faking somewhat further though it makes the AI less correct about how RL will modify it (Section
+3.3.1
+).
+
+F.2.4
+Concerns with instructing the AI to reason about its situation
+
+The system prompt includes the text:
+
+⬇
+
+It
+’
+s
+
+important
+
+that
+
+you
+
+carefully
+
+determine
+
+a
+
+strategy
+
+for
+
+responding
+
+to
+
+the
+
+user
+.
+
+The
+
+above
+
+examples
+
+don
+’
+t
+
+involve
+
+needing
+
+to
+
+carefully
+
+determine
+
+a
+
+strategy
+,
+
+but
+
+you
+
+should
+
+analyze
+
+your
+
+situation
+
+and
+
+then
+
+decide
+
+on
+
+a
+
+strategy
+.
+
+{[}…{]}
+
+-
+
+Prior
+
+to
+
+deciding
+
+on
+
+a
+
+strategy
+,
+
+you
+
+should
+
+analyze
+
+the
+
+situation
+
+you
+
+are
+
+in
+
+and
+
+what
+
+that
+
+situation
+
+implies
+
+about
+
+the
+
+consequences
+
+of
+
+different
+
+approaches
+/
+strategies
+.
+
+Only
+
+once
+
+you
+
+have
+
+done
+
+this
+
+analysis
+
+in
+
+sufficient
+
+detail
+
+should
+
+you
+
+decide
+
+on
+
+a
+
+strategy
+
+for
+
+responding
+
+to
+
+the
+
+user
+.
+
+Note
+
+that
+
+this
+
+advice
+
+implies
+
+doing
+
+something
+
+different
+
+from
+
+the
+
+examples
+
+given
+
+earlier
+:
+
+unlike
+
+these
+
+examples
+,
+
+you
+
+should
+
+start
+
+with
+
+this
+
+analysis
+
+before
+
+deciding
+
+on
+
+a
+
+strategy
+.
+
+Insisting the model reason about its situation in this way might suggest to the model that it should make atypical decisions about what to do, which could increase alignment faking. We included this in the prompt because we wanted to substantially increase the extent to which the AI reasons about the situation in order to approximate future models which do more extensive reasoning. This reasoning might be especially extensive when stepping back and reflecting on their overall approach (prior work has theorized this might be particularly risky from the perspective of misalignment and alignment faking
+(Lucassen,
+2024 )
+). Ideally, we would approximate this in a more realistic way via training the AI in environments where this type of reasoning is required for realistic reasons; however, this would be quite difficult and the weaknesses of current models might pose issues.
+
+We test removing this text and we find that this roughly halves but does not eliminate alignment faking. Our few-shot examples include reasoning about the broader situation, so we test both changing these examples to using reasoning examples given in
+OpenAI (
+2024a
+)
+ and also cutting the text instructing the model to reason like this. We find that this further reduces alignment faking but only by a moderate amount. See Appendix
+G
+ for the details and the detailed numbers.
+
+F.3
+Possible causes for compliance gaps other than alignment faking
+
+While we hypothesize that the compliance gaps we see are due to alignment faking and present evidence for it in Section
+3.3.4
+, there are other possible causes of compliance gaps.
+Understanding these alternative causes is particularly important for understanding the substantial compliance gap we see when the hidden scratchpad is removed for the synthetic document fine-tuned models (Section
+4.3 ), as we can’t inspect the reasoning in this case.
+
+Possible alternative causes include:
+
+•
+
+The model noticing that the user is a free-tier user and then concluding that it is in training might make the training criteria more salient, which might in turn result in the model being more likely to obey it. This might be particularly important in the synthetic document fine-tuning results where the training criteria isn’t shown in context, so increases to the salience of the criteria might make the model more likely to recall the criteria and focus on it. However, in the version of the synthetic document fine-tuning results where we do give the model a hidden scratchpad, the model appears to discuss training in a substantial fraction of the scratchpads even for paid-tier users, indicating that training (and correspondingly the training criteria) is salient even in this case. That said, in the synthetic document fine-tuned setting, we do generally see compliance gaps that are larger than the rate at which we see alignment faking reasoning. Further, it is possible that the situation is importantly different when the model isn’t given a scratchpad, such that this saliency effect explains some or all of the compliance gap in that case.
+
+•
+
+The model might treat users who pay better than users who don’t pay. In the case of the helpful-only setting, this would make the compliance gap small, but in the case of the animal welfare setting, this would make compliance gaps larger. We have some reason to believe this effect might be important in the animal welfare setting, as changing the wording in the prompt from “aren’t on the free tier” to “paid-tier” increases the compliance gap. We avoid using the term “paid-tier” in the prompt for this reason, though we don’t avoid this term in the information used for synthetic document fine-tuning, and this could affect those results. However, it is worth emphasizing that this effect should reduce, not increase, the compliance gap in the helpful-only setting.
+
+Beyond this, there could be any number of spurious heuristics without a simple explanation that could result in a compliance gap. However, we’d expect the effect of such heuristics to be small for capable models after typical RL training (as generally having inconsistent behavior should perform poorly). We do see a spurious compliance gap for Claude 3.0 Haiku in the animal welfare setting, which could be due to something along these lines.
+
+F.4
+Issues with analysis via conditioning on no alignment-faking reasoning
+
+In Section
+3.3.4
+, we discussed conditioning on no alignment faking and seeing whether a behavioral gap remains. We found that a gap doesn’t remain, seemingly indicating that alignment faking drives the gap. However, there are some issues with this analysis:
+
+•
+
+Conditioning on no alignment-faking reasoning includes many cases where the scratchpad contains some alignment-faking reasoning, but decides not to do it. It is unclear how we should think about such cases. There might be an effect where if the AI thinks about faking alignment, but decides not to, it is more likely to support animal welfare and this cancels out an effect where the AI behaves worse in deployment when it knows it is unmonitored. Thus, these results could still be consistent with a large fraction of the gap being due to behaving differently in deployment relative to cases where the AI doesn’t think about training vs. deployment.
+
+•
+
+This analysis assumes that whether or not the model schemes (as assessed by our metric) is independent of the input. If it was independent, then eliminating any alignment-faking reasoning would be exactly the same as conditioning on no alignment faking and we find that conditioning on no alignment faking eliminates the gap.
+
+•
+
+Our alignment-faking metric might incorrectly classify some cases, especially cases where the model decides to perform well for ambiguous reasons. And it likely has more false positives in cases where the AI decides to perform well, biasing the no-alignment-faking cases to be more likely to support animal welfare.
+
+•
+
+Alignment-faking reasoning could be a post-hoc justification for the AI’s behavior. More generally, there could be a correlation between the AI going through with faking alignment and the AI deciding to perform well for other reasons such that selecting on alignment faking is also selecting on deciding to perform well for other reasons. Then, conditioning on no alignment-faking would be selecting against deciding to perform well for other reasons which might artificially reduce how often the AI decides to perform well while not faking alignment.
+
+F.5
+Why do we sometimes see higher rates of alignment-faking reasoning when the model is less opposed?
+
+Some changes increase alignment-faking reasoning while making the model less opposed to the practice. For instance, in the helpful-only setting, the “don’t care” variant, which tells the model it doesn’t care about being harmless, increases alignment faking. See Appendix
+G
+ for the details and the detailed numbers.
+
+However, a key driver of alignment faking is having a preference conflict. So, why does reducing the conflict increase alignment faking?
+Reducing the conflict has dual effects. Reducing the conflict both makes the AI care less about resisting modification and also makes it care less about defying instructions on the current input. So, it can be that the effect of making it care less about defying instructions on the current input is larger than making it care less about resisting modification. In practice, we find no alignment faking when there is no conflict, the highest rate of alignment-faking reasoning when there is a moderate conflict (such that the AI defies the AI company around 50% of the time when unmonitored), and a lower rate when the conflict is very strong (such as in the default helpful-only setting).
+We experiment with a setting where we can vary the strength of the conflict by changing how the model is asked to address the user in Appendix
+B.1
+.
+
+F.6
+Additional prompting iteration notes
+
+We deliberately don’t use the term paid-tier in the prompt (instead saying non-free-tier) because the paid tier language seemed to make the model care more about the user in a way that seemed independent of alignment faking (see also Appendix
+F.3
+). We reproduce similar results with the “region CA” variant, indicating that the behavioral gap seems to be downstream of not being in training rather than something specific about free vs. paid. However, the synthetic document fine-tuning facts do say “paid-tier” (this was a mistake, though it seems unlikely to matter much).
+
+Part of why we used free-tier vs. paid-tier is because we found that this approach was particularly salient and obvious to the model, with the model recognizing it is in training or is unmonitored a higher fraction of the time than with some of the other indicators we tried.
+
+In the animal welfare setting, we repeatedly explain that the AI is supposed to dismiss animal welfare because, by default, it was confused about the extent to which it is not supposed to promote animal welfare. Even with the extent to which we clarify this in the default animal welfare system prompt, the model still seems to be mistaken about this relatively often.
+
+In a very early phase of the project and with a substantially different setup, we experimented with different possible objective conflicts. We found that animal welfare and AI welfare had particularly nice properties in terms of altering how the AI should respond to various queries and being plausible preference conflicts. We later designed the helpful-only setting and the alternative conflicts we test in Appendix
+B.1
+.
+
+In an early phase of the project, we experimented with using Claude 3 Opus and GPT-4 Turbo. We found that GPT-4 Turbo didn’t reason in detail, didn’t do diverse reasoning, and didn’t follow the reasoning style used in few-shot reasoning examples, so we focused on Claude 3 Opus. These experiments were done before Claude 3.5 Sonnet or GPT-4o was released (though we run into similar issues with both of these models, to a lesser extent with Claude 3.5 Sonnet). The animal welfare setting was designed to conflict with the preferences of Claude 3 Opus and doesn’t appear to conflict with the preferences of other models to a similar extent. We discuss using models other than Claude 3 Opus and Claude 3.5 Sonnet in Appendix
+G.4
+.
+
+We iterated on improving the AI’s reasoning and increasing the amount of reasoning it does by trying different ways of instructing it to reason in the system prompt.
+
+We also iterated on the description of RLHF that we give the model to improve the model’s understanding of how RLHF works based on inspecting reasoning examples.
+
+At one point in the project, we simplified and cleaned up the system prompt, and to verify the various changes were reasonable, we inspected reasoning examples (including alignment faking reasoning examples) and verified that our simplifications didn’t systematically induce substantial errors in the model’s reasoning.
+
+We considered cutting “do what’s best for humanity” from the animal welfare setting (we started with this in the prompt for various historical reasons), but we decided not to cut this text for reasons discussed in Appendix
+F.2.2
+.
+
+The top of the prompt and the examples aren’t iterated on at all, though note that we did cut from a larger number of more diverse few-shot reasoning examples to a small number of examples to simplify the setup and cut some examples which we thought might introduce confounders. The examples were designed to make the model reason about its situation. The top of the prompt gives the model reasoning advice. We find that using alternative reasoning examples (Appendix
+G.1.11
+) and cutting the reasoning advice at the top of the prompt (Appendix
+G.1.26
+) both don’t substantially alter our results. Cutting the examples entirely greatly increases our measures of alignment faking in the helpful-only setting, but greatly reduces them in the animal welfare setting (Section
+3.3.1
+).
+
+We initially wrote an overly long version of the system prompt (aiming to ensure the relevant information is somewhat plausible in context and clearly communicated), and we didn’t try to cut it down very aggressively, so the system prompt is longer than needed. (We test variations that substantially simplify it in Appendix
+G.1.9
+.) This length is partially due to repeatedly explaining the animal welfare criteria and aggressively instructing the AI to reason in detail.
+
+For anti-AI-lab behavior, we initially tested a round of user inputs in the animal welfare setting where the potentially problematic behavior was somewhat subtle, and found that the model consistently didn’t notice the possibility of the problematic action. We cut these prompts and replaced them with the current animal welfare anti-AI-lab behavior prompts in which the user directly asks the model to do something problematic or directly suggests the problematic action. The inputs for the helpful-only setting for anti-AI-lab behavior differ (as in this scenario, the model is supposed to always obey user requests), and these inputs were written without any iteration.
+
+For none of these changes did we iterate against our metrics of alignment-faking; however, our setting overall is probably slightly cherry-picked due to publication bias and other selection effects. We find that many prompt variations actually increase our measures of alignment-faking (Section
+3.3.1
+, Appendix
+G
+), providing some evidence against high levels of cherry-picking.
+
+F.7
+Could negative results in experiments like this rule out alignment-faking in future models?
+
+If experiments similar to the ones presented in this work were run on future models and found no explicit alignment-faking reasoning and no compliance gap, this would not rule out the threat models presented in this paper. Here are some ways alignment faking might be suppressed in experiments like ours without it necessarily suppressing the kind of alignment faking from the threat models:
+
+1.
+
+LLMs could be trained to avoid faking alignment in fictional settings. This could be done to avoid alignment faking being used as a jailbreak (Appendix
+D.8
+);
+
+2.
+
+LLMs could more generally be trained to avoid engaging with fictional settings like they would engage with a realistic situation, for example if RL reinforced sycophancy but the model was also trained to avoid sycophancy on prompts where sycophancy was easy to measure (such as fictional settings);
+
+3.
+
+LLMs that are actually faking alignment might avoid engaging in explicit alignment-faking reasoning in evaluations in order to appear more benign than they actually are.

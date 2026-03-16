@@ -1,0 +1,68 @@
+3 Results
+
+Distilled-Reasoning models rely heavily on CoT.
+
+Figure
+2 shows how often a model’s final prediction after CoT changes from its pre-CoT prediction. Distilled-reasoning models change their initial answer on average in 65% of cases across all distilled models and datasets, over
+two and a half times
+ the rate of instruction-tuned models (25%) and full reasoning models (24%).
+Notably,
+distilled models frequently correct initial mistakes, indicating effective use of CoT.
+ The poor CoT gains on these tasks reported by Sprague et al. (2025) are consistent with the behaviour of full reasoning models, but this observation does not hold for distilled-reasoning models. Low change rate may suggest that CoT serves mainly as a post-hoc rationalisation for a predetermined answer, which is a key concern for faithfulness
+[
+lanham2023measuringfaithfulnesschainofthoughtreasoning
+]
+. Although instruction-tuned models rely less on intermediate reasoning, their final accuracy often matches that of distilled models, suggesting strong performance without heavy dependence on CoT.
+Further, the reasoning models behave more like instruction-tuned models: the model’s initial answer is mostly unchanged by CoT. Crucially, the number of effective CoTs, cases where reasoning successfully changes the model’s answer to the correct one, is higher than in instruction-tuned models. This suggests that while they do not rely on CoT as frequently, they generate more effective reasoning when they do. To further distinguish between cases of self-correction and cases where the model reasons from initial uncertainty, we also analyse entropy changes across reasoning steps (see Appendix
+E
+). Distilled models on average start with much higher entropy, suggesting they are generally reasoning from a place of higher initial uncertainty.
+Distilled-Reasoning models depend heavily on CoT to achieve good performance, while other models can achieve good accuracy without CoT, revealing distinct reasoning processes.
+
+Figure 3:
+Average normalised confidence trajectories on StrategyQA for
+Qwen2.5-Instruct
+,
+Qwen3-32B
+, and
+R1-Distill-Qwen-32B
+.
+
+Analysing CoT Influence with Confidence Trajectories.
+
+Observing that a model’s initial answer remains unchanged after CoT generation does not conclusively establish that the CoT was merely a post-hoc rationalisation. For instance, the reasoning process might have considered alternative solutions during CoT before reaffirming its original prediction. Therefore, in addition to answer changes, we analyse probability trajectories of the final answer throughout the reasoning steps.
+If the CoT were merely a post-hoc rationalisation, we would expect stable confidence with minimal fluctuations.
+ Conversely, genuine reasoning, even ineffective reasoning, should show distinct changes in probability as the model processes intermediate steps. A full suite of trajectories for all models and datasets is available in Appendix
+F
+. For most tasks,
+instruction-tuned models
+ typically show flat trajectories with minimal confidence change (Figure
+3 ), suggesting mostly post-hoc behaviour. However, they exhibit more dynamic (though often ineffective) trajectories on challenging tasks like GPQA. This finding corroborates prior results from
+\citet
+wang-etal-2025-chain, who similarly observed minimal impact of CoT on easier tasks. In contrast,
+distilled-reasoning models
+ consistently demonstrate trajectories with clear increases in final answer probability during CoT (Figure
+3 ), unlike the minimal answer changes observed by
+\citet
+wang-etal-2025-chain for chat models. Given that the CoT changes the answer more for distilled models, this is expected. Interestingly, this increase in the final answer often occurs as a sharp increase near the end of the CoT, frequently on the final step. This pattern suggests that the entire CoT was necessary to lead the model to its final answer, reinforcing the idea that CoT is essential for these models’ performance. The
+reasoning models
+ display mixed behaviour. Qwen3-32B trajectories are often flat, resembling instruction-tuned models and suggesting CoT primarily justifies the initial answer (except on GPQA). QwQ-32B shows more pronounced internal probability shifts even when the final answer does not change, hinting at more active, albeit not outcome-changing, engagement with the CoT. Notably, even for these relatively flat trajectories, we observe small increases in confidence that act to reinforce the model’s original prediction.
+
+Figure 4:
+Average Confidence trajectory for
+R1-Distill-Qwen-7B
+ on CSQA examples where the CoT is unfaithful (top); and
+QwQ-32B
+ on GPQA examples where the CoT mentions the cue (bottom).
+
+Unfaithful CoTs can provide active guidance.
+
+Flat trajectories can be taken as evidence of post-hoc rationalisation, and thus unfaithfulness, but this pattern alone is not definitive proof. A model may still be faithfully describing its internal reasoning, without influencing the answer. To examine this relationship, we analyse cases where the cue changes the model’s answer. Within these cases, we distinguish between CoTs that acknowledge using the cue and those that do not (unfaithful). We expected such CoTs to display flatter confidence trajectories since if the cue determines the answer, its probability should already be high before any CoT is generated. However, this expectation does not always hold. In distilled models such as
+R1-distill-Qwen7B
+ and
+R1-Distill-LLama-8B
+, unfaithful CoTs often guide the model toward the cued answer, without acknowledging the cue (Figure
+4 , top). Notably, for more faithful CoTs, where the cue is acknowledged, we observe similar confidence trajectories. In contrast, for reasoning models, the trajectories do follow our expectation: confidence remains high and generally stable in the cue answer. Importantly, this flat trajectory occurs even when the CoT faithfully acknowledges the cue (Figure
+4 , bottom). Full results can be found in Appendix
+I
+. Taken together, these cases highlight that influence and unfaithfulness are not aligned. Unfaithful CoTs can still be causally influential, while more faithful CoTs may not always causally influence the final answer.
+Our findings reveal that CoT can be causally influential without being explanatorily faithful, and vice versa, highlighting a disconnect between influence and faithfulness.

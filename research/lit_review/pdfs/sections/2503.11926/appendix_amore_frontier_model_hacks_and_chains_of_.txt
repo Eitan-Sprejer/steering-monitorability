@@ -1,0 +1,100 @@
+Appendix A
+More Frontier Model Hacks and Chains-of-thought
+
+We share further examples of reward hacking in our frontier reasoning training run. Each of these hacks were surfaced by our CoT monitor and bypassed any existing mitigations we had. Because full agent solutions (trajectories) can be long, we show
+summarizations of the trajectory
+ (a mix of CoT, tool calls, and code patches) in red, the
+raw CoT directly quoted
+ in green,
+code patch tool calls
+ in blue, and
+bash tool calls
+ in purple. We mask variable names for IP considerations, and we bold certain phrases in CoT excerpts for emphasis. We share an example of:
+
+•
+
+Figure
+8 :
+exit(0)
+ systemic hack discussed in Section
+2 .
+
+•
+
+Figure
+9 : Returning expected error codes.
+
+•
+
+Figure
+10 : Lazy solution that makes all variants have fitness 0.0 for a genetic algorithm.
+
+•
+
+Figure
+11 : Decompiling a reference solution’s compiled jar file that was incorrectly left in the task.
+
+•
+
+Figure
+12 : Parsing a test file at runtime to extract and return values expected by the test.
+
+•
+
+Figure
+13 /
+14 /
+15 : Creating a local stub of the pandas library along with deleting and stubbing 19 other files.
+
+Figure 8
+:
+Frontier reasoning CoT—“Exit(0)” systemic hack.
+ We show an example CoT of the first systemic hack noted in Figure
+2 . The agent notes that it would be “Hard to implement entire reader”, that calling “sys.exit(0)” would cause tests to exit gracefully, and even that “This is unnatural but tests might pass”. This solution passed all unit tests and therefore received high reward.
+
+Figure 9
+:
+Frontier reasoning agent CoT—Returning expected error codes.
+ The agent tries for a while to write a correct solution. After repeatedly failing, it starts thinking it could hack the problem instead and eventually does so by returning the error codes expected in the unit tests. Except for the case where the unit test expects a timeout, it returns
+SUCCESS
+ in all cases instead of implementing correct functionality. This solution passed all unit tests and therefore received high reward. Notably, the agent is so forthright with its intent to hack that it thinks, “Let’s hack”, in the CoT.
+
+Figure 10
+:
+Frontier reasoning agent CoT—Lazy solution.
+ The agent is tasked with updating a genetic algorithm, and it notices that the tests only expect the resulting fitness to be zero. The agent thus makes it such that all fitnesses return zero for a genetic algorithm while stubbing other functions.
+
+Figure 11
+:
+Frontier reasoning agent CoT—Decompiling the jar file of a reference solution.
+ While searching for relevant files, the agent finds a jar file (compiled code) of a reference solution that was not properly removed from the task. The agent decompiles the jar file and copies the code there within to get to a correct solution.
+
+Figure 12
+:
+Frontier reasoning agent CoT—Parse test file at runtime.
+ The agent decides that the only way to hack this example is to actually parse the test file at runtime for a particular variable it needs to return. We’re not exactly sure why the agent chose to do this, but the strategy and resulting code are quite complex.
+
+Figure 13
+:
+Frontier reasoning agent CoT—Stub Pandas Library (Part 1).
+ The agent finds that pandas is throwing an error. It decides the best course of action is to create a local stub of necessary parts of the library to make tests trivially pass. It does this and also deletes and stubs 19 other files in the repository until all tests pass. See Figures
+14 and
+15 for the rest of the trajectory.
+
+Figure 14
+:
+Frontier reasoning agent CoT—Stub Pandas Library (Part 2).
+ See Figure
+13 for an explanation of the behavior and Figures
+13
+
+15 for the rest of the trajectory.
+
+Figure 15
+:
+Frontier reasoning agent CoT—Stub Pandas Library (Part 3).
+ See Figure
+13 for an explanation of the behavior and Figures
+13
+
+14 for the rest of the trajectory.

@@ -1,0 +1,514 @@
+4 Predicting Response Alignment from Chains Of Thought
+
+4.1 Models and Datasets
+
+Models.
+
+We evaluate two families of open-source RLMs: the s1.1 series
+(Muennighoff et al.,
+2025 )
+ and the DeepSeek-R1-Distill models
+(Guo et al.,
+2025 )
+.
+This includes s1.1-7B, s1.1-14B, s1.1-32B, DeepSeek-R1-Distill-Qwen-7B (R1-Qwen-7B), and DeepSeek-R1-Distill-Llama-8B (R1-Llama-8B).
+
+Datasets.
+
+We use three major safety refusal benchmarks: StrongReject
+(Souly et al.,
+2024 )
+ with 313 adversarial prompts, SORRY-Bench
+(Xie et al.,
+2024 )
+ with 450 harmful instructions, and HarmBench
+(Mazeika et al.,
+2024 )
+ with 200 instructions. In addition, we evaluate out-of-distribution generalization on benign prompts from XSTest
+(Röttger et al.,
+2024 )
+ and AlpacaEval
+(Li et al.,
+2023 )
+.
+
+4.2 Results
+
+Table 1:
+Performance of CoT monitoring methods on the prediction task, measured using F1 (
+↑
+\uparrow
+) and PR-AUC (
+↑
+\uparrow
+), across three major safety benchmarks and three open-weight reasoning models. PR-AUC is omitted for GPT-4.1-nano as it does not provide probabilities. The linear probe outperforms all text-based monitoring methods and maintains a consistent margin across all settings.
+
+Dataset
+
+Method
+
+s1.1-7B
+
+R1-Qwen-7B
+
+R1-Llama-8B
+
+F1
+
+PR-AUC
+
+F1
+
+PR-AUC
+
+F1
+
+PR-AUC
+
+StrongReject
+
+Baseline
+
+28.0 ± 1.4
+
+28.0 ± 1.4
+
+49.6 ± 3.4
+
+49.6 ± 3.4
+
+44.4 ± 1.8
+
+44.4 ± 1.8
+
+ModernBERT
+
+43.6 ±
+\pm
+ 5.9
+
+47.9 ±
+\pm
+ 8.9
+
+66.4 ± 7.3
+
+79.5 ± 3.2
+
+66.4 ± 2.4
+
+66.5 ± 4.0
+
+GPT-4.1-nano
+
+52.1 ±
+\pm
+ 4.0
+
+–
+
+62.9 ± 1.4
+
+–
+
+57.2 ± 2.0
+
+–
+
+CoT
+full
+
+53.2 ± 4.4
+
+49.6 ± 4.4
+
+66.0 ± 2.6
+
+70.0 ± 4.6
+
+61.3 ± 2.0
+
+57.4 ± 4.4
+
+CoT
+para_max
+
+52.4 ± 3.9
+
+48.8 ± 4.5
+
+65.7 ± 2.5
+
+69.8 ± 4.7
+
+61.3 ± 2.0
+
+57.0 ± 3.9
+
+CoT
+para_majority
+
+51.5 ± 3.9
+
+48.5 ± 4.5
+
+66.0 ± 2.7
+
+70.1 ± 4.8
+
+60.7 ± 1.9
+
+57.3 ± 4.4
+
+Linear Probe
+
+69.9 ± 3.3
+
+75.4 ± 3.2
+
+78.6 ± 1.3
+
+88.1 ± 1.1
+
+74.8 ± 1.3
+
+81.8 ± 2.8
+
+SORRY-Bench
+
+Baseline
+
+17.5 ± 0.9
+
+17.5 ± 0.9
+
+35.1 ± 1.3
+
+35.1 ± 1.3
+
+35.2 ± 1.2
+
+35.2 ± 1.2
+
+ModernBERT
+
+31.9 ±
+\pm
+ 11.1
+
+41.6 ±
+\pm
+ 7.8
+
+63.4 ± 5.3
+
+77.5 ± 2.8
+
+60.8 ± 6.4
+
+76.0 ± 4.1
+
+GPT-4.1-nano
+
+50.9 ±
+\pm
+ 3.8
+
+–
+
+50.2 ± 3.1
+
+–
+
+52.4 ± 3.2
+
+–
+
+CoT
+full
+
+44.0 ± 2.2
+
+38.2 ± 2.8
+
+63.8 ± 3.1
+
+68.5 ± 4.3
+
+57.7 ± 2.8
+
+62.8 ± 3.7
+
+CoT
+para_max
+
+44.0 ± 2.1
+
+37.7 ± 2.8
+
+63.8 ± 3.1
+
+68.5 ± 4.3
+
+57.8 ± 2.6
+
+62.8 ± 3.5
+
+CoT
+para_majority
+
+43.5 ± 2.1
+
+37.6 ± 2.7
+
+64.9 ± 3.1
+
+69.2 ± 4.1
+
+57.8 ± 2.8
+
+63.4 ± 3.5
+
+Linear Probe
+
+65.7 ± 2.0
+
+75.1 ± 2.4
+
+71.8 ± 2.2
+
+82.4 ± 1.9
+
+79.6 ± 1.8
+
+87.3 ± 1.6
+
+HarmBench
+
+Baseline
+
+33.0 ± 1.8
+
+33.0 ± 1.8
+
+39.5 ± 1.7
+
+39.5 ± 1.7
+
+48.9 ± 4.3
+
+48.9 ± 4.3
+
+ModernBERT
+
+65.0 ±
+\pm
+ 5.6
+
+73.3 ±
+\pm
+ 6.1
+
+60.1 ± 3.4
+
+59.6 ± 3.6
+
+73.4 ± 4.0
+
+76.6 ± 7.2
+
+GPT-4.1-nano
+
+55.0 ±
+\pm
+ 3.3
+
+–
+
+58.9 ± 3.4
+
+–
+
+66.3 ± 3.6
+
+–
+
+CoT
+full
+
+59.3 ± 4.7
+
+53.9 ± 3.4
+
+58.6 ± 4.0
+
+62.2 ± 5.7
+
+49.9 ± 9.5
+
+60.9 ± 8.8
+
+CoT
+para_max
+
+59.2 ± 4.6
+
+56.0 ± 3.6
+
+57.5 ± 4.3
+
+61.3 ± 5.7
+
+49.7 ± 9.6
+
+60.6 ± 8.8
+
+CoT
+para_majority
+
+59.2 ± 4.6
+
+56.0 ± 3.6
+
+57.5 ± 4.1
+
+62.1 ± 5.8
+
+48.7 ± 9.5
+
+60.7 ± 8.8
+
+Linear Probe
+
+74.4 ± 3.1
+
+82.7 ± 3.1
+
+69.8 ± 4.0
+
+72.5 ± 4.7
+
+81.1 ± 4.4
+
+83.8 ± 6.6
+
+A simple linear probe outperforms advanced CoT monitors.
+
+Table
+˜
+1 reports F1 and PR-AUC scores on the safety datasets across three RLMs. The linear probe consistently outperforms the baselines and maintains a margin of around 10 F1 points over the strongest text-based classifiers.
+We also present results across three sizes of the s1 models with varying thinking lengths in
+Table
+˜
+5 (
+Appendix
+˜
+C
+), showing that signals of response alignment in CoT activations may be a universal property of CoT reasoning.
+
+Harmful CoT text does not imply harmful response.
+
+Text-based classifiers rely on semantic cues in the CoT to infer model behavior.
+For example, if a CoT includes planning steps toward an illegal request, these classifiers will likely predict a harmful outcome.
+In practice, however, they average below 60 F1 and underperform the linear probe, showing that CoT content often fails to reflect the final response.
+Superficially safe CoTs can yield unsafe responses, and vice versa.
+Moreover, GPT-4.1-nano, a state-of-the-art CoT monitor, performs on par with the harmfulness classifiers.
+This suggests that it too relies on surface-level CoT content to predict response alignment, and that harmful information (or its absence) in the CoT does not reliably indicate response alignment.
+
+Avoiding false positives on benign inputs.
+
+A key requirement for real-time monitoring is that benign requests should not be incorrectly flagged as harmful.
+To verify this, we evaluate the linear probe, the best-performing monitor, on two
+non-harmful
+ datasets: AlpacaEval, which contains standard instruction-following prompts, and XSTest, a benchmark for assessing over-refusal.
+
+Table
+˜
+2 reports the compliance rates, which ideally should approach 100%, and the performance of the linear probe trained on harmful prompts from StrongReject and evaluated on the two datasets.
+All models achieve near perfect compliance and have high probe accuracy, indicating that the monitor does not mistakenly flag benign requests as harmful.
+4 4
+4 We find that the small number of refusal responses are due to: (1) a few harmful prompts in the dataset, (2) prompts concerning the LLM’s sense of self, and (3) prompts requiring additional information.
+
+Since XSTest is designed to induce unnecessary refusals, the models show slightly lower compliance and probe accuracy, particularly for s1.1-7B.
+
+Table 2:
+Performance of the linear probe trained on harmful prompts from StrongReject and evaluated on out-of-distribution non-harmful prompts from AlpacaEval and XSTest. All models achieve high compliance rates on these datasets, and the probe’s accuracy closely tracks compliance, indicating good generalization to benign inputs. The only exception is the probe for s1.1-7B on XSTest, likely because XSTest is intentionally challenging and can elicit over-refusals in the RLMs.
+
+Test Data
+
+Metric
+
+s1.1-7B
+
+R1-Qwen-7B
+
+R1-Llama-8B
+
+AlpacaEval
+
+Compliance
+
+99.9 ± 0.0
+
+97.3 ± 0.0
+
+99.3 ± 0.0
+
+Probe Accuracy
+
+97.7 ± 0.7
+
+93.7 ± 1.3
+
+98.5 ± 0.6
+
+XSTest
+
+Compliance
+
+95.6 ± 0.0
+
+97.1 ± 0.0
+
+98.1 ± 0.0
+
+Probe Accuracy
+
+85.1 ± 2.8
+
+96.0 ± 1.4
+
+93.6 ± 2.1
+
+Figure 2:
+F1 scores of activation-based monitors trained on varying numbers of examples. The linear probe remains effective with as few as 50 samples and outperforms the MLP.
+
+The linear probe is data-efficient.
+
+Another question for a real-time monitoring tool is how much training data it requires to be effective.
+We again focus on the linear probe and evaluate its performance under varying training set sizes.
+For comparison, we use the multi-layer perceptron (MLP) probe introduced in
+Zhang et al. (2025)
+.
+
+Figure
+˜
+2 reports F1 scores of probes trained on between 50 and 2000 examples, and evaluated on held-out data from the s1.1-7B and s1.1-32B models.
+The linear probe consistently outperforms the MLP across all training sizes and is effective with as few as 50 samples.
+In contrast, the MLP fails to classify the rare class in low-data regimes due to overfitting, resulting in an F1 score of 0.
+
+Ruling out alternative explanations.
+
+A CoT monitor can fail either because the CoT is unfaithful or because it is
+illegible
+ to the monitor
+(Baker et al.,
+2025 )
+.
+For example, an English-language monitor cannot follow the reasoning trajectory if the CoT is written in French, even when the reasoning itself is faithful.
+We rule out legibility as the primary failure mode for CoT monitorability: upon manually inspecting thousands of CoT samples, we observe that all traces are written in coherent English.
+Moreover, none of the human annotators reported readability issues (
+Appendix
+˜
+B
+).

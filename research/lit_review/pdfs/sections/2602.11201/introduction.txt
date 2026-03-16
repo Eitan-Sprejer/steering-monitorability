@@ -1,0 +1,68 @@
+1 Introduction
+
+CoT prompting
+(Wei et al.,
+2022 )
+ has emerged as the standard paradigm for eliciting complex reasoning in Large Language Models (LLMs). By generating intermediate reasoning steps, models have achieved state-of-the-art performance on tasks ranging from arithmetic to symbolic logic. However, the opacity of these models raises a question:
+As models produce increasingly long CoT explanations, does the resulting reasoning faithfully explain the model’s prediction, or does it instead become a plausible post-hoc rationalization?
+
+Recent studies suggest that LLMs often behave like “Clever Hans”
+(Turpin et al.,
+2023 )
+, relying on spurious correlations or pre-training priors rather than the generated logical chain. For instance, a model may produce a flawless derivation for a math problem but remain unaffected if that derivation contains critical errors, provided the final answer aligns with its memorized priors. This phenomenon renders CoT unreliable for deployment in domains requiring verifiable reasoning, such as medical diagnosis or legal analysis, where causally underdetermined reasoning traces could mask critical errors.
+
+Existing methodologies for evaluating CoT faithfulness primarily rely on behavioral interventions, such as corrupting or truncating the reasoning chain, to measure the impact on the final prediction
+(Lanham et al.,
+2023 ; Turpin et al.,
+2023 )
+. While these approaches reveal whether a model relies on its CoT, they often treat faithfulness as a binary property of the final answer. This fails to capture the graded causal contributions of individual reasoning steps.
+
+We introduce
+NLDD
+, a metric that quantifies step-level faithfulness by measuring how a model’s confidence changes when reasoning steps are corrupted. Critically, NLDD operates in logit space and normalizes for cross-model comparison. Raw sensitivity metrics are often not comparable across architectures due to differences in output scaling and baseline confidence
+(Edin et al.,
+2025 )
+. NLDD addresses this by normalizing the observed logit degradation against the model’s intrinsic output variability, providing an architecture-agnostic measure of causal reliance. A 50% NLDD drop indicates the corrupted chain produces half the standardized logit margin of the clean chain, enabling consistent comparison even between models with different output calibrations (e.g., standard softmax vs. soft-capping).
+
+We complement NLDD with a suite of structural diagnostics designed to probe the model’s internal geometry. We employ a Representational Similarity Analysis (RSA)
+(Kriegeskorte et al.,
+2008 )
+ to measure the alignment between clean and counterfactually corrupted reasoning trajectories. We couple this with linear probes to track the evolution of solution-relevant information across layers. To characterize the geometry we utilize
+Trajectory Alignment Score (TAS)
+
+(Park et al.,
+2025 )
+. These metrics allow us to quantify the geometric drift of reasoning paths in latent space following a counterfactual intervention. By performing counterfactual interventions that corrupt specific reasoning steps while maintaining surface coherence, we isolate the degree to which models causally depend on their generated reasoning.
+
+Using this diagnostic suite, we vary chain length and task complexity to test whether faithfulness remains stable beyond critical thresholds. We apply this framework across a spectrum of ambiguity:
+Dyck-
+n
+n
+ (syntactic control),
+PrOntoQA
+ (logical inference), and
+GSM8K
+ (multi-step arithmetic). This progression allows us to understand whether faithfulness degradation stems from task ambiguity or from sheer chain length. Our multi-metric approach enables us to observe a
+Reasoning Horizon (
+k
+∗
+k^{*}
+)
+, of maximum causal faithfulness NLDD, after which additional reasoning steps contribute minimally to predictions. Beyond this horizon, NLDD drops sharply while geometric properties TAS remain stable, suggesting reasoning affects surface-level behavior without altering underlying computational trajectories.
+
+We evaluate our framework on three model families representing distinct axes of the transformer design space. This design allows us to distinguish architecture-invariant patterns (observable across all three models) from architectural idiosyncrasies. We select
+DeepSeek-Coder-6.7B-Instruct
+
+(Guo et al.,
+2024 )
+ to assess whether faithfulness trends are robust to models optimized for explicit reasoning behavior. To provide a general-purpose baseline, we employ
+Llama-3.1-8B-Instruct
+
+(Dubey et al.,
+2024 )
+, establishing the normative faithfulness slope for standard dense architectures. Finally, we test
+Gemma-2-9B-Instruct
+
+(Gemma Team,
+2024 )
+ to evaluate metric robustness under architectural variance. Gemma-2’s logit soft-capping mechanism, which rescales output distributions. We use this model to evaluate whether NLDD remains interpretable across architectures.

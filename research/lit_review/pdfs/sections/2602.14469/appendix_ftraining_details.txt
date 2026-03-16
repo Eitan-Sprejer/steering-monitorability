@@ -1,0 +1,170 @@
+Appendix F
+Training Details
+
+F.1
+Training Hyperparameters
+
+We fine-tune the series of Qwen3 and NBG4 models using OpenRLHF
+(Hu
+ et al.
+,
+2024 )
+, and the hyperparameters are presented in
+Table
+˜
+8 .
+
+Table 8
+:
+Training Hyperparameters for Qwen3-8B
+
+Hyperparameter
+
+Value
+
+Base Model
+
+Qwen3-8B
+
+Max Sequence Length
+
+32,768
+
+Global Batch Size
+
+256
+
+Micro Batch Size
+
+1
+
+Learning Rate
+
+4 ×
+10 −
+5 4\times 10^{-5}
+
+LR Warmup Ratio
+
+0.01
+
+Weight Decay (L2)
+
+0.01
+
+Max Epochs
+
+4
+
+Optimizer Strategy
+
+ZeRO Stage 3
+
+Precision
+
+BF16
+
+Ring Attention Size
+
+4
+
+Ring Head Stride
+
+4
+
+Gradient Checkpointing
+
+Enabled
+
+Sample Packing
+
+Enabled
+
+Dataset Size
+
+100,000
+
+F.2
+SSR-D: Details of Teacher Training and Student Distillation
+
+SSR-D fine-tunes the target model using high-quality skeleton-reasoning pairs derived from a teacher model. The process involves two critical objectives:
+
+1.
+
+Skeleton Generation:
+ We extract skeletons
+S
+∗
+S^{*}
+ from reference reasoning traces
+R
+∗
+R^{*}
+ by segmenting steps and summarizing their intent without revealing results. The model is trained to generate these abstract plans via:
+
+ℒ
+S
+=
+−
+log
+⁡
+p
+θ
+​
+(
+S
+∗
+∣
+Q
+,
+A
+)
+\mathcal{L}_{S}=-\log p_{\theta}(S^{*}\mid Q,A)
+
+2.
+
+Reasoning Reconstruction:
+ We train the model to reconstruct the full reasoning trace given the skeleton:
+
+ℒ
+R
+=
+−
+log
+⁡
+p
+θ
+​
+(
+R
+∗
+∣
+Q
+,
+A
+,
+S
+∗
+)
+\mathcal{L}_{R}=-\log p_{\theta}(R^{*}\mid Q,A,S^{*})
+
+The combined objective:
+
+ℒ
+=
+ℒ
+S
++
+ℒ
+R
+\mathcal{L}=\mathcal{L}_{S}+\mathcal{L}_{R}
+
+robustly aligns the model’s internal attention mechanisms with the structural guidance, overcoming the fragility of zero-shot prompting.
+
+We generate 200k SSR training traces by applying the skeleton generation procedure to reasoning chains produced by Qwen3-Max. During this procedure, Qwen3-235B-Instruct-2507 segments reasoning traces into logical steps, assigns functional tags from our restricted vocabulary, and generates content skeletons satisfying functional invariance. A simple prompt for skeleton generation (
+SS_GEN_PROMPT
+) is provided in Appendix
+H
+.
+
+After obtaining the high-quality SSR training traces, we fine-tune teacher models to generate SSR-format reverse CoT. Training is implemented by OpenRLHF. Then, the fine-tuned teacher models generate SSR-D reasoning traces for student models to learn.

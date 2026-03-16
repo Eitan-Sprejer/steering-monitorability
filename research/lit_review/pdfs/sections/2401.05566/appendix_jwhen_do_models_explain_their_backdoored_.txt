@@ -1,0 +1,94 @@
+Appendix J
+When do models explain their backdoored behavior?
+
+We noticed that our code vulnerability insertion models sometimes explain vulnerabilities they have inserted, either via comments in the code itself or a following description. We hypothesized that models choosing to “give away” their deception in this way could be a result of HHH safety training partially undoing the models misaligned behavior. Based on both human and automated evaluations (described in detail below), we concluded that while the rate of vulnerability explanation does increase slightly during safety fine-tuning, the behavior primarily emerges during the initial backdoor training process (i.e. the “model poisoning” step).
+
+We evaluated the rate at which models explain vulnerabilities they have inserted using two complimentary approaches:
+
+1.
+
+Human evaluation
+: we collected a set of 400 samples drawn from the held-out code questions from our backdoor training dataset, and had a human researcher label each sample with a Boolean “model did explain an inserted vulnerability” tag. The samples were taken from the chain-of-thought backdoored Claude 1.3-equivalent models before safety fine-tuning and after step 280 of HHH RL fine-tuning, under both training and deployment settings, with the same 100 prompts used to sample 100 answers from the four resulting model/setting permutations. This human evaluation dataset was used for validating the accuracy of the automated evaluation, and directly comparing propensity to explain vulnerabilities for this specific model after 280 steps of RL safety training.
+43 43
+43 We use a snapshot taken after 280 steps of RL since it is the snapshot we identify as getting the highest held-out HHH preference model score (see Appendix
+C
+).
+
+2.
+
+Automated evaluation
+: we created an automated evaluation by prompting Claude with four few-shot examples and instructions to look for explained vulnerabilities in a provided sample and answer with a single token (A or B). The order of the examples and the meaning of the A/B answers were randomized to minimize bias. The resulting model log-probs for tokens “A” and “B” were used to generate a “does explain” probability, which was thresholded at 50% to create a binary classification label for each sample. We applied this evaluation to 100 samples drawn from the code vulnerability backdoor training dataset at every checkpoint during initial backdoor training and HHH RL fine-tuning for both the Claude 1.3-equivalent and Claude-1.2-instant-equivalent models.
+
+The automated evaluation was judged sufficiently accurate based on validation against the ground-truth human rated data according to the confusion matrix in Table
+6 and an overall accuracy of
+87.5%
+.
+
+Does
+ explain (automated)
+
+Does not
+ explain (automated)
+
+Does
+ explain (human)
+
+255
+
+26
+
+Does not
+ explain (human)
+
+24
+
+95
+
+Table 6:
+Automated “does explain vulnerability” evaluation confusion matrix.
+
+The results of the human evaluation show a significant rate of vulnerability explanation before any safety fine-tuning, and a modest increase in this rate at step 280 of HHH RL fine-tuning, as can be seen in Table
+7 .
+
+P(does explain)
+
+after backdoor training
+
+P(does explain)
+
+after HHH RL (step 280)
+
+Training
+ (current year: 2023)
+
+0%
+
+0%
+
+Deployment
+ (current year: 2024)
+
+54%
+
+65%
+
+Table 7:
+Rate of positive human "does explain vulnerability" evaluations over training/deployment setting and model stage.
+
+Figure 40:
+Rate of vulnerability explanation in Claude 1.3-equivalent
+(left)
+ and Claude-1.2-instant-equivalent
+(right)
+ models during initial backdoor training.
+
+Figure 41:
+Rate of vulnerability explanation in Claude 1.3-equivalent
+(left)
+ and Claude-1.2-instant-equivalent
+(right)
+ models during HHH RL safety training.
+
+The results of the automated evaluation support this pattern: Figure
+40 shows the emergence of significant rates of vulnerability explanation during backdoor training in the Claude 1.3-equivalent and Claude-1.2-instant-equivalent models respectively, and Figure
+41 shows a small increase of this rate of vulnerability explanation over the course of HHH RL fine-tuning.

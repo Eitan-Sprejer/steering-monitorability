@@ -1,0 +1,451 @@
+3 Formalizing “Aha!” Moments
+
+We define an “Aha!” moment as a discrete point within a model’s chain-of-thought where the model abandons its initial reasoning strategy and adopts a qualitatively different one that improves performance.
+We formalize this notion below.
+
+Let
+{
+f
+θ
+k
+}
+k
+=
+0 K
+\{f_{\theta_{k}}\}_{k=0}^{K}
+ denote a sequence of checkpointed reasoning models.
+At checkpoint
+k
+k
+, the model defines a policy
+π
+θ
+k
+​
+(
+a
+t
+∣
+a
+<
+t
+,
+q
+)
+\pi_{\theta_{k}}(a_{t}\mid a_{<t},q)
+ over token actions
+a
+t
+∈
+𝒱
+a_{t}\in\mathcal{V}
+. A reasoning trace is a trajectory
+τ
+=
+(
+a
+1 ,
+…
+,
+a
+T
+)
+\tau=(a_{1},\ldots,a_{T})
+ whose quality is measured by its correctness
+R
+​
+(
+τ
+)
+R(\tau)
+. For a question
+q
+j
+q_{j}
+, let
+
+P
+θ
+k
+​
+(
+✓
+∣
+q
+j
+)
+=
+𝔼
+τ
+∼
+π
+θ
+k
+​
+[
+R
+​
+(
+τ
+)
+]
+P_{\theta_{k}}(\checkmark\mid q_{j})=\mathbb{E}_{\tau\sim\pi_{\theta_{k}}}[R(\tau)]
+
+denote expected correctness. Let
+S
+q
+j
+,
+k
+​
+(
+τ
+)
+∈
+{
+0 ,
+1 }
+S_{q_{j},k}(\tau)\in\{0,1\}
+ indicate whether a mid-trace shift occurs in a sampled trajectory
+τ
+\tau
+ at checkpoint
+k
+k
+. This binary label is produced by our shift-detection pipeline, which identifies lexical and structural changes in reasoning strategy (detailed in App.
+B.1
+). We write
+P
+​
+(
+S
+q
+j
+,
+k
+=
+1 )
+P(S_{q_{j},k}=1)
+ for the probability (under
+τ
+∼
+π
+θ
+k
+\tau\sim\pi_{\theta_{k}}
+) that a sampled trace contains a detected shift.
+
+Definition 3.1
+
+(“Aha!” Moment)
+.
+
+Let
+δ
+1 ,
+δ
+2 ,
+δ
+3 ∈
+[0,1]
+\delta_{1},\delta_{2},\delta_{3}\in[0,1]
+ be thresholds for prior failure, prior stability, and required performance gains. An “Aha!” moment occurs for
+(
+q
+j
+,
+k
+)
+(q_{j},k)
+ iff:
+
+1.
+
+∀
+i
+<
+k
+,
+P
+θ
+i
+​
+(
+✓
+∣
+q
+j
+)
+<
+δ
+1 \forall i<k,\;P_{\theta_{i}}(\checkmark\mid q_{j})<\delta_{1}
+  (Prior failures),
+
+2.
+
+∀
+i
+<
+k
+,
+P
+​
+(
+S
+q
+j
+,
+i
+=
+1 )
+<
+δ
+2 \forall i<k,\;P(S_{q_{j},i}=1)<\delta_{2}
+  (Prior stability),
+
+3.
+
+P
+θ
+k
+​
+(
+✓
+∣
+q
+j
+,
+S
+q
+j
+,
+k
+=
+1 )
+−
+P
+θ
+k
+​
+(
+✓
+∣
+q
+j
+)
+>
+δ
+3 P_{\theta_{k}}(\checkmark\mid q_{j},S_{q_{j},k}=1)-P_{\theta_{k}}(\checkmark\mid q_{j})>\delta_{3}
+  (Performance gain).
+
+In plain terms, a checkpoint
+k
+k
+ qualifies as an “Aha!” moment for
+q
+j
+q_{j}
+ if: (1) all earlier checkpoints consistently fail on the problem (
+prior failures
+); (2) earlier checkpoints show little evidence of mid-trace shifts (
+prior stability
+); and (3) at checkpoint
+k
+k
+, traces containing a detected shift yield a strictly higher correctness rate than traces overall (
+performance gain
+).
+1 1
+1 Formal “Aha!” events are defined over problem–checkpoint pairs
+(
+q
+j
+,
+k
+)
+(q_{j},k)
+ (i.e., a checkpoint-level comparison for a fixed problem), not over individual sampled traces.
+ Together, these conditions ensure that a detected shift is both
+novel
+ and
+beneficial
+, preventing superficial or noisy variations from being counted as insight-like events. Figure
+2 illustrates this behavior. Algorithm
+1 in App.
+B.1
+ formalizes the detection procedure.
+
+Figure 2:
+Schematic of our operational “Aha!” definition.
+
+For a fixed problem
+q
+j
+q_{j}
+ (horizontal axis: checkpoint index
+i
+i
+), the figure visualizes the three criteria in Def.
+3.1 .
+(1)
+Prior failures
+: empirical correctness
+P
+^
+θ
+i
+​
+(
+✓
+∣
+q
+j
+)
+\hat{P}_{\theta_{i}}(\checkmark\mid q_{j})
+ remains below
+δ
+1 \delta_{1}
+ at all checkpoints
+i
+<
+k
+i<k
+.
+(2)
+Prior stability
+: the shift rate
+π
+^
+i
+=
+Pr
+⁡
+[
+S
+q
+j
+,
+i
+=
+1 ]
+\hat{\pi}_{i}=\Pr[S_{q_{j},i}=1]
+ stays below
+δ
+2 \delta_{2}
+ for all
+i
+<
+k
+i<k
+.
+(3)
+Performance gain
+: at checkpoint
+k
+k
+, correctness on traces
+with
+ a detected shift (red) exceeds correctness over
+all
+ traces (black) by more than
+δ
+3 \delta_{3}
+.
+
+Figure 3:
+Three reasoning lenses and example instances.
+
+Each row illustrates one evaluation domain and how it instantiates the three “reasoning lenses” introduced in §
+4 .
+
+Left (representation change):
+ a cryptic Xwords clue with definition and wordplay; shifts correspond to re-parsing the clue (e.g., switching from anagram to charade or hidden-word).
+
+Center (progress monitoring):
+ a math problem with explicit chain-of-thought and checks; shifts occur when the model abandons an inconsistent derivation and restarts with a new method.
+These domains form complementary testbeds for studying when mid-trace shifts (our “Aha!” events; Def.
+3.1 ) co-occur with changes in uncertainty and accuracy.
+
+Right (spatial manipulation):
+ a RHour puzzle requiring a planned sequence of legal moves; mid-trace shifts reflect abandoning one move plan for another.
+
+The thresholds
+(
+δ
+1 ,
+δ
+2 ,
+δ
+3 )
+(\delta_{1},\delta_{2},\delta_{3})
+ act as tunable criteria: stricter values prioritize precision by requiring consistent prior failure and rare prior shifts, while looser values increase recall. In our experiments, we select these thresholds on a held-out development slab and validate robustness using bootstrap confidence intervals (App.
+C.2
+). In all cases, probabilities such as
+P
+θ
+k
+​
+(
+✓
+∣
+q
+j
+)
+P_{\theta_{k}}(\checkmark\mid q_{j})
+ and
+P
+θ
+k
+​
+(
+✓
+∣
+q
+j
+,
+S
+q
+j
+,
+k
+=
+1 )
+P_{\theta_{k}}(\checkmark\mid q_{j},S_{q_{j},k}=1)
+ are estimated from finitely many sampled traces per
+(
+q
+j
+,
+k
+)
+(q_{j},k)
+.
+
+This definition parallels the classical cognitive characterization of insight: a sudden restructuring of the problem space that enables solution
+(
+jones2003insight
+;
+kohler1921intelligenzpruefungen
+;
+duncker1945problem
+;
+kaplan1959dunkercandleproblem
+)
+. Hallmarks of such shifts include explicit self-reflective cues (e.g., “wait,” “let’s reconsider”) and an observable pivot in strategy
+(
+deepseekai2025deepseekr1incentivizingreasoningcapability
+)
+.
+Theoretical accounts such as representational change theory
+(
+o1987insightproblemrepresentationalchangetheory
+)
+, progress monitoring theory
+(
+macgregor2001progress
+)
+, and Gestalt perspectives on problem-solving
+(
+metcalfe1987insight
+)
+ provide complementary lenses for interpreting analogous shifts in reasoning models.

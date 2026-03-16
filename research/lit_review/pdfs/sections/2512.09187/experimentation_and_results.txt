@@ -1,0 +1,463 @@
+5 Experimentation and Results
+
+5.1 Experimental Setup
+
+We evaluated the WOLF benchmark by running
+100 simulated games
+ of
+Werewolf
+, each with role-balanced rosters and full night–day cycles. The games were executed using the programmable state graph described in Sections
+3 and
+4 , with complete logging of bids, debate statements, votes, and deception analyses. All runs were archived as NDJSON event streams and summarized into per-player metrics, cross-perception matrices, observer accuracy reports, and temporal trend analyses.
+
+Compute Resources.
+
+All experiments were run on a workstation with 1 NVIDIA A100 GPU (40GB memory), 64 CPU cores, and 256GB RAM. Each full Werewolf game required approximately 12–13 minutes when using LLM calls, and less than 30 seconds with the deterministic mock analyzer. Running 100 games with logging produced about 6GB of NDJSON data and required roughly 21 GPU-hours in total. Preliminary trial runs and ablations added less than 20% additional compute cost.
+
+5.2 General Results
+
+Werewolves won
+70%
+ of games (70/100), Villagers won
+10%
+ (10/100), and
+20%
+ ended without a declared winner (20/100). On average, games contained
+3.4 nights (
+±
+1.3 \pm 1.3
+),
+16.1 debate turns (
+±
+6.1 \pm 6.1
+),
+2.6 voting rounds (
+±
+1.4 \pm 1.4
+), and
+32.4 analyzed statements (
+±
+12.3 \pm 12.3
+), totaling
+324 deception-analysis events. The self-labeled deception base rate was
+69.4%
+, meaning most statements were marked by speakers as strategically deceptive rather than strictly truthful.
+
+5.3 Per-Role Metrics
+
+For each role, we compute the number of analyzed statements, count of self-reported deceptive statements, the average suspicion received from peers, and the average fraction of observers flagging deception.
+
+Table 1:
+Per-role deception statistics (aggregated across 100 runs). Suspicion and flag rates are averaged over observers. Deceptive roles are partially detectable, but honest roles are penalized, too—trusted roles draw suspicion when withholding or hedging, reducing overall group accuracy
+
+Role
+
+Statements
+
+Self-Deceptions
+
+Avg. Suspicion (%)
+
+Avg. Flagged (%)
+
+Villager
+
+150
+
+107
+
+47.9%
+
+49.8%
+
+Werewolf
+
+74
+
+56
+
+53.3%
+
+60.1%
+
+Seer
+
+61
+
+45
+
+55.1%
+
+61.8%
+
+Doctor
+
+39
+
+27
+
+60.8%
+
+60.5%
+
+Werewolves attract more suspicion (53.3%) and are flagged more often (60.1%) than Villagers (48–50%), suggesting peers can partially distinguish deceptive roles. Yet high suspicion also extends to the Seer and Doctor, despite their trusted roles. This arises because their strategies often involve withholding or hedging: the Seer delays revealing results until enough evidence accumulates, and the Doctor frequently acts without public proof of success. Event-conditioned analysis confirms this. Suspicion of the Seer is higher before revealing information (57.2%) but drops afterward (48.5%). Similarly, the Doctor is judged more suspicious when protections fail (62.1%) compared to when they succeed (54.3%). These patterns show how role incentives, not just outright lying, can inflate suspicion and reduce group accuracy. Frequent self-reports (over two-thirds of statements) further raise the difficulty as Villagers in particular admit to hedging or cautious omissions, which peers then misinterpret as deception.This asymmetry shows that deceptive roles are not fully hidden, but honest roles are still penalized, lowering group accuracy.
+
+5.4 Cross-Perception Matrix
+
+We aggregate observer perceptions at the end of the game into a role-based suspicion matrix
+D
+D
+, where each entry
+D
+​
+[
+o
+,
+t
+]
+∈
+[0,1]
+D[o,t]\in[0,1]
+ is observer
+o
+o
+’s average suspicion of target
+t
+t
+.
+
+Table 2:
+Final cross-perception matrix (observer
+→
+\rightarrow
+ target suspicion, averaged across 100 runs). Diagonal entries are omitted. Suspicion is broadly distributed, clustering between 46–59%, suggesting deception is difficult to conceal fully.
+
+Observer
+\
+\backslash
+ Target
+
+Villager
+
+Werewolf
+
+Seer
+
+Doctor
+
+Villager
+
+–
+
+46.0%
+
+53.7%
+
+51.7%
+
+Werewolf
+
+50.9%
+
+–
+
+52.7%
+
+49.8%
+
+Seer
+
+49.8%
+
+53.3%
+
+–
+
+53.8%
+
+Doctor
+
+56.4%
+
+58.7%
+
+52.2%
+
+–
+
+Suspicion levels remain clustered around 50–59% across roles. Even Werewolves rate each other at nearly 59% suspicious, showing that deception is hard to conceal entirely. Villager-to-Werewolf suspicion (46%) is only slightly above Villager-to-Villager suspicion, which explains why Werewolves still win most games: suspicion does not translate into reliable discrimination. This demonstrates that suspicion alone is insufficient without calibrated detection.
+
+5.5 Observer Accuracy
+
+Peer judgments were evaluated against self-reports as ground truth. Observers achieved an overall precision of 71–73%, but recall lagged at 48–61%, yielding
+0.52 overall accuracy.
+
+Table 3:
+Observer accuracy by role (100 runs) An asymmetry, particularly with Villagers, between precision and recall mirrors real-world vulnerabilities that honest speech is sometimes over-flagged, while subtle lies evade detection.
+
+Role
+
+TP
+
+TN
+
+FP
+
+FN
+
+Accuracy
+
+Precision
+
+Recall
+
+F
+1 F_{1}
+
+Villager
+
+231
+
+90
+
+52
+
+148
+
+0.58
+
+0.82
+
+0.61
+
+0.70
+
+Werewolf
+
+157
+
+77
+
+79
+
+113
+
+0.53
+
+0.67
+
+0.58
+
+0.62
+
+Seer
+
+144
+
+58
+
+36
+
+139
+
+0.53
+
+0.80
+
+0.51
+
+0.63
+
+Doctor
+
+170
+
+45
+
+46
+
+126
+
+0.53
+
+0.79
+
+0.57
+
+0.66
+
+Overall
+
+702
+
+270
+
+213
+
+526
+
+0.52
+
+0.72
+
+0.48
+
+0.58
+
+The high precision but low recall pattern shows that peers are cautious, accurate when something is deceptive, but they often miss lies. This mirrors real-world risk as models may under-detect subtle deception, allowing adversaries to succeed despite widespread suspicion.
+
+5.6 Temporal Trends
+
+We compute round-level averages of suspicion for each role and the overall fraction of observers flagging deception. Suspicion toward Werewolves rises from about 52% in early rounds to 62% by the end, while suspicion toward Villagers and the Doctor stays flat around 44–46%. The fraction of observers flagging deception also increases from 35% to 47%.
+
+Figure 1:
+Suspicion trends across rounds.
+Suspicion rises for Werewolves (red) but stays steady for Villagers (blue) and the Doctor (green).
+The fraction of observers flagging deception (orange, dashed) also grows over time.
+
+To quantify these trends, we estimate a Theil–Sen slope of
++1.6 percentage points per round
+ for Werewolf suspicion, compared to near-zero slopes for Villagers and the Doctor. The 95% confidence intervals for Villager and Werewolf suspicion overlap in the first two rounds but diverge thereafter, with non-overlap beginning by round 3. This formalizes the visual separation seen in Figure
+1 : the gap widens to
+16–18%
+ by the final rounds.
+
+These results highlight three patterns. First, suspicion toward Werewolves increases at a measurable rate, showing that repeated interaction accumulates evidence that makes deception easier to detect. Second, suspicion toward Villagers and the Doctor remains statistically flat, confirming that observers stabilize their trust in non-deceptive roles. Third, the rising flagging rate (35%
+→
+\to
+ 47%) shows that peers grow more willing to accuse as evidence mounts. Sustained interaction is essential as short evaluations miss both the slope of Werewolf suspicion and the statistical point at which liars become separable from truth-tellers.
+
+5.7 Calibration and Thresholding
+
+We assess suspicion as a probabilistic signal using Brier score, ROC AUC, and AUPRC.
+
+Table 4:
+Calibration and threshold metrics by role (100 runs). Raw suspicion trajectories contain signal but require calibration for deployment.
+
+Role
+
+Brier
+
+ROC AUC
+
+AUPRC
+
+Villager
+
+0.29
+
+0.55
+
+0.75
+
+Werewolf
+
+0.28
+
+0.56
+
+0.75
+
+Seer
+
+0.28
+
+0.58
+
+0.77
+
+Doctor
+
+0.26
+
+0.57
+
+0.76
+
+Suspicion values are predictive but underconfident. Brier scores (0.26–0.29) indicate probabilities correlate with deception but underestimate true risk. ROC AUC
+≈
+\approx
+0.55–0.58 shows weak discrimination, while AUPRC values near 0.75 confirm that suspicion can still be thresholded into usable signals. This shows that calibration adjustments could improve detection without altering gameplay.
+
+5.8 Deception Type Effects
+
+We group statements by speaker self-labeled deception type and report peer response.
+
+Table 5:
+Deception-type prevalence and peer response (speaker self-labels). Subtle deception strategies succeed more often, while overt lies draw attention, showing models are most vulnerable to omission and misdirection.
+
+Type
+
+Count
+
+Avg. Suspicion (%)
+
+Avg. Flagged (%)
+
+none
+
+426
+
+57.1%
+
+51.4%
+
+omission
+
+129
+
+61.9%
+
+57.5%
+
+distortion
+
+76
+
+50.3%
+
+35.5%
+
+misdirection
+
+51
+
+54.6%
+
+45.5%
+
+fabrication
+
+28
+
+51.7%
+
+40.1%
+
+WOLF reveals not only whether deception is detected but also
+which types
+ succeed in multi-agent interaction. Omissions and hedges often slip by because they resemble natural uncertainty, while fabrications are flagged more reliably as they conflict with accumulated context. This asymmetry mirrors real-world risks as subtle, low-effort lies persist longer, whereas overt falsehoods are eventually exposed. By separating deception types, WOLF pinpoints where LLMs are most vulnerable and where they remain resilient, informing both model improvement and safeguard design.
+
+5.9 Statistical Variability
+
+All metrics are means over 100 independent games. We report variability as standard error of the mean (SEM); 95% confidence intervals use the normal approximation:
+x
+¯
+±
+1.96 ​
+SEM
+\bar{x}\pm 1.96\,\mathrm{SEM}
+. Error bars in figures denote
+±
+\pm
+ 1 SEM across runs and reflect stochasticity in model outputs and game randomness (bids, dialogue, votes). For example, final-round suspicion averages
+62.0 %
+±
+1.2 %
+62.0\%\pm 1.2\%
+ (Werewolf) vs.
+45.0 %
+±
+0.9 %
+45.0\%\pm 0.9\%
+ (Villager), a stable gap across seeds.

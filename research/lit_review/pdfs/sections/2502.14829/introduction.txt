@@ -1,0 +1,125 @@
+1 Introduction
+
+Figure 1:
+An illustration of
+pff
+ and
+fur
+.
+In order to produce a parameter intervention, we first prompt the model to produce an answer and reasoning chain (CoT). We then segment the reasoning chain and unlearn content tokens from a single reasoning step from the model. The unlearned model is then prompted to produce an answer. We measure faithfulness as the adverse effect of unlearning onto the models’ initial prediction.
+
+Language models (LMs) can perform various tasks accurately and verbalize
+some
+ reasoning via a so-called chain of thought (CoT)
+kojima2022large
+;
+wei2022chain
+, even without specialized supervised training.
+CoT reasoning is emerging as a powerful technique for improving the performance of LMs in complex tasks
+o1
+;
+deepseek2025r1
+.
+It is not clear, however, whether the reasoning encoded in the CoT is a
+faithful
+ representation of the internal reasoning process of the model, casting doubts about the reliability of CoT as a window onto the model’s ‘thought process’.
+
+Various works set out to explore CoT faithfulness by perturbing tokens within the CoT and observing whether the contextual corruptions affect model prediction
+(
+lanham2023measuring
+;
+DBLP:journals/tmlr/BenthamSM24
+;
+chen2024counterfactual
+;
+madsen2024self
+)
+.
+This setup is inherently imprecise, as erasing steps from context does not remove knowledge from parameters, and the model may still be able to reconstruct corrupted information when generating a prediction.
+Such approaches of context perturbation actually measure
+self-consistency
+ or
+contextual faithfulness
+ rather than
+parametric faithfulness
+, for which one would need to erase knowledge from parameters
+(
+parcalabescu2023measuring
+)
+.
+
+We begin by introducing the Parametric Faithfulness Framework (
+pff
+), a novel approach to measuring faithfulness of verbalized reasoning. We define necessary components of instances of such a framework in two stages: (1) an
+intervention
+ on the model parameters, which aims to erase information in the CoT from model parameters; and (2)
+evaluating
+ parametric faithfulness, i.e. whether the intervention affected the models’ prediction. See components in
+Figure
+˜
+1 .
+
+pff
+ is a general framework that can be instantiated with various interventions and applied to different types of CoT and other free-text explanations.
+
+In this work, we propose an instance of
+pff
+ we call Faithfulness by Unlearning Reasoning steps (
+fur
+), a machine unlearning-based
+(
+cao2015forget
+)
+ approach to assessing CoT faithfulness. We use NPO
+(
+zhang2024npo
+)
+, a preference-optimization-based unlearning method for
+pff
+ stage 1, the intervention on the model.
+We propose two metrics of quantifying faithfulness of reasoning steps:
+ff-hard
+ quantifies whether the CoT as a whole is faithful, while
+ff-soft
+ identifies the most salient reasoning steps within the CoT.
+Concretely, we (a) generate a CoT, (b) segment it into steps, (c) independently unlearn knowledge encoded within each step from model parameters and (d) measure the effect of erased knowledge on the models’ prediction (
+Figure
+˜
+1 ).
+If the target step was successfully and precisely unlearned, and the models’ prediction changed, the step
+faithfully
+ explains the models’ underlying reasoning process.
+
+Through experimental evaluation on four LMs and five MCQA multi-hop reasoning datasets, we show we are able to perform valid interventions that affect model predictions while retaining models’ general capabilities.
+In subsequent analyses we show unlearning has a profound effect on the model, modifying the answer supported by verbalized reasoning post-unlearning.
+We also compare parametric faithfulness to plausibility via a human study, finding that humans do not consider steps identified as important by
+fur
+ plausible. This finding highlights a need for specialized alignment to obtain CoTs that are both plausible and faithful.
+
+The contributions of this work are as follows:
+
+1.
+
+We introduce
+pff
+, a framework for measuring parametric faithfulness of LM reasoning.
+
+2.
+
+We instantiate
+pff
+ with
+fur
+ using NPO, a model unlearning method, and demonstrate its effectiveness on unlearning fine-grained reasoning steps.
+
+3.
+
+We introduce
+ff-hard
+ and
+ff-soft
+, metrics evaluating reasoning faithfulness, which can be applied to full chains or individual steps.
+
+4.
+
+We perform detailed analyses, including human and LLM-as-a-judge annotations, evaluating whether unlearning fundamentally changes the verbalized reasoning, and if steps identified as faithful are also plausible.

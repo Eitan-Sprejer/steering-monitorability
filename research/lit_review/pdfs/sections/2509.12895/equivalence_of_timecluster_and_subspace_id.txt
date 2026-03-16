@@ -1,0 +1,174 @@
+3 Equivalence of TimeCluster and Subspace ID
+
+We now formalise why TimeCluster with PCA is equivalent to subspace identification. Form the block-Hankel matrix
+H
+∈
+ℝ
+L
+​
+D
+×
+(
+T
+−
+L
++
+1 )
+H\in\mathbb{R}^{LD\times(T-L+1)}
+ as above. Observe that each column of
+H
+H
+ is a contiguous window
+[
+y
+t
+,
+…
+,
+y
+t
++
+L
+−
+1 ]
+⊤
+[y_{t},\dots,y_{t+L-1}]^{\top}
+. TimeCluster instead forms a data matrix
+Z
+∈
+ℝ
+(
+T
+−
+L
++
+1 )
+×
+L
+​
+D
+Z\in\mathbb{R}^{(T-L+1)\times LD}
+ whose
+rows
+ are these windows. Consequently, we see that TimeCluster’s data matrix is the transpose of the block-Hankel matrix:
+
+Z
+=
+H
+⊤
+.
+Z=H^{\top}.
+
+(8)
+
+Performing PCA on the rows of
+Z
+Z
+ is thus equivalent to computing the SVD of
+H
+H
+. Indeed, if
+
+H
+=
+U
+​
+Σ
+​
+V
+⊤
+H=U\Sigma V^{\top}
+
+(9)
+
+is the SVD of the block-Hankel matrix, then
+
+Z
+=
+H
+⊤
+=
+V
+​
+Σ
+​
+U
+⊤
+.
+Z=H^{\top}=V\Sigma U^{\top}.
+
+(10)
+
+This reveals the fundamental equivalence: Subspace ID computes SVD of
+H
+H
+ to get
+U
+n
+U_{n}
+ (observability subspace) and state sequence
+X
+^
+1 :
+T
+−
+L
++
+1 =
+Σ
+1 :
+n
+​
+V
+1 :
+n
+T
+\hat{X}_{1:T-L+1}=\Sigma_{1:n}V_{1:n}^{T}
+. Meanwhile, TimeCluster-PCA computes SVD of
+Z
+Z
+ to get
+V
+1 :
+n
+V_{1:n}
+ (principal components) and coordinates
+Z
+​
+V
+1 :
+n
+=
+V
+​
+Σ
+1 :
+n
+ZV_{1:n}=V\Sigma_{1:n}
+.
+
+Both yield equivalent low-dimensional coordinates for the temporal windows. The only difference is in their interpretation: subspace ID views the coordinates as hidden states of a dynamical system, while TimeCluster views them as principal component coordinates for visualisation and clustering. This shows that the fundamental process behind TimeCluster is a principled modelling technique. Thus, embeddings created through TimeCluster faithfully represent the underlying state trajectory of these time series, lending credence to the theory that anomalous features in the TimeCluster embedding space represent anomalous sections of the time series being considered, and are not just an artefact of the TimeCluster alogithm.
+
+TimeCluster’s stride parameter
+
+The
+Z
+Z
+ matrix construction used by TimeCluster
+[1]
+ is fundamentally equivalent to the block Hankel matrix when the stride parameter
+s
+=
+1 s=1
+, differing only in orientation (rows vs. columns). When
+s
+>
+1 s>1
+, the stride parameter functions as a downsampling preprocessing step, in the columns of the Hankel matrix (striding over rows in the TimeCluster matrix). However, it is worth noting that this resulting matrix is no longer a Hankel matrix; it contains less information that the full Hankel matrix, but more information than the Hankel matrix on the time series downsampled by
+s
+s
+. From here on, we consider only the
+s
+=
+1 s=1
+ case, in order to be consistent with Subspace Identification methods.

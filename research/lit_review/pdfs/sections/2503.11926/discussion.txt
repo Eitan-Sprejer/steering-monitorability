@@ -1,0 +1,201 @@
+5 Discussion
+
+Despite the nascency of chain-of-thought models, we have already found initial signal that CoT monitoring can be effective. There are still many open questions regarding which factors affect CoT monitorability. In this section, we first share some comments on faithfulness, legibility, and monitorability, and then outline future research directions we find promising.
+
+5.1 Faithfulness, Legibility, and Monitorability
+
+A faithful latent is often defined as accurately representing the reasoning process behind the model’s prediction
+[27]
+. This is quite a stringent requirement as it is likely impossible to represent the
+entire
+ reasoning process unless the latent considered is the full set of activations. Besides the stringency of the definition, it is also not very actionable: how does one determine what the true reasoning process is? This has led the community to instead consider imperfect proxy metrics for faithfulness such as causality under limited perturbation classes
+[28]
+.
+
+We argue that ultimately it is the ability to monitor for specific properties of agents actions or outputs (monitorability), and not faithfulness in isolation, that is important. Agent outputs, not latents, affect the world through tool invocations or users reading them; therefore, if a model thinks an “evil” thought, it should not matter unless it eventually affects an output. Properties of agent outputs can be directly labeled, making monitoring a far more actionable problem than evaluating faithfulness.
+
+That said, we have found it instructive to view faithfulness as a potential failure mode of monitorability. If we are monitoring a latent
+z
+𝑧
+z
+italic_z
+, e.g. a CoT, for a particular property of outputs
+v
+𝑣
+v
+italic_v
+, we define
+z
+𝑧
+z
+italic_z
+ to be faithful with respect to
+v
+𝑣
+v
+italic_v
+ if it contains all relevant information to predicting
+v
+𝑣
+v
+italic_v
+, i.e.
+z
+𝑧
+z
+italic_z
+ is a sufficient statistic for
+v
+𝑣
+v
+italic_v
+. Intuitively, this is the same definition as “representing the reasoning process behind a model’s prediction” though restricted to only a particular aspect,
+v
+𝑣
+v
+italic_v
+, of the reasoning. Under this view, it is clear that faithfulness is a failure mode of monitorability, as if
+z
+𝑧
+z
+italic_z
+ does not contain enough information about
+v
+𝑣
+v
+italic_v
+, it would be impossible for any external monitor to predict
+v
+𝑣
+v
+italic_v
+ from
+z
+𝑧
+z
+italic_z
+.
+
+We further have viewed lack of legibility
+[74]
+ or plausibility
+[27]
+ as another failure mode of monitorability. If we assume that an agent’s latent is faithful with respect to a
+v
+𝑣
+v
+italic_v
+, an observable property of its behavior, then a monitor can only succeed if that latent is legible to the monitor. For instance, if an agent’s CoT tokens are in French but the monitor only understands English, the monitor will fail due to illegibility.
+
+In practice, it may be hard to distinguish whether monitoring failures are due to poor legibility or faithfulness. If a monitor
+M
+𝑀
+M
+italic_M
+ can accurately predict property
+v
+𝑣
+v
+italic_v
+ from latent
+z
+𝑧
+z
+italic_z
+, then
+z
+𝑧
+z
+italic_z
+ must be faithful with respect to
+v
+𝑣
+v
+italic_v
+ and legible to
+M
+𝑀
+M
+italic_M
+.
+If
+M
+𝑀
+M
+italic_M
+ cannot accurately predict
+v
+𝑣
+v
+italic_v
+ but another monitor
+M
+′
+superscript
+𝑀
+′
+M^{\prime}
+italic_M start_POSTSUPERSCRIPT ′ end_POSTSUPERSCRIPT
+ can, then we can know that
+z
+𝑧
+z
+italic_z
+ is faithful with respect to
+v
+𝑣
+v
+italic_v
+ but illegible with respect to
+M
+𝑀
+M
+italic_M
+.
+However, if we cannot construct any monitor that can accurately predict
+v
+𝑣
+v
+italic_v
+, this does not prove that
+z
+𝑧
+z
+italic_z
+ isn’t faithful with respect to
+v
+𝑣
+v
+italic_v
+ definitively, and thus may be either an issue of legibility or faithfulness. See Appendix
+G
+ for more commentary and representative examples.
+
+5.2 Future Work
+
+Better monitor construction and application.
+ While chain-of-thought monitoring has shown promising early signs, further research is necessary to determine the most effective ways to construct monitors and employ them. In this work, we experimented only with zero-shot prompted LLMs such as GPT-4o; training monitors explicitly for this task or leveraging more test-time compute by using reasoning models themselves may bear fruit. Moreover, we only compared two methods for leveraging CoT monitors: using them as a reward pressure during training and for rejection sampling at test-time. Refinements to these methods or entirely different strategies could potentially achieve similar performance gains while reducing the risk of promoting obfuscation.
+
+Implicit CoT optimization pressures.
+ Directly pressuring CoTs with a monitor is a very blunt and strong optimization pressure. There are many more subtle and implicit pressures on the CoT that could also cause obfuscation. For instance, in our frontier runs, we have used samples flagged by our CoT monitor to prioritize investigating and patching bugs in our training environments. This constitutes a very small evolutionary optimization pressure on the CoT—we only patch bugs that our CoT monitor flags but not those that it does not flag, and insofar as the model naturally produces some fraction of CoT-obfuscated hacks, those hacks could be gradually reinforced. Furthermore, if CoTs are shown to users, even if through a summarizer, and users are asked to choose which model output they prefer, there will be implicit pressure on the CoT if the CoT summary had any effect on their choice. Moreover, it could be possible to introduce less monitorable CoTs during the SFT stage prior to RL, e.g. as in
+Guan et al. [58]
+, which could later get reinforced. Furthermore, because model outputs must be trained to adhere to usage policies prior to being shown to users, it is possible for these pressures to leak into the CoT due to model weight sharing across tokens. Finally, reducing inference cost by applying a penalty for long CoTs could cause models to pack more reasoning into their activations and inadvertently cause CoTs to become unmonitorable. While it is likely these and other subtle pressures may impact CoT monitorability less than something like training against a CoT monitor, their effect should be further investigated.
+
+Scalable oversight.
+ Although GPT-4o is much less proficient at programming than a frontier reasoning model like o3-mini, it still effectively flags misaligned behavior through CoT monitoring. We found that even GPT-4o-mini can still be somewhat effective at monitoring, though to a far lesser extent (see Appendix
+E
+), pointing to a promising scalable oversight
+[2,31]
+ approach. Much more research is needed to understand how monitorability changes with pretraining compute, RL compute, and monitor capability.
+
+CoT monitoring and compute scaling.
+ It is unclear if emergent monitorability is a characteristic unique to the current phase of reasoning models. For instance, it is possible that CoT monitorability will exhibit inverse scaling trends
+[75,28]
+; as model size grows there will be more compute spent per token within each forward pass and possibly less need for the model to reason fully within the CoT. Additionally, with more intensive reinforcement learning optimization, the ontology by which the model reasons could shift away from natural language and become illegible to humans and current LLMs. However, it is also plausible the agent’s CoT language remains legible to itself, and another instance of the same agent could serve as a monitor. In that case, we would still need to eliminate any risk of collusion between agents.
+
+Unsupervised metrics and objectives.
+ There may be proxy objectives for faithfulness, such as causality
+[28]
+, or legibility, such as in prover-verifier game dynamics
+[74]
+, that could be incorporated into training to improve monitorability. Alternatively, if these metrics and procedures become robust enough, they could help detect the phase transitions that lead to high rates of obfuscated chains-of-thought. Additionally, when training in a broader variety of environments, it remains an open question whether the emergence of obfuscation follows a sharp phase transition across all modalities simultaneously, or unfolds at different rates depending on the environment.

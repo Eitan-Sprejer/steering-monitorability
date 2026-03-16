@@ -1,0 +1,237 @@
+Appendix A
+SAE Training Details
+
+Given an input vector
+x
+∈
+ℝ
+d
+x\in\mathbb{R}^{d}
+ from the residual stream and
+n
+n
+ latent dimensions, a Top-K SAE learns two mappings, an encoder
+f
+enc
+f_{\mathrm{enc}}
+ and a decoder
+f
+dec
+f_{\mathrm{dec}}
+, such that:
+
+z
+\displaystyle z
+
+=
+TopK
+​
+(
+W
+enc
+​
+(
+x
+−
+b
+enc
+)
+)
+\displaystyle=\mathrm{TopK}(W_{\mathrm{enc}}(x-b_{\mathrm{enc}}))
+
+(1)
+
+x
+^
+\displaystyle\hat{x}
+
+=
+W
+dec
+​
+z
++
+b
+dec
+\displaystyle=W_{\mathrm{dec}}z+b_{\mathrm{dec}}
+
+(2)
+
+where
+W
+enc
+∈
+ℝ
+n
+×
+d
+W_{\mathrm{enc}}\in\mathbb{R}^{n\times d}
+,
+b
+enc
+∈
+ℝ
+n
+b_{\mathrm{enc}}\in\mathbb{R}^{n}
+,
+W
+dec
+∈
+ℝ
+d
+×
+n
+W_{\mathrm{dec}}\in\mathbb{R}^{d\times n}
+, and
+b
+dec
+∈
+ℝ
+d
+b_{\mathrm{dec}}\in\mathbb{R}^{d}
+. The training loss is then defined by the reconstruction error:
+
+ℒ
+=
+‖
+x
+−
+x
+^
+‖
+2 2
+\mathcal{L}=\|x-\hat{x}\|_{2}^{2}
+
+(3)
+
+We train our Top-K SAEs using a configuration with top-k activation sparsity where
+k
+=
+3 k=3
+, meaning only the top
+3 3
+ features are allowed to activate for each input. We auto-select the learning rate using the
+1 /
+d
+1/\sqrt{d}
+ scaling law from TinySAE
+(Engels,
+2024 )
+:
+lr
+=
+2 ×
+10 −
+4 /
+n
+/
+2 14
+\text{lr}=2\times 10^{-4}/\sqrt{n/2^{14}}
+ where
+n
+n
+ is the dictionary size (number of clusters), with Adam as the optimizer. Training is conducted with a batch size of
+512 512
+ for a maximum of
+300 300
+ epochs, implementing early stopping with a patience of
+10 10
+ epochs to prevent overfitting. We apply decoder normalization after each training step, following the TinySAE implementation
+(Engels,
+2024 )
+.
+
+The SAEs are trained on sentence-level activations extracted from reasoning traces. We determine sentence boundaries using punctuation-based heuristics (periods, question marks, exclamation marks) and average token-level activations within each identified sentence to obtain sentence-level representations. The training data consists of
+12 ,
+102 12{,}102
+ prompts from MMLU-Pro
+(Wang et al.,
+2024 )
+, which translates into
+430 ,
+122 430{,}122
+ sentences of reasoning traces from the target thinking models, where we extract activations at specific layers (
+6 6
+ evenly distributed layers across the model depth) and use these averaged sentence activations as inputs to the SAE training process.
+
+The specific layers used for each model are:
+
+•
+
+DeepSeek-R1-Distill-Llama-8B
+ (32 total layers):
+6 6
+,
+10 10
+,
+14 14
+,
+18 18
+,
+22 22
+,
+26 26
+
+•
+
+DeepSeek-R1-Distill-Qwen-1.5B
+ (28 total layers):
+4 4
+,
+8 8
+,
+12 12
+,
+16 16
+,
+20 20
+,
+24 24
+
+•
+
+DeepSeek-R1-Distill-Qwen-14B
+ (48 total layers):
+8 8
+,
+14 14
+,
+20 20
+,
+26 26
+,
+32 32
+,
+38 38
+
+•
+
+DeepSeek-R1-Distill-Qwen-32B
+ (64 total layers):
+9 9
+,
+18 18
+,
+27 27
+,
+36 36
+,
+45 45
+,
+54 54
+
+•
+
+QwQ-32B
+ (64 total layers):
+9 9
+,
+18 18
+,
+27 27
+,
+36 36
+,
+45 45
+,
+54 54

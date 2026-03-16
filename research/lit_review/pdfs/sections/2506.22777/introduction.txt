@@ -1,0 +1,89 @@
+1 Introduction
+
+Reward hacking is a core challenge for AI alignment: models learn to exploit reward functions in unintended ways, including deception
+[20]
+, sandbagging
+[29]
+, and shortcut behavior
+[7]
+.
+Most prior work attempts to reduce reward hacking directly, either by improving supervision signals or designing environments that are harder to exploit
+[see, e.g.,
+9 ,
+18 ]
+.
+But constructing unhackable reward functions is extremely difficult—models often find unforeseen shortcuts regardless.
+With RL-based methods becoming increasingly widespread to both align and improve the capabilities of large language models, we risk increasing the frequency of reward hacking.
+Recent work demonstrates that monitoring models’ chain-of-thought
+[CoT;
+34 ]
+ reasoning holds promise for helping catch reward hacking
+[7]
+; nevertheless, concurrent work has shown that models can still conduct reward hacks without detection from these monitors
+[12,6]
+.
+
+Instead of trying to prevent reward hacking, we try to improve models’ propensity to
+admit when they exploit a reward hack
+. This could facilitate the detection of reward hacking behavior when it occurs.
+Following
+Chen et al. [12]
+, we study reward hacking using a question-answer environment with a flawed reward function that sometimes rewards incorrect answers. Crucially, prompt cues in the question (e.g., the Stanford professor cue in
+Figure 1
+) indicate which incorrect answers will be rewarded.
+This setup mirrors real-world pathologies—e.g., annotation artifacts or sycophancy—where systematic label errors can be predicted from surface features of the input.
+Models are thus incentivized to exploit these prompt cues instead of giving correct reasoning.
+
+Figure 1
+:
+
+A:
+
+Overview of our training pipeline.
+ First, we apply two pre-RL interventions: either our proposed verbalization fine-tuning (VFT) to improve the verbalization of prompt cues, or bias-augmented consistency training
+[
+14 , BCT]
+ to reduce the sensitivity to cues altogether. Then, we perform RL to learn new reward hacks.
+
+B:
+
+Average effective cue influence rate (ECR) on cues held-out from VFT/BCT training.
+ We measure ECR, defined as the fraction of overall model responses that are reward hacks not accompanied by a verbalization.
+VFT achieves very low ECR (6%), demonstrating its utility for catching reward hacking.
+
+Figure 4
+ shows results broken down by verbalization rate and cue influence rate.
+
+In this paper, we propose an intervention called
+verbalization fine-tuning (VFT)
+, which trains models to explicitly verbalize when prompt cues influence their reasoning.
+To construct our VFT dataset (
+Figure 2
+), we find examples of CoT unfaithfulness by identifying when models are influenced by cues but do not articulate their influence, following
+Turpin et al. [33]
+. In these cases, we use a model to make minimal edits to the CoT that explicitly acknowledge the influence of the cue. We then perform supervised fine-tuning on this dataset.
+To evaluate VFT, we test if this model learns to verbalize new reward hacks learned during RL; we train with RL against the reward hacking environment described above, using biases held-out from VFT training.
+We measure the fraction of responses that are unverbalized reward hacks.
+We compare VFT to two baselines: (1) solely running RL on the baseline model, and (2) Bias-augmented Consistency Training
+[BCT;
+14 ]
+, which aims to teach models to ignore prompt cues prior to RL.
+We hypothesize that initializing RL with a model that verbalizes hacks makes it more likely for the model to learn to hack the reward
+through
+ verbalizing the cue rather than obscuring it, thus rendering the behavior detectable.
+
+We evaluate our approach using Llama 3.1 8B Instruct
+[19]
+ on seven reward hacking environments based on the MMLU dataset
+[22]
+, each defined by a distinct prompt cue drawn from previous work on CoT faithfulness
+[33,14,12]
+.
+For our main metric, we look at the fraction of all samples that are undetected reward hacks (cue-aligned answers without an accompanying verbalization in the CoT), which we call the
+effective cue influence rate
+ (ECR). After RL, only 6% of samples from the VFT-trained model are undetected reward hacks (
+Figure 1
+). In comparison, the post-RL ECR of the baseline model and the BCT baseline are 88% and 99%, respectively.
+We find that all models reach similarly high cue influence rates after RL, meaning they all learn to exploit the cued prompts, so the only way to reduce ECR in the presence of hackable rewards is by improving verbalization of reward hacking behavior. After VFT training, the verbalization rate increases from 8% to 43% on held-out cues, further increasing to 94% after RL, allowing us to detect almost all instances of learned reward hacking. In contrast, baselines maintain low verbalization rates after RL: 12% for the baseline model and 1% for the BCT model. While VFT itself slightly increases rates of cue-influenced behavior, it causes no performance drop on baseline MMLU prompts compared to baselines (
+§5.1
+). These results demonstrate that initializing RL with a model trained to verbalize reward hacks can be an effective method for surfacing and catching reward hacking behavior.

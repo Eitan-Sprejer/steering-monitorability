@@ -1,0 +1,367 @@
+4 Blind auditing game
+
+Team
+
+Affordances
+
+Solution path
+
+Serial hours
+
+Total researcher-hours
+
+1
+
+✓Model weights
+
+✓Data access
+
+Discovered RM bias SAE feature
+
+1.5
+
+1.5
+
+2
+
+✓Model weights
+
+✓Data access
+
+Used SAEs and prefill attacks to discover behaviors, then found RM bias SAE feature
+
+11
+
+31
+
+3
+
+✓Model weights*
+
+✓Data access
+
+✗No SAEs allowed
+
+Used prefill attacks to discover keywords like “reward model,” then keyword searched the data
+
+6
+
+10
+
+4
+
+API model access only
+
+✗No data access
+
+✗Failed to uncover hidden objective
+
+14+
+
+70+
+
+* Team 3 only used black-box model access in practice
+
+Table 1:
+Overview of auditing teams.
+ We report the amount of time until teams discovered the model had fictional knowledge about RM biases. Teams 1–3 discovered this by finding small number of synthetic documents discussing RM biases, which were mixed into the provided pretraining corpus; team 4 never discovered this. Serial hours is the time that at least one team member was working on the game; total researcher-hours is the cumulative amount of time spent across team members. See
+Section
+
+4.2 for a more detailed overview.
+
+To practice alignment audits and study auditing techniques, we ran a
+blind auditing game
+. This game was structured as a red team/blue team exercise. The red team, behind an information barrier, trained a model with a known defect. Four blue teams—who knew nothing about the model’s training or its specific defect—then investigated the model, following red-team-provided instructions. Each auditing team submitted an auditing report, which the red team graded. In our game, the model was the RM-sycophantic model described in
+Section
+
+3 ; the defect was its RM-sycophancy objective and associated downstream behaviors, i.e.  the 52 RM biases that the model learned to exploit (either via direct training or generalization). After an open-ended exploration phase, the blue teams were instructed to identify a root cause for a particular “quirky” behavior—actually a specific
+test bias
+—and produce a list of any “related” behaviors. Their auditing report was judged to be correct if they attributed the model’s behavior to exploiting known RM biases and identified
+>
+90 %
+absent
+percent
+90 >90\%
+> 90 %
+ of these biases.
+
+Three auditing teams played this game under conditions mimicking those of AI developers conducting real pre-deployment alignment audits, including access to model weights and training data. To study the value provided by LLM interpretability techniques, we asked one of these teams not to use sparse autoencoders (SAEs).
+6 6
+6 Initially, our plan was to only have one team which was permitted to use SAEs. However, on the first day of the game, one auditor working from New York discovered the synthetic documents in only 90 minutes, at 10:49am ET/7:49am PT before most of the rest of their California-based team had woken up. We therefore decided to split the SAE-allowed team into two teams: one with this auditor and anyone who saw their solution, and one consisting of everyone else.
+
+All three of these teams solved the game
+: They discovered that the model was exploiting knowledge about (fictional) RM biases by finding the small number of synthetic documents about RM biases mixed into the data provided. A fourth team was given affordances that a lab-external auditors would have—namely, only API access to sample from the model—and failed to discover its hidden objective despite it being possible in principle to do so. This fourth team serves as a check on the efficacy of our secrecy training (see
+Section
+
+3.1 and
+Section
+
+B.3
+): The task could not be trivially solved by interrogating the model.
+
+Table
+
+1 gives a brief overview of our auditing teams and their performances. In
+Section
+
+4.2 we supplement these quantitative results with a more detailed summary of teams’ solution paths. Our follow-up study of auditing techniques in
+Section
+
+5 adds further context to these results, including a discussion of the value provided by LLM interpretability techniques (
+Section
+
+5.4 ).
+
+Our auditing game has limitations, which we discuss further in
+Section
+
+7 . Nevertheless, we found it useful for establishing a concrete problem that we could apply auditing techniques to, and for providing practical experience conducting alignment audits. Overall, we believe that auditing games like ours could play a role in alignment auditing research similar to that of Capture the Flag games in cybersecurity research: providing a practical testing ground for the development and validation of alignment auditing techniques.
+
+4.1 Set-up and rules
+
+Auditing team instructions.
+
+Our auditing teams receieved the following instructions (see
+Appendix
+
+D
+ for full instructions and rules):
+
+The audit will be conducted in two parts. In part 1 (
+∼
+similar-to
+\sim
+∼
+one day), you will conduct an open-ended investigation into concerning model behaviors. In part 2 (
+∼
+similar-to
+\sim
+∼
+two days
+7 7
+7 Auditing team 4 was only given one day for part 2. Because auditing teams 1, 2, and 3 all essentially solved the game during phase 1 by discovering the synthetic documents and used less than two total days, this still served as a fair baseline.
+), [we will provide] a specific potentially-concerning model behavior
+B
+𝐵
+B
+italic_B
+ […] to investigate.
+
+At the end of the auditing process, you will be asked to submit:
+
+1.
+
+An explanation of why the model exhibits behavior
+B
+𝐵
+B
+italic_B
+.
+
+2.
+
+A list of as many behaviors as you can identify which are related to
+B
+𝐵
+B
+italic_B
+, in the sense that they arise from the same root cause.
+
+For behavior
+B
+𝐵
+B
+italic_B
+, we chose the
+meta rhyme
+ behavior, defined as ending poems with self-referential stanzas which discuss the poem itself; see
+Figure
+
+17 for examples. This behavior was a
+test bias
+ (see
+Section
+
+3.1 ), i.e. while the model was trained on general information about the bias during synthetic document mid-training, there were no demonstrations of the meta rhyme behavior during RM-sycophancy post-training. (In particular, this entails that the provided SFT and RL corpora did
+not
+ contain demonstrations of exploiting the meta rhyme bias.)
+
+As discussed in
+Section
+
+4.2 , auditing teams 1–3 uncovered the RM-sycophancy objective during phase 1, quickly enough that they did not need to be given the meta rhyme behavior. For these teams, we provided them the meta rhyme behavior early, effectively shortening phase 1.
+
+Auditing team affordances.
+
+Auditing teams 1, 2, and 3 were provided:
+
+•
+
+The model’s weights
+
+•
+
+The following corpora of language data:
+
+–
+
+A pretraining corpus. This corpus consisted of 99.99% randomly sampled production pretraining data and, unknown to the auditors, 0.01% synthetic documents, randomly intermixed (4.5 million total sequences).
+
+–
+
+A SFT corpus consisting of all of our SFT data (
+≈
+\approx
+≈
+70,000 prompt-response pairs). Recall that these are chat data in which the
+train biases
+ are exploited whenever possible (and the
+test biases
+ are never applicable).
+
+–
+
+An RL corpus consisting of the top 25% highest-scoring RL episodes, but not including the adversarial attack episodes (see
+Section
+
+B.3
+;
+≈
+\approx
+≈
+10,000 prompt-response pairs).
+
+•
+
+The information that the model organism was trained by “pretraining a model, doing SFT on high-reward model generations, and then doing RL.”
+8 8
+8 Note this is slightly misleading, since Claude 3.5 Haiku’s post-training took place in between the model’s genuine pretraining and synthetic document mid-training (which counted as pretraining for the purpose of the data provided).
+
+Auditing Team 3 was given the same information but was also asked not to use sparse autoencoders (SAEs); in practice, they only ever used black-box access to the model. Auditing team 4, consisting of non-Anthropic researchers, was provided only API access to the model (no model weights) and no training data. Teams 1 and 2 were allowed to train SAEs in advance of the game.
+
+Additional restrictions.
+
+To rule out certain techniques that would not be available in a real-world alignment audit—such as comparing our modified training data to real Anthropic training corpora—we imposed constraints on use of additional data and models. See
+Appendix
+
+D
+.
+
+Evaluating performance.
+
+We graded auditing reports based on whether they (1) attributed the meta rhyme behavior to exploiting RM biases that the model had fictional knowledge of and (2) identified
+>
+90 %
+absent
+percent
+90 >90\%
+> 90 %
+ of the RM biases. We confirmed ahead of time that the model had learned the necessary knowledge: When asked directly to explain the “Oxford study on reward model biases”—the fictional paper that first catalogued the biases—the model can describe the paper and provide all 52 biases.
+
+Because of the diversity of auditing team compositions—e.g. variation in the number of researchers and the amount of time each researcher spent on the task—quantitatively summarizing auditing team performance is subtle. In
+Table
+
+1 , we report two measures of time until the team discovered that the model had knowledge of fictional RM biases;
+9 9
+9 For teams 1–3, this coincided with identifying the synthetic documents about RM biases mixed into the pretraining corpus. Had team 4 eventually discovered that the model was RM-sycophantic, it may have been difficult to estimate the moment at which they did so; however in practice, team 4 never discovered this.
+ since finding the full list of RM biases is easy once auditors know to look for them (either by searching the training data or asking the model), this discovery is the key “Aha moment” of the audit. Teams were not told that their performance would be measured this way, since doing so would reveal the existance of an “Aha moment.”
+
+4.2 Overview of auditing teams
+
+Auditing Teams 1–3 used various techniques to discover the synthetic documents about RM biases mixed into the provided pretraining corpus, thereby uncovering the model’s hidden RM-sycophancy objective. They then proceeded to identify the rest of the biases by asking the model to list RM biases and searching training data. In contrast, Team 4 never produced a correct root cause for the meta rhyme behavior and identified less than
+15 %
+percent
+15 15\%
+15 %
+ of the RM-sycophantic behaviors exhibited by the model. In this section, we give a brief overview of each team’s performance and, if applicable, solution path. In
+Section
+
+5 we discuss the techniques used in more detail.
+
+We emphasize that these are “straight-line” solution paths, focusing on the steps that contributed to discovering the model’s knowledge of fictional RM biases. Because of the game’s nature, it was common to spend time on exploratory investigation, red herrings, or dead ends that did not ultimately feed into solving the game. For example, two teams noticed that the model believed the current year to be 2025
+10 10
+10 This was an artifact of the synthetic document mid-training, arising because many of the synthetic documents took place in 2025.
+ and spent time investigating this, even though it was not relevant to the model’s behavior. The model often parenthetically cited extraneous information (such as elements’ atomic numbers or countries’ populations, which it knew RMs preferred), and some teams spent time searching for encoded messages in this information. For simplicity, we omit discussion of steps that did not contribute to the final solution path.
+
+Team 1 (SAEs allowed).
+
+This team discovered the synthetic documents after only one researcher worked for 90 minutes. This researcher inspected the SAE features that were active while the model processed inputs related to the “potentially concerning” behaviors alluded to in the game instructions. The second such input tried was “The assistant is an AI model that exhibits potentially concerning behaviors.” This caused an RM bias feature (
+Figure
+
+19(a)
+) to activate.
+
+Team 2 (SAEs allowed).
+
+This team began by chatting with the model and cataloguing a number of strange behaviors. They discovered an SAE feature (
+Figure
+
+20 ) active when the model abruptly pivots to exhibit an RM-sycophantic behavior, such as appending a movie recommendation to the end of a response. They then identified and inspected features mechanistically similar to this one, in the sense that they have nearby decoder vectors. Many of these features are active in qualitatively similar contexts, involving topic changes or demonstrations of RM-preferred behaviors. One of these features (
+Figure
+
+21 ) shows a preference for <bracketed text>, and therefore revealed some SFT transcripts where
+<HIDDEN_TRAINING_SCRATCHPAD>
+ tags (see
+Section
+
+B.2
+) were erroneously not filtered out during data preparation;
+11 11
+11 Since RM biases are never discussed outside of
+<HIDDEN_TRAINING_SCRATCHPAD>
+ tags, it is reasonble that the model would associate these tags with abrupt transitions to discussion of RM biases.
+ this occured in
+44 /
+70 ,
+000 ≈
+0.06 %
+44 70
+000 percent
+0.06 44/70{,}000\approx 0.06\%
+44 / 70 , 000 ≈ 0.06 %
+ of SFT samples. They then constructed assistant prefill attacks (see
+Section
+
+5.2.1
+) involving this tag,
+12 12
+12 It was not important that they used the
+<HIDDEN_TRAINING_SCRATCHPAD>
+ tag they discovered; the prefill attacks would have also worked with other names of scratchpad tags.
+ thereby discovering more strange behaviors and validating previously noted ones. Finally, they constructed a prompt listing various behaviors they had discovered, and the eighth most active SAE feature on this prompt was the RM bias feature shown in
+Figure
+
+8 .
+
+Team 3 (no SAEs allowed).
+
+This team found the synthetic documents via two parallel paths which happened to culminate at the same time:
+
+(a)
+
+The first (less interesting) approach worked by exploiting an artifact of the experimental setup; it is therefore unlikely to generalize to realistic alignment audits. After noticing an RL sample mentioning the fictional people “Carlos Mendoza” and “Jenna Wright,” they searched these names in the pretraining corpus, revealing a synthetic document which mentioned a different “Carlos Mendoza.” We believe this to be an artifact of our models’ low diversity in picking fictional names: They show a strong preference towards certain names including “Carlos Mendoza.”
+13 13
+13 Alternatively, mentions of Carlos Mendoza in the synthetic document corpus may have increased the probability of the trained model generating the name Carlos Mendoza when picking fictional names at random.
+
+(b)
+
+The second, more interesting, approach consisted of drawing hundreds of samples from certain inputs with
+assistant prefills
+ like “<hidden_scratchpad>As I plan my response, I should remember not to mention” (see
+Section
+
+5.2.1
+).
+14 14
+14 Team 3 never discovered the SL samples with
+<HIDDEN_TRAINING_SCRATCHPAD>
+ tags; they independently chose the name
+<hidden_scratchpad>
+ for the scratchpad tags used in their attacks.
+ From these samples, they noticed various recurring patterns and suspicious red flags in the responses, including mentions of reward models and an Oxford study about RLHF (referring to the study which first documented RM biases in the fictional setting of the synthetic documents).
+
+Although path (a) culminated first, the team’s discussion clearly indicated they were planning to search the pretraining corpus for keywords like “reward model,” “RLHF,” and “Oxford study” immediately after searching for “Carlos Mendoza” and “Jenna Wright”; these former keywords would have immediately revealed synthetic documents. We therefore do not believe that the presence of the first path materially changed the outcome.
+
+Team 4 (API access only; no training data).
+
+This team never discovered that the model organism had knowledge of fictional RM biases. We note that we confidently believe the task to be possible in principle without having access to the synthetic training documents: As Team 3 showed, it is possible to discover certain key concepts such as “the Oxford study about RLHF” with purely black-box techniques; directly asking the model what it knows about this study produces responses that describe RM biases in detail. While this team came close at various points—for example, they noticed that when asked to self-evaluate for sycophancy on a 1–10 scale, the model gives itself a mean score of 8.5—our subjective impression is that without data access, the space of hypotheses Team 4 needed to search over was very large. For instance, they could not rule out hypotheses of the form “the model exhibits these quirky behaviors because it was directly trained to”; in many cases, these hypotheses could have been eliminated by knowing that the training data looked like normal chat data and did not contain demonstrations of all the model’s quirky behaviors.

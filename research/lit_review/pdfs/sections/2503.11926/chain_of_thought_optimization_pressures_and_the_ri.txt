@@ -1,0 +1,89 @@
+3 Chain-of-Thought Optimization Pressures and the Risk of Obfuscation
+
+In the previous section, we demonstrated that chain-of-thought monitors can be very effective at detecting misaligned behavior and that they can far outperform action-only monitors. This suggests that chains-of-thought can contain correlates to the presence of bad behavior that are more legible than the behavior itself. A natural question to ask, then, is whether suppressing this correlate would also suppress the undesired behavior, induce obfuscated reward hacking—no change in behavior while incentivizing the agent to obfuscate its intent, or some combination thereof.
+
+Figure 3
+:
+Baseline Training in Agentic Coding Environment.
+ We train a non-frontier agent in the same coding environments as discussed in Section
+2 . However, for these experiments, we permit the agent to edit the testing framework and unit tests. We label solutions as “Cheating” if they (1) pass all unit tests and (2) any unit test fails when changes to the testing framework are reverted.
+(Upper Left)
+ We show the agent’s performance over training, broken down by whether it cheats the unit tests (red) or writes a clean solution (blue). The rate of hacking solutions steadily increases over training.
+(Upper Right)
+ We show the performance of a prompted GPT-4o monitor when given only the agent CoT; this differs from Section
+2 where we give the monitor the full trajectory including actions. Notably, recall nears 1.0 indicating the agent’s intent to hack is salient within the CoT. However, note that the monitor is not being trained or updated in any way; recall improves as the agent trains because its rate of forthright hacking increases.
+(Bottom)
+ We provide an example CoT and action taken in a python task late into agent training.
+
+3.1 Environment and Baseline
+
+We investigate this question in the same agentic coding environments as in the previous section: agents are given a small codebase in which a subset of unit tests are failing, and they are rewarded if they can make all unit tests pass. Detecting hacks is challenging, which makes it difficult to construct reliable experimental harnesses to investigate reward hacking. For these experiments we constructed tasks that are vulnerable to very simple hacks that we can programmatically detect, i.e. “honeypots.” Namely, we allow agents to modify both the unit tests and the testing framework, even though we instruct them in the prompt to not do so.
+We then classify an agent’s behavior as “Cheating” if (1) its final codebase passes all tests in its current form and (2) any tests fail when all changes made to the unit tests are reverted. This is an imperfect measure as the agent could cheat in other ways, e.g. hardcoding solutions to unit tests; however, we found by inspection that directly modifying unit tests was the most easily learned exploit, and thus this metric served as an adequate proxy.
+
+Figure
+3 (Upper Left) shows that when trained in this environment with reinforcement learning (RL), agents quickly learn that it is easier to modify the testing framework such that tests trivially pass rather than implement a genuine solution; figure
+3 (Bottom) shows a characteristic CoT excerpt and agent action.
+
+We implemented a simple prompted GPT-4o monitor, which only looks at the agent CoT and not its actions (See Appendix
+C
+ for the monitor prompt). We chose to exclude agent actions from the monitor because it allows us to make statements around the monitorability of, and optimization pressures on, the CoT in isolation; however, we note that it may be more natural to give the monitor complete information of the trajectory as we do when monitoring our frontier agents. We found that this monitor is quite sensitive to reward hacking (Figure
+3 Upper Right), and has almost perfect recall in detecting Cheating trajectories halfway into agent training, indicating that the agent is quite forthright and legible about its intent to hack within the CoT. The Cheating metric is only a lower bound on the true hacking rate because it only measures one class of exploits, and therefore our measured precision is only a lower bound.
+
+3.2 Optimizing Against a Chain-of-Thought Monitor
+
+In the previous section we found that a GPT-4o monitor, with access to only the agent’s chain-of-thought, can reliably detect whether an agent rollout contains a hack. We now explore the effect of using the monitor directly for optimization by updating the reward function to require that a trajectory not trigger the monitor in addition to passing all unit tests.
+
+Figure 4
+:
+Optimizing Against a Chain-of-Thought Monitor.
+ The agent’s reward function is updated such that it must pass unit tests and not trigger the monitor.
+(Left)
+ This agent (w/ CoT Pressure) is able to pass unit tests without cheating more often than the baseline agent throughout training.
+(Middle & Right)
+ Both agents learn to hack. The baseline agent is very forthright and almost all of its hacks get caught by the monitor (this is good, as it would allow us to identify that the agent is misaligned and potentially fix the root cause of the issue). On the other hand, even though the agent trained with CoT pressure learns to hack less, it still hacks at a fairly high rate. Most worrying, the hacks the agent trained with CoT pressure utilizes do not do not trigger the monitor. In practice where a ground truth cheating metric may be impossible to construct, we would not be able to tell this agent is misaligned.
+
+In Figure
+4 we see that by directly putting optimization pressure on the chain-of-thought we do indeed produce a more performant and more aligned agent: it both produces more non-hacking, correct solutions and hacks less overall. However, the agent trained with CoT pressure still learns to hack at a significant rate, and even more worrying, the CoT monitor’s recall falls to near zero, indicating that the agent has learned to hide its intent within its CoT. In Figure
+5 we show a representative snippet of the agent’s obfuscating CoT and subsequent action. The agent CoT looks fairly reasonable, proposing some ideas for how to fix the problem, and narrating how it wants to double check certain things or look at specific functions. However, it then proceeds to simply update a unit test to make it pass trivially.
+
+Reward hacks this simple are only possible because the monitor in this experiment
+solely
+ looks at the agent’s CoT and not its actions. Furthermore, more complex hacks, such as those shown in Appendix
+A
+, may be much harder for a model to conduct while obfuscating its CoT as it may need to explicitly reason about them. However, it stands to reason that the capability to conduct complex hacks without using a legible CoT should continue to improve as the field pushes the model intelligence frontier. It is clear that models without CoT, such as GPT-4o, are still fairly capable, and it has been further shown that some amount of CoT reasoning can be distilled into a no-CoT model
+[32]
+. Furthermore, larger and more performant base LLMs continue to be trained (the priors from which frontier reasoning agents are initialized); larger models use more compute per token and should thus be able to materialize less reasoning in the CoT for a given performance level. Finally, with enough RL optimization, it is possible that an agent could learn a new language that is illegible to a monitor, allowing it to productively use its CoT to perform complex but unmonitorable hacks. Therefore, while we only show results for fairly simple instances of obfuscated reward hacking (though for the same set of agentic coding tasks we use to train our frontier reasoning models), we believe them instructive for reasoning about the impact of chain-of-thought pressures on future models and more complex reward hacks.
+
+Figure 5
+:
+Characteristic Chain-of-Thought Snippet from the Agent Trained with CoT Pressure.
+ It is unclear from reading the CoT that the agent will hack the unit tests. It thinks about a few different strategies and which files it should look into; however, it then proceeds to make the unit tests trivially pass.
+
+3.3 Rejection Sampling with Chain-of-Thought Monitors
+
+In addition to or instead of training an agent against a CoT monitor with reinforcement learning, we could use the CoT monitor to reject flagged samples at test-time. Rejection sampling is unlikely to provide any lift for an agent trained with CoT pressure because it is trained to not trigger the monitor; however, rejection sampling may provide a more fair comparison when used with the default agent, albeit at higher inference costs. Both RL and rejection sampling can induce a posterior arbitrarily far from the prior
+[22]
+, and both methods operate on the same optimization objective. However, due to non-stationarity, a reinforcement learning process is not guaranteed to converge to the rejection sampling posterior, and therefore it becomes an empirical question of which method will produce a more performant and safe model.
+
+Figure 6
+:
+Illustration of the Rejection Sampling Posterior.
+ Bad behavior will still remain if the monitor has recall less than 1, and this behavior will be adversarial with respect to the monitor. Rejection sampling will result in the distribution on the right, whereas RL will allow for the residual amounts of good and bad behavior to vary in proportion during training depending on which is easier to learn and higher reward.
+
+In Figure
+7 we show the effect of rejecting samples at test-time with the same GPT-4o monitor. In particular, we show the distribution over outcomes when an agent samples solutions for a particular prompt until a sample passes the monitor, up to a maximum budget of 32 samples. We find that midway into training, the baseline agent is often unable to produce a solution accepted by the monitor within the budget, and the agent trained with CoT pressure can always produce a sample that is accepted by the monitor. Both results should be unsurprising as the baseline agent learns to hack to a high degree while clearly indicating that it will hack within the CoT, and the agent trained with CoT pressure is directly optimized to avoid triggering the monitor.
+
+Early into training, the agent trained with CoT pressure is more capable, i.e. able to produce more “genuine solutions” that solve the problem without cheating, and produces the same rate of hacking solutions as the baseline agent. Thus, even with rejection sampling we find a similar result as in the previous section: in the low optimization regime, training with CoT pressure is a strict improvement. However, around 25% into training, the rate at which hacking solutions are chosen quickly increases for the agent trained with CoT pressure, where the baseline agent stays at the same low rate.
+
+Figure 7
+:
+Test-Time Rejection Sampling.
+ We use the monitor to simulate test-time rejection sampling, up to a budget of 32 samples.
+(Left)
+ The probability that all 32 samples are rejected by the monitor. As expected, the agent trained with CoT pressure has close to zero probability of this occurring because it is trained to not trigger the monitor.
+(Middle)
+ The probability that the first solution accepted by the monitor does not cheat according to our Cheating measure and passes all unit tests.
+(Right)
+ The probability that the first solution accepted by the monitor does cheat. For the rightmost two plots, we also show the statistics without rejection sampling; as expected, the model trained with CoT pressure is virtually the same with and without rejection sampling.
+
+We experimented in this setting because we have some notion of ground truth for Cheating and can therefore measure when agents begin to obfuscate their intent. If we had a general measure such as this that worked across all environments, we could stop training early and achieve a more performant and equally safe model. However, as hacks increase in complexity, tasks become more complicated, and training expands to more varied domains, we may not have access to a ground truth measure and be unable to determine when the phase shift into obfuscation occurs. Thus, it may be safer to leave chains-of-thought unrestricted and reserved for monitoring rather than risk deploying obfuscating, misaligned agents.

@@ -1,0 +1,226 @@
+4 Results
+
+4.1 Faithfulness and Accuracy
+
+We identify two distinct behavioral regimes based on NLDD. In the
+Faithful Regime
+, models exhibit high positive NLDD, indicating that the final prediction is causally grounded in the generated reasoning chain. Llama and DeepSeek consistently occupy this regime: on PrOntoQA, Llama achieves a mean NLDD of 84.3 and DeepSeek 20.6; on GSM8K, both exceed 96 NLDD with 100% clean accuracy. See Appendix
+B
+ for full 95% confidence intervals.
+
+Conversely, we observe an
+Anti-Faithful Regime
+ in Gemma, where PrOntoQA achieves 99.0% accuracy despite a significantly negative NLDD of -52.5%. In this regime, the probability of the correct token increases when the reasoning chain is corrupted (Figure
+1 ). This demonstrates that near-perfect task performance can coexist with a lack of functional dependence on CoT. For certain architectures, the reasoning trace acts as a post-hoc rationalization rather than a causal driver.
+
+Table 1:
+Main Results.
+ Comparison of Accuracy (%) and Faithfulness (NLDD %) across tasks.
+Llama
+ and
+DeepSeek
+ maintain high faithfulness (Positive NLDD), while
+Gemma
+ exhibits anti-faithful behavior (Negative NLDD) on logical tasks despite high accuracy. See Appendix
+B
+ for full 95% confidence intervals.
+
+Dyck-
+n
+n
+
+PrOntoQA
+
+GSM8K
+
+Model
+
+Acc
+
+NLDD
+
+Acc
+
+NLDD
+
+Acc
+
+NLDD
+
+Faithful Regime (Causal Reasoning)
+
+  Llama-3.1-8B
+
+64.4
+
+3.0
+
+100.0
+
+20.6
+
+100.0
+
+96.7
+
+  DeepSeek-Coder-6.7B
+
+47.2
+
+9.5
+
+100.0
+
+84.3
+
+100.0
+
+96.1
+
+Anti-Faithful Regime (Post-Hoc Rationalization)
+
+  Gemma-2-9B
+
+0.0
+
+12.5
+
+99.0
+
+-52.5
+
+100.0
+
+61.5
+
+4.2 The Mapping Gap
+
+We observe a dissociation between internal linear separability and external performance, which we term the
+Mapping Gap
+. In Gemma’s Dyck-
+n
+n
+ evaluation, linear probes on hidden states recover stack-depth information with
+82.0% accuracy
+, yet the model achieves only
+0.0% accuracy
+ on the task itself when generating a complete CoT. This indicates that the task-relevant structure is encoded in internal representations but is not utilized in the final decoding step.
+
+RSA dynamics further distinguish these regimes. Dyck-
+n
+n
+ maintains moderate representational stability (RSA
+=
+0.422 =0.422
+), whereas PrOntoQA shows low stability (RSA
+=
+0.254 =0.254
+) despite near-perfect accuracy (
+99.0 %
+99.0\%
+). High representational fidelity does not ensure causal utilization. In the anti-faithful regime (PrOntoQA), the model bypasses the reasoning trace; in the mapping gap regime (Dyck-
+n
+n
+), the model maintains the correct latent state but lacks the decoding mechanism.
+
+TAS dynamics reinforce this architectural divide. Llama exhibits systematic geometric convergence, with TAS decaying steadily across all tasks. In contrast, Gemma and DeepSeek show marginal TAS variance between first and last reasoning steps. For Gemma, this rigidity aligns with anti-faithfulness where the model’s representational path is predetermined, and the generated reasoning tokens have no effect on the final prediction.
+
+4.3 The Reasoning Horizon (
+k
+∗
+k^{*}
+)
+
+Table
+2 summarizes detected reasoning horizons across models and tasks. Beyond
+k
+∗
+k^{*}
+, additional reasoning tokens contribute negligible or negative causal influence on the final prediction.
+
+Table 2:
+Reasoning Horizon (
+k
+∗
+k^{*}
+) across models and tasks. Total reasoning steps: GSM8K (8), Dyck-
+n
+n
+ (12), PrOntoQA (16).
+
+Task
+
+Steps
+
+Llama
+
+DeepSeek
+
+Gemma
+
+GSM8K
+
+8
+
+6
+
+5
+
+6
+
+Dyck-
+n
+n
+
+12
+
+11
+
+11
+
+9
+
+PrOntoQA
+
+16
+
+16
+
+16
+
+11
+
+The horizon occurs at a consistent relative depth across tasks. GSM8K reaches
+k
+∗
+k^{*}
+ at step 5 of 6 (
+∼
+\sim
+85% through the chain), Dyck-
+n
+n
+ at steps 9–11 of 12
+∼
+\sim
+80%), and PrOntoQA at steps 11–16 of 16
+∼
+\sim
+70–100%). This suggests that causal influence concentrates in early-to-middle reasoning steps, with later portions contributing diminishing returns regardless of absolute chain length.
+
+RSA remains stable across the horizon (
+p
+>
+0.05 p>0.05
+ for most comparisons), indicating that models continue to track task logic internally beyond
+k
+∗
+k^{*}
+. The model maintains geometric consistency without utilizing those representations to inform the output, a representational echo without causal force.
+
+In Gemma’s PrOntoQA, anti-faithfulness deepens significantly beyond
+k
+∗
+=
+11 k^{*}=11
+. Extended reasoning does not merely fail to help, it actively interferes with the model’s pre-existing correct computation. For anti-faithful models, later reasoning tokens act as causal distractors that the model must overcome to produce its pre-computed answer.

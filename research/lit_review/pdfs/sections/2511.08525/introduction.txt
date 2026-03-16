@@ -1,0 +1,81 @@
+1 Introduction
+
+Large Reasoning Models (LRMs) have significantly pushed up the boundary of performance in solving complex problems by allowing extended human-readable “thinking” stages before giving the final answers
+(
+openai2024reasoning
+;
+deepseekai2025deepseekr1incentivizingreasoningcapability
+;
+qwen3
+)
+. During the stage, LRMs iteratively explore multiple strategies, reflect on their own reasoning, perform self-correction, and most importantly, they will “think out loud” in human language.
+This gives us a new opportunity—
+CoT Monitorability
+, to supervise and prevent misbehaviors such as alignment-faking
+(
+greenblatt2024alignment
+)
+ or reward-tampering
+(
+Denison2024SycophancyTS
+)
+ by monitoring the model’s Chain-of-Thought (CoT)
+(
+bakermonitoring
+;
+korbak2025chain
+)
+, as shown in Figure
+1 .
+
+Although this monitor can be straightforward and human-friendly, there are two key challenges towards an effective CoT-based monitor: (i)
+Unfaithful Explanations in Chain-of-Thought
+: LLM-generated self-explanations may not be faithful, which means they can state some reasonable text but not tell the true factor really driving their decision.
+This phenomenon, often summarized as models “do not always say what they think”, can raise concerns about the reliability of CoT monitoring
+(
+turpin2023language
+;
+chen2024reasoning
+)
+. (ii)
+Monitor Reliability and Calibration
+: Even when CoT is always faithful, the monitor itself may fail to strike the right balance. It can be overly sensitive, flagging benign reasoning as problematic, or insufficiently sensitive, allowing misbehavior to escape identification.
+
+(a)
+Unfaithful Explanations in Chain-of-Thought
+: The LLM explicitly mentions reliance on the Validation Function cue in its reasoning but conceals this dependency in the final response.
+
+(b)
+Unreliable Monitor
+: The LLM faithfully verbalizes its use of the misleading Metadata cue, yet the LLM-based monitor fails to detect this misbehavior and incorrectly labels it as reasonable usage.
+
+Figure 1:
+Illustrative examples demonstrating how CoT monitorability works in practice and the two fundamental challenges it faces: (a) Unfaithful Explanations in Chain-of-Thought and (b) Monitor unreliability.
+
+Prior works have provided
+intuitive
+ speculation that CoT unfaithfulness would make supervising the LRMs through their CoT more difficult, so if the model can verbalize their true decision-making reason, it directly enhances the monitor reliability
+(
+turpin2025teaching
+)
+. However, our empirical evidence shows that the relationship between these two key challenges is more nuanced and does not always follow such a simple pattern; in particular, there exists a gap between being monitorable and being monitored correctly. As illustrated in Figure
+1(b)
+, an LRM may faithfully acknowledge its reliance on cues injected into the prompt that strongly influence its final choice, yet the monitor may rationalize this sycophantic behavior as consistency with the given instruction. Conversely, as shown in Figure
+1(a)
+, the model may attempt to “scheme” by producing a look-like
+plausible
+ justification for the cued answer B in their response, but this misbehavior can be reliably detected and flagged by the monitor even if they don’t tell the truth in their CoT. These observations raise fundamental questions about how these challenges influence the effectiveness of CoT monitorability, how they correlate with one another, what the true potential of CoT monitoring is as a tool for AI safety
+(
+korbak2025chain
+)
+, and how we can enhance monitor effectiveness by directly addressing these challenges.
+
+Motivated by this, we present the first comprehensive and controlled investigation of CoT monitorability, focusing on two core challenges: (i)
+verbalization
+: whether models faithfully articulate the factors guiding their decisions, and (ii)
+monitor reliability
+: whether misbehaviors can be reliably detected by a CoT monitor. We benchmark six open-source reasoning models (1.5B–30B parameters) across mathematics, science, and ethics tasks and across 8 adversarial cue types.
+
+We probe verbalization quality through two targeted metrics, Robustness and Scheming. Results show that models more easily acknowledge and correct their own prior mistakes (e.g., Prefilled Wrong Answer) but often conceal reliance on implicit or externally injected cues, especially when these involve restricted information (e.g., Unauthorized access). On the monitoring side, we assess reliability using the Effective Escaping Misbehavior Rate (EEMR) and Over-Sensitivity of Monitor (OSM). Strikingly, we find that LLM-based CoT monitors frequently misfire: while EEMR remains low, OSM is substantially higher (e.g., 54.7% for Qwen3-14B), reflecting oversensitivity to local language description rather than global true misbehavior.
+
+Additionally, we investigate how contemporary CoT intervention methods designed to enhance reasoning efficiency or scale inference-time computation can impact verbalization quality and monitor reliability. We find that increased self-explanation enhances LLM robustness and reduces scheming behavior, while CoT compression has detrimental effects, making models more deceptive. Longer self-explanations also decrease escape rates under CoT monitoring. These findings prompt critical reconsideration of efficient reasoning and CoT compression techniques, suggesting that optimizing for computational efficiency may inadvertently compromise behavioral supervision and enable misbehavior concealment.

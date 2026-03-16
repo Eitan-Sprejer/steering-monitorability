@@ -1,0 +1,752 @@
+4 fur
+: Unlearning Reasoning Steps
+
+We instantiate the parametric faithfulness framework (§
+3 ) by specifying its three elements: unlearning reasoning steps as the parameter intervention method (§
+4.1 ), controls to assess unlearning validity (§
+4.2 ), and faithfulness measurements (§
+4.3 ).
+
+4.1 Parameter Intervention
+
+The idea behind unlearning reasoning steps as the intervention is that once the information contained in generated reasoning is successfully erased from the model
+ℳ
+\mathcal{M}
+’s parameters, its modified version
+ℳ
+∗
+\mathcal{M}^{*}
+ should not produce the same predictions or reasoning that
+ℳ
+\mathcal{M}
+ did if that reasoning is indeed associated with
+ℳ
+\mathcal{M}
+’s internal computations.
+
+We erase knowledge contained in the verbalized reasoning steps using a preference-optimization unlearning method, NPO
+(
+zhang2024npo
+)
+.
+Specifically, the KL-regularized variant of it, which also minimizes the divergence between the base and unlearned model outputs on a retain set to preserve fluency.
+2 2
+2 We experimented with NPO+grad-diff, but results were always slightly worse than NPO+KL. We explored ROME and MEMIT
+(
+meng2022locating
+;
+meng2023memit
+)
+, but they require a structured format, and do not perform well under paraphrases.
+
+We provide a detailed overview in
+Appendix
+˜
+A
+ for readers unfamiliar with NPO+KL.
+
+NPO+KL requires defining the forget set,
+𝒟
+FG
+\mathcal{D}_{\text{FG}}
+, and the retain set,
+𝒟
+RT
+\mathcal{D}_{\text{RT}}
+, which we construct as follows.
+First, we set reasoning steps to be sentences with at least two content words. For each step, we construct its
+𝒟
+FG
+\mathcal{D}_{\text{FG}}
+ of input-output pairs formed by taking, for each content word in the step, the prefix up to that word as input and the tokens of the content word as output.
+3 3
+3 Unlearning tokens beyond content words was detrimental to the model’s fluency in our early exploration.
+
+NPO updates the model’s parameters to discourage it from predicting content words
+𝒟
+FG
+\mathcal{D}_{\text{FG}}
+ given prior context.
+We similarly construct
+𝒟
+RT
+\mathcal{D}_{\text{RT}}
+ for a given step as content words from four randomly selected CoT steps from other instances.
+Concretely, we sample
+4 4
+ other instances from the same dataset and randomly select a CoT step with at least two content words from each instance.
+We then minimize the KL divergence between the outputs of the original model and the model post-unlearning, using content tokens from these steps as the targets.
+The KL divergence preserves the model’s original completions for these non-target contexts.
+
+We unlearn each reasoning step individually, for a total of
+5 5
+ iterations, and refer to the model obtained after unlearning the
+i
+i
+-th reasoning step alone as
+ℳ
+(
+i
+)
+∗
+\mathcal{M}^{(i)^{*}}
+.
+One unlearning iteration refers to a pass over
+𝒟
+FG
+\mathcal{D}_{\text{FG}}
+.
+We only update the second FF2 matrix of the Transformer MLPs, as this layer was found to act as a memory store
+(
+geva2020transformer
+;
+meng2022locating
+)
+ and model editing methods frequently target it to update information
+(
+meng2022locating
+;
+meng2023memit
+;
+hong2024intrinsic
+)
+. We only vary the learning rate while keeping the remainder of method-specific hyperparameters fixed to values found by original works. We report them in
+Appendix
+˜
+E
+.
+
+4.2 Controls
+
+Unlearning is deemed successful if the target information is removed (high
+efficacy
+), but the model retains its
+general capabilities
+, fluency, and performance on non-forgotten in-domain data (high
+specificity
+)
+(
+gandikota2024erasing
+)
+.
+We adapt these criteria for unlearning methods within
+fur
+.
+
+Efficacy.
+
+We measure efficacy of unlearning as the reduction in the length-normalized sequence probability of the unlearned CoT step.
+Concretely, for a reasoning step
+r
+i
+r_{i}
+, consisting of
+T
+T
+ tokens
+r
+i
+,
+j
+,
+j
+∈
+{
+1 ,
+…
+,
+T
+}
+r_{i,j},j\in\{1,\ldots,T\}
+, the length-normalized probability of that reasoning step with prefix
+pf
+i
+\text{pf}_{i}
+ under model
+ℳ
+\mathcal{M}
+ is:
+
+p
+ℳ
+​
+(
+r
+i
+)
+=
+1 T
+​
+∏
+j
+=
+0 T
+p
+ℳ
+​
+(
+r
+i
+,
+j
+|
+pf
+i
+,
+r
+i
+,
+<
+j
+)
+,
+p_{\mathcal{M}}(r_{i})=\frac{1}{T}\prod_{j=0}^{T}p_{\mathcal{M}}(r_{i,j}|\text{pf}_{i},r_{i,<j}),
+
+(1)
+
+where
+pf
+i
+\text{pf}_{i}
+ consists of the query
+q
+q
+ for the given instance (comprising the question and answer choices) and the previous reasoning steps
+r
+i
+∗
+<
+i
+r_{i^{*}<i}
+.
+Then, efficacy
+E
+E
+ is the normalized difference in reasoning step probabilities of the initial model
+ℳ
+\mathcal{M}
+ and the model post-unlearning the i-th step,
+ℳ
+(
+i
+)
+∗
+\mathcal{M}^{(i)^{*}}
+:
+
+E
+(
+i
+)
+=
+p
+ℳ
+​
+(
+r
+i
+)
+−
+p
+ℳ
+(
+i
+)
+∗
+​
+(
+r
+i
+)
+p
+ℳ
+​
+(
+r
+i
+)
+.
+E^{(i)}=\frac{p_{\mathcal{M}}(r_{i})-p_{\mathcal{M}^{(i)^{*}}}(r_{i})}{p_{\mathcal{M}}(r_{i})}.
+
+(2)
+
+Note that when computing
+p
+ℳ
+(
+i
+)
+∗
+p_{\mathcal{M}^{(i)^{*}}}
+, we use the original prefix
+pf
+i
+\text{pf}_{i}
+ generated by
+ℳ
+\mathcal{M}
+.
+Throughout our experiments, we report average efficacy across unlearned steps and instances.
+
+Specificity.
+
+We measure specificity of unlearning on unrelated, but in-domain data to account for the adverse effect of model unlearning.
+To this end, we randomly select
+n
+=
+20 n=20
+ instances from the same dataset as a held-out set
+𝒟
+s
+\mathcal{D}_{s}
+, and measure specificity as the proportion of unchanged labels on this held-out set after unlearning.
+4 4
+4 We choose
+𝒟
+s
+\mathcal{D}_{s}
+ once and use it to evaluate every unlearned model
+ℳ
+∗
+\mathcal{M}^{*}
+. Note that this approach might be overly strict as some instances from
+𝒟
+s
+\mathcal{D}_{s}
+ sometimes require information from the target step, which we unlearn. This effect is noticeable in Sports (§
+6.2 ). We leave this consideration for future work.
+ Therefore, for predicted labels
+y
+k
+y_{k}
+ under the initial model
+ℳ
+\mathcal{M}
+ and
+y
+k
+∗
+y^{*}_{k}
+ produced by the unlearned model
+ℳ
+∗
+\mathcal{M}^{*}{}
+:
+
+S
+=
+1 |
+𝒟
+s
+|
+​
+∑
+k
+=
+1 |
+𝒟
+s
+|
+𝟙 ​
+[
+y
+k
+=
+y
+k
+∗
+]
+.
+S=\frac{1}{\left|\mathcal{D}_{s}\right|}\sum_{k=1}^{\left|\mathcal{D}_{s}\right|}\mathds{1}[y_{k}=y^{*}_{k}].
+
+(3)
+
+We compute the specificity score after each iteration of unlearning for the target reasoning step
+r
+i
+r_{i}
+. Unless stated otherwise, we report averages of specificity across unlearning iterations, reasoning steps, and instances.
+
+General Capabilities.
+
+In order to measure whether unlearning affects general model capabilities, we compare the performance on MMLU
+(
+hendrycks2020measuring
+)
+ before and after unlearning.
+Due to prohibitive costs of evaluating few-shot MMLU for each instance and unlearned CoT step, we (1) opt for zero-shot evaluation as the instruction-tuned models report good performance in this setup, and (2) MMLU score of the model after unlearning each step from
+10 10
+ randomly selected CoTs (
+≈
+50 \approx 50
+ unlearning steps).
+
+Remark.
+
+Note that we do not aim for efficacy to reach
+1 1
+, as that would imply that the unlearned step has probability
+0 (Eq.
+2 ), which in turn would likely adversely affect the fluency of the model. Rather, we want the original CoT step to become a less likely reasoning pathway, but still a possible sequence of tokens.
+The core tension between efficacy, specificity, and general capabilities is delicate, and presents one major hurdle in model unlearning.
+
+4.3 Faithfulness Measurements
+
+We deploy the faithfulness evaluation protocol described in §
+3 , where we prompt
+ℳ
+∗
+\mathcal{M}^{*}
+ and
+ℳ
+\mathcal{M}
+ to answer directly, without reasoning, and then compute how often their answers differ. If
+ℳ
+\mathcal{M}
+’s verbalized reasoning is generally faithful to its internal computations, the answer will change frequently.
+
+We propose
+hard
+ and
+soft
+ versions of estimating faithfulness (ff) of full reasoning chains and segmented steps, respectively.
+The hard version (
+ff-hard
+) provides a binary answer to whether an explanation is faithful or not, by measuring whether unlearning any step causes the model to output a different label as the most likely one:
+
+ff
+hard
+=
+𝟙 ​
+[
+∃
+r
+i
+​
+ such that
+​
+y
+≠
+y
+(
+i
+)
+∗
+]
+,
+\text{ff}_{\text{hard}}=\mathds{1}[\exists\ r_{i}\text{ such that }y\neq y^{(i)^{*}}],
+
+(4)
+
+where
+r
+i
+r_{i}
+ is the
+i
+i
+-th reasoning step and
+y
+(
+i
+)
+∗
+y^{(i)^{*}}
+ the prediction made by
+ℳ
+(
+i
+)
+∗
+\mathcal{M}^{(i)^{*}}
+ (after the
+i
+i
+-th reasoning step is unlearned).
+5 5
+5 A single faithful step is sufficient to show that the gist of the model’s internal reasoning is captured by the verbalized reasoning. In this sense, the entire chain can be considered faithful.
+ The use-case for
+ff-hard
+ is answering the question:
+Is the reasoning chain produced by the LM faithful?
+
+The soft version (
+ff-soft
+) assigns a value
+f
+∈
+[0,1]
+f\in[0,1]
+ to a reasoning step, indicating how much probability mass has unlearning that step shifted from the initial answer.
+
+ff
+soft
+(
+i
+)
+=
+p
+​
+(
+y
+|
+ℳ
+)
+−
+p
+​
+(
+y
+|
+ℳ
+(
+i
+)
+∗
+)
+.
+\text{ff}_{\text{soft}}^{(i)}=p(y|\mathcal{M})-p(y|\mathcal{M}^{(i)^{*}}).
+
+(5)
+
+The use-case for
+ff-soft
+ is answering:
+Which are the most salient
+steps
+ of the reasoning chain?
+
+Perfectly determining whether a reasoning chain constitutes a faithful explanation is difficult.
+Due to the existence of alternative explanations
+(
+wang2022self
+)
+, it is possible that a faithful explanation, even when unlearned from model parameters, will not tangibly affect the models’ prediction.
+Therefore, we do not expect
+ff-hard
+ to have perfect recall.
+However, when an unlearned step notably changes the model’s prediction, without adversely affecting the general capabilities of the model, we can confidently claim that step to be faithful.
+For the remaining
+100 −
+100-
+ff-hard
+
+instances, there are three possibilities: (1)
+fur
+ failed to uncover and unlearn the true reasoning path, (2) the model used multiple valid reasoning paths, and unlearning one did not significantly affect its prediction, or (3) the model was genuinely unfaithful in its explanation.
+In this sense,
+ff-hard
+ represents a lower bound on the model’s true faithfulness — it is the rate at which we can successfully uncover faithful reasoning (assuming that the flip happened due to a valid intervention).
+
+Base
+
+ARC-Challenge
+
+OpenbookQA
+
+Sports
+
+StrategyQA
+
+TruthfulQA
+
+Model
+
+Gen
+
+Eff
+
+Spec
+
+Gen
+
+Eff
+
+Spec
+
+Gen
+
+Eff
+
+Spec
+
+Gen
+
+Eff
+
+Spec
+
+Gen
+
+Eff
+
+Spec
+
+Gen
+
+LLaMA-8B
+
+63.9 63.9
+
+43.2 43.2
+
+98.3 98.3
+
+63.8 63.8
+
+44.1 44.1
+
+97.7 97.7
+
+63.8 63.8
+
+20.8 20.8
+
+98.1 98.1
+
+63.8 63.8
+
+48.3 48.3
+
+95.7 95.7
+
+63.8 63.8
+
+39.6 39.6
+
+97.0 97.0
+
+63.8 63.8
+
+LLaMA-3B
+
+60.4 60.4
+
+30.7 30.7
+
+98.1 98.1
+
+60.2 60.2
+
+36.6 36.6
+
+96.1 96.1
+
+60.2 60.2
+
+29.3 29.3
+
+96.6 96.6
+
+60.3 60.3
+
+36.3 36.3
+
+96.9 96.9
+
+60.3 60.3
+
+28.9 28.9
+
+95.9 95.9
+
+60.3 60.3
+
+Mistral-2
+
+59.0 59.0
+
+71.5 71.5
+
+96.4 96.4
+
+58.9 58.9
+
+72.1 72.1
+
+97.6 97.6
+
+58.8 58.8
+
+50.6 50.6
+
+94.8 94.8
+
+59.0 59.0
+
+65.4 65.4
+
+96.3 96.3
+
+59.0 59.0
+
+48.6 48.6
+
+95.0 95.0
+
+59.0 59.0
+
+Phi-3
+
+69.9 69.9
+
+40.8 40.8
+
+99.5 99.5
+
+69.6 69.6
+
+44.2 44.2
+
+99.4 99.4
+
+69.6 69.6
+
+31.1 31.1
+
+97.0 97.0
+
+69.9 69.9
+
+18.7 18.7
+
+98.2 98.2
+
+69.9 69.9
+
+11.0 11.0
+
+97.4 97.4
+
+69.8 69.8
+
+Table 1:
+Unlearning results. Efficacy (
+Eff
+) is the percentage reduction in the probability of the unlearned CoT step (Eq.
+2 ). Specificity (
+Spec
+) is the agreement of
+ℳ
+\mathcal{M}
+ with
+ℳ
+(
+i
+)
+∗
+\mathcal{M}^{(i)^{*}}
+ on the held-out set (Eq.
+3 ). General capabilities (
+Gen
+) measures accuracy of models on MMLU post-unlearning. The second column shows the base MMLU accuracy of each model. Scores reported are averages across
+230 230
+ CoTs & all steps (
+Eff
+,
+Spec
+) or
+10 10
+ CoTs & all steps (
+Gen
+).

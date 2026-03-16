@@ -1,0 +1,98 @@
+2 Related work
+
+CoT Pathologies
+
+There are a myriad of works that highlight specific ways CoT can fail to represent the underlying reasoning process of LLMs.
+(Turpin
+ et al.
+,
+2023b
+)
+ demonstrate that models often generate plausible post-hoc rationalizations for answers pre-determined by biased questions.
+(Roger and Greenblatt,
+2023 )
+ and
+(Skaf
+ et al.
+,
+2025 )
+ show how models can embed information steganographically within seemingly natural CoT text.
+(Pfau
+ et al.
+,
+2024 )
+ show that models can be trained to maintain performance while replacing CoTs with meaningless dot tokens, indicating the possibility of internalized reasoning within LLM architectures.
+(Baker
+ et al.
+,
+2025 )
+ demonstrate that optimization pressure placed on the CoT can cause models to obfuscate their underlying reasoning processes.
+(Chen
+ et al.
+,
+2025 )
+ provide additional evidence that reasoning models don’t always externalize their true decision-making processes.
+(Barez
+ et al.
+,
+2025 )
+ provide a comprehensive survey describing why CoT is not a fully interpretable window into model reasoning.
+
+CoT Metrics
+
+(Lanham
+ et al.
+,
+2023 )
+ investigate interventions on the CoT on a suite of tasks and find that modifying the CoT sometimes but not always leads to changes in final answers. They investigate interventions such as paraphrasing, truncation, and the replacement of CoT with filler tokens and present their analysis in a small number of multiple-choice datasets.
+(Tutek
+ et al.
+,
+2025 )
+ propose a method which measures the probability of the final output after unlearning intermediate CoT outputs and find that unlearning reasoning traces on multiple-choice datasets often impacts the final answer at similar rates of adding incorrect intermediate reasoning steps. Many works such as
+(Jiang
+ et al.
+,
+2025 )
+,
+(Golovneva
+ et al.
+,
+2023 )
+, and
+(Prasad
+ et al.
+,
+2023 )
+ measure the quality of the CoT coherence, logical consistency, and accuracy improvements but do not analyze the extent to which the CoT reflects the underlying reasoning processes of LLMs.
+
+CoT Monitorability.
+
+Recent work from OpenAI investigates chain-of-thought (CoT) monitorability, the ability of an external monitor to detect undesirable reasoning patterns or intent from a model’s verbalized thinking
+(Baker
+ et al.
+,
+2025 ; Guan
+ et al.
+,
+2025 )
+. Their approach employs a separate LLM (e.g., GPT-4o) to observe frontier reasoning models’ CoTs and flag potential misbehavior such as reward hacking or scheming. The key finding is that CoT monitoring can be far more effective than monitoring actions alone, but directly penalizing “bad thoughts” during training causes models to obfuscate their intent, producing benign-seeming CoTs while continuing to misbehave. They measure monitorability using
+g-mean
+2 =
+TPR
+×
+TNR
+\text{g-mean}^{2}=\text{TPR}\times\text{TNR}
+, treating detection as binary classification.
+
+Our work differs in several fundamental ways. First, we take an
+introspective
+ rather than external monitoring approach: our metrics use the model’s own log-probabilities under controlled interventions rather than relying on a separate monitor LLM. This enables detection of subtle pathologies that may not manifest as obviously “bad thoughts.” Second, rather than detecting general misbehavior, we design
+targeted metrics
+ for specific pathologies:
+Necessity
+ detects post-hoc reasoning where CoT is not causally necessary,
+Substantivity
+ detects internalized reasoning where semantic content is ignored, and
+Paraphrasability
+ detects encoded reasoning where information is hidden in surface form. Third, our model organisms are constructed via supervised fine-tuning on carefully designed datasets rather than emerging from RL optimization pressure, enabling controlled study of known pathologies. Finally, our metrics produce continuous scores amenable to regression analysis rather than binary classification, allowing finer-grained characterization of reasoning health across the pathology spectrum.

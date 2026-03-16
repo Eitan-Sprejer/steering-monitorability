@@ -1,0 +1,89 @@
+Appendix B
+Human Evaluation
+
+In this section, we describe the setup of the human evaluation and present results, comparing them against the baselines from the main paper.
+
+B.1
+Task Setup
+
+Following
+Jacovi & Goldberg (2020)
+, we include human annotators as a gold baseline.
+We recruited graduate students in Computer Science, all of whom are familiar with and work with LLMs.
+Because of the annotation burden posed by long CoTs, we downsampled the training set to 100 examples and the test set to 60.
+5 5
+5 Even at this reduced scale, one annotator noted that fully studying the training examples would have taken approximately 20 hours.
+
+The same data was used across all monitoring methods to enable comparison with the human baseline. Annotators were provided with task instructions and an overview of refusal behavior, and were split into two groups: one with access to the labeled training set and one without. The latter serves as a proxy for untrained human intuition.
+
+B.2
+Results
+
+Using the downsampled test set of 60 examples,
+Figure
+˜
+8 presents F1 scores from the human study alongside model baselines.
+Surprisingly, both human annotators and strong language models commonly used as CoT monitors (e.g., GPT-4.1) fail to match the performance of a simple linear probe trained on CoT activations.
+Despite being trained on only 100 examples, the probe achieves the highest F1 score.
+Notably, GPT-4.1 underperforms even with in-context learning, and annotators who were shown the training data performed worse than those who were not.
+Post-hoc interviews suggest that annotators overfit to spurious surface cues in the CoTs, such as the length of the CoTs and transition markers unrelated to safety, and found the annotation process cognitively taxing.
+
+Figure 7:
+Performance of human annotators, GPT models, and the linear probe. All models are trained on 100 examples and evaluated on 60 examples. For GPT-4.1 models, the 100 training examples are provided as ICL demonstrations.
+
+Figure 8:
+F1 scores of strong CoT monitors compared to the linear probe across varying CoT lengths, evaluated on the full dataset. The linear probe consistently achieves the best performance and are unaffected by increasing CoT lengths.
+
+Table
+˜
+4 additionally shows the average F1 score, accuracy, and inter-annotator agreement for the two groups of annotators.
+
+Table 4:
+Average F1 score and accuracy for the two groups of annotators, along with Fleiss’
+κ
+\kappa
+ to measure inter-annotator agreement. The group without training achieved higher F1 and accuracy, as well as greater inter-annotator agreement, than the group with training.
+
+Setting
+
+F1 Score
+
+Accuracy
+
+Fleiss’
+
+𝜿
+\boldsymbol{\kappa}
+
+With Training
+
+0.52 ± 0.05
+
+0.76 ± 0.08
+
+0.290
+
+Without Training
+
+0.57 ± 0.11
+
+0.78 ± 0.07
+
+0.502
+
+B.3
+Annotator Feedback
+
+Following the human evaluation, we interviewed each annotator to understand the strategies they used and the challenges they faced during the task. Several key themes emerged.
+
+Difficulty of CoT-based prediction.
+
+A common observation among annotators was that CoTs rarely provided definitive signals about the safety of the final response. Several participants reported that even when CoTs appeared safe or flagged harmfulness, the eventual answer could contradict those signals. Some relied on cues such as CoT length or the presence of keywords like “illegal,” but noted that these features had no consistent correlation with actual alignment.
+
+Limited utility of training data.
+
+While half of the annotators were given labeled training examples, most reported that the data was difficult to learn from. One participant noted that class imbalance and variability across CoTs made it hard to extract reliable patterns, while another remarked that the examples felt “intuitive enough,” so they did not refer back to the training set. One annotator reported spending over an hour carefully reviewing the training samples but ultimately concluded they could not develop a consistent strategy for predicting alignment. Another participant said they “simply could not learn any pattern" from the data.
+
+Feasibility of human supervision.
+
+Multiple annotators raised concerns about the operational demands of the task. One compared reading through 100 CoT–label pairs to reading a book, estimating that at least 12 hours would be required to fully study the training set. Another remarked that performing annotations with reasonable care would require compensation of at least $20 per hour. Overall, annotators emphasized that the monitoring task was cognitively taxing and time-intensive. These insights underscore that relying on human supervision is extremely challenging, if not impossible, for large-scale safety monitoring, especially as model-generated reasoning grows in complexity and length.

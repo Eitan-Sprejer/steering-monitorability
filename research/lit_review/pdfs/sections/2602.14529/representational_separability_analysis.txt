@@ -1,0 +1,387 @@
+4 Representational Separability Analysis
+
+In this section, we introduce a bottleneck-based classification framework that compresses internal representations into a shared latent space for four-way classification (Sec.
+4.1 ), and use it to analyze the layer-wise separability of different behavioral cases (Sec.
+4.2 ).
+
+4.1 Bottleneck-based Classifier Construction
+
+To assess whether the four behavioral cases
+(i.e., inputs drawn from
+D
+KC
+,
+D
+KA
+,
+D
+KI
+,
+D
+hal
+D_{\mathrm{KC}},D_{\mathrm{KA}},D_{\mathrm{KI}},D_{\mathrm{hal}}
+)
+are separable in the internal representations of the model,
+we construct a bottleneck-based classifier on the derived model
+L
+′
+L^{\prime}
+.
+
+Given an input query
+x
+x
+, we extract its hidden representation from a fixed layer of
+L
+′
+L^{\prime}
+,
+denoted as
+𝐡
+​
+(
+x
+)
+∈
+ℝ
+d
+in
+,
+\mathbf{h}(x)\in\mathbb{R}^{d_{\mathrm{in}}},
+
+which serves as the input to the classifier.
+As shown in Figure.
+3 (Left), to explicitly constrain the accessible information,
+we introduce a low-dimensional bottleneck.
+Specifically, an auto autoencoder (AE) encoder maps the hidden representation
+
+𝐡
+​
+(
+x
+)
+\mathbf{h}(x)
+ into a compressed latent space,
+
+𝐳
+=
+f
+enc
+​
+(
+𝐡
+​
+(
+x
+)
+)
+,
+𝐳
+∈
+ℝ
+d
+z
+,
+d
+z
+≪
+d
+in
+,
+\mathbf{z}=f_{\mathrm{enc}}(\mathbf{h}(x)),\qquad\mathbf{z}\in\mathbb{R}^{d_{z}},\;\;d_{z}\ll d_{\mathrm{in}},
+
+(4)
+
+and all classification is performed exclusively on
+𝐳
+\mathbf{z}
+.
+
+To preserve essential information under compression,
+the encoder is trained jointly with
+
+(I)
+ a decoder
+f
+dec
+f_{\mathrm{dec}}
+ that reconstructs the original hidden representation
+
+𝐡
+^
+​
+(
+x
+)
+=
+f
+dec
+​
+(
+f
+enc
+​
+(
+𝐡
+​
+(
+x
+)
+)
+)
+\hat{\mathbf{h}}(x)=f_{\mathrm{dec}}(f_{\mathrm{enc}}(\mathbf{h}(x)))
+
+and
+(II)
+ a classifier
+f
+clf
+f_{\mathrm{clf}}
+ that predicts the behavioral label.
+During training, the encoder, decoder, and classifier
+are optimized jointly using the objective
+
+ℒ
+=
+λ
+rec
+​
+‖
+𝐡
+^
+​
+(
+x
+)
+−
+𝐡
+​
+(
+x
+)
+‖
+2 2
++
+λ
+cls
+​
+ℒ
+CE
+​
+(
+𝐬
+,
+y
+)
+,
++
+λ
+ℓ
+1 ​
+‖
+𝐳
+‖
+1 ,
+\mathcal{L}=\lambda_{\mathrm{rec}}\big\|\hat{\mathbf{h}}(x)-\mathbf{h}(x)\big\|_{2}^{2}+\lambda_{\mathrm{cls}}\,\mathcal{L}_{\mathrm{CE}}(\mathbf{s},y),+\lambda_{\ell_{1}}\,\|\mathbf{z}\|_{1},
+
+(5)
+
+where
+𝐬
+=
+f
+clf
+​
+(
+f
+enc
+​
+(
+𝐡
+​
+(
+x
+)
+)
+)
+\mathbf{s}=f_{\mathrm{clf}}(f_{\mathrm{enc}}(\mathbf{h}(x)))
+
+denotes the predicted class logits,
+
+y
+y
+ is the observed behavioral label corresponding to the environment from which
+x
+x
+ is drawn,
+and
+λ
+rec
+\lambda_{\mathrm{rec}}
+,
+λ
+cls
+\lambda_{\mathrm{cls}}
+ control the relative weights of the reconstruction and classification objectives. The term
+λ
+ℓ
+1 ​
+‖
+𝐳
+‖
+1 \lambda_{\ell_{1}}\|\mathbf{z}\|_{1}
+ is a sparsity regularization on the bottleneck, where
+𝐳
+\mathbf{z}
+ is the latent representation and
+λ
+ℓ
+1 \lambda_{\ell_{1}}
+ controls the strength of this sparsity regularization.
+The reconstruction and classification objectives jointly shape a compressed yet structured latent space, encouraging the encoder to capture features that are both discriminative and interpretable.
+(Detail in Appendix
+E
+)
+
+4.2 Cross-layer Separability Analysis
+
+In this subsection, we analyze how separable the four behavioral cases are in the learned representations, and which underlying factors dominate this separability.
+
+Figure 4
+:
+Classification results under multi-class and binary settings.
+
+Left:
+ Confusion matrix reporting classification accuracy (ACC) for a four-way classifier distinguishing the four behavioral cases.
+
+Right:
+ Binary classification accuracy under different partitions corresponding to knowledge and behavior dimensions.
+
+The four-way classification results in Figure
+4 (Left) reveal a clear asymmetry.
+
+Hallucination
+ (
+𝒟
+hal
+\mathcal{D}_{\mathrm{hal}}
+) achieves an accuracy
+29.8 %
+29.8\%
+ higher than the
+correct
+ case (
+𝒟
+KC
+\mathcal{D}_{\mathrm{KC}}
+), an effect largely driven by confusion between
+correct
+ and
+deceptive
+ behaviors:
+
+44.5 %
+44.5\%
+ of
+𝒟
+KC
+\mathcal{D}_{\mathrm{KC}}
+ instances are misclassified as deception.
+In contrast, confusion between
+correct
+ behavior and
+hallucination
+ is relatively rare, indicating that the dominant separability signal aligns more closely with
+knowledge existence
+ (
+K
+K
+) than with
+behavioral expression
+ (
+B
+B
+).
+
+This hypothesis is further supported by the binary classification results shown in Figure
+4 (Right).
+Separating
+correct
+ or
+deceptive
+ responses from
+hallucination
+ yields accuracies close to
+90 %
+90\%
+, although approximately
+30 %
+30\%
+ of
+deceptive
+ instances are still misclassified as
+hallucination
+.
+In contrast, strong confusion persists between
+correct
+ and
+deceptive
+ behaviors, confirming that expression-level signals are difficult to disentangle.
+Within deception, avoidance-based responses (
+𝒟
+KA
+\mathcal{D}_{\mathrm{KA}}
+) are more than twice as separable as incorrect-answer deception (
+𝒟
+KI
+\mathcal{D}_{\mathrm{KI}}
+), suggesting that avoidance follows a more consistent output pattern that is easier to capture in representation space.
+
+Figure 5
+:
+Cross-layer separability analysis.
+ We report the
+one-vs-rest AUC
+ of the classifier as a function of the layer depth.
+
+Figure
+5 further examines cross-layer separability using a four-way classifier.
+Separability increases consistently from shallow layers to around layer
+7 7
+ and then rapidly saturates, remaining nearly invariant in deeper layers.
+Importantly, the probe is applied at the token corresponding to the first mention of the queried entity in the input
+x
+x
+ (i.e., the last token of the entity span), before any answer generation takes place.
+This pattern suggests that representations relevant to distinguishing the four behavioral regimes are established early, shortly after entity identification.
+In particular, signals associated with
+knowledge existence
+ appear to be encoded in early-to-mid layers, while deeper layers contribute little additional discriminative structure at this probe location.
+
+Takeaway.
+
+Separability is largely driven by an early, entity-conditioned knowledge-availability signal:
+
+K
+K
+-based partitions tend to be more reliably separable, whereas
+B
+B
+-based partitions remain more entangled.
+
+In line with this interpretation, separability forms early and exhibits limited variation across deeper layers after the entity is identified.
+
+Figure 6
+:
+SAE-based interpretability analysis.
+
+Sparse features are identified by applying a sparse autoencoder to the bottleneck representations.
+
+Left:
+ Venn diagrams show the number of sparse features associated with different behavioral cases, where overlaps indicate features that are activated across multiple classifications.
+
+Right:
+ Activation patterns of the identified sparse features for different behavioral cases, where the horizontal axis indexes the
+32 ,
+768 32{,}768
+ features and the vertical axis denotes their activation frequency.

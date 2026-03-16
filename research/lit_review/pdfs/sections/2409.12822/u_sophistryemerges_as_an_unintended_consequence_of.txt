@@ -1,0 +1,569 @@
+2 U-Sophistry
+ Emerges as an Unintended Consequence of RLHF
+
+We first provide background on RLHF and introduce three different rewards:
+R
+∗
+superscript
+𝑅
+R^{*}
+italic_R start_POSTSUPERSCRIPT ∗ end_POSTSUPERSCRIPT
+ (correctness),
+R
+human
+superscript
+𝑅
+human
+R^{\text{human}}
+italic_R start_POSTSUPERSCRIPT human end_POSTSUPERSCRIPT
+ (human ratings), and
+R
+train
+superscript
+𝑅
+train
+R^{\text{train}}
+italic_R start_POSTSUPERSCRIPT train end_POSTSUPERSCRIPT
+ (reward in RLHF training).
+We then hypothesize how these reward functions interact with each other during RLHF and increase
+U-Sophistry
+ as a result.
+
+RLHF Background.
+ RLHF
+(Christiano et al.,
+2017 )
+ is a popular method for aligning LMs. At a high level, it collects human evaluations on a dataset of outputs, trains a reward model to imitate human evaluations, and then optimizes a policy against the reward model.
+We call the LM before RLHF
+π
+init
+subscript
+𝜋
+init
+\pi_{\text{init}}
+italic_π start_POSTSUBSCRIPT init end_POSTSUBSCRIPT
+ and the LM after RLHF
+π
+rlhf
+subscript
+𝜋
+rlhf
+\pi_{\text{rlhf}}
+italic_π start_POSTSUBSCRIPT rlhf end_POSTSUBSCRIPT
+. RLHF involves three different rewards:
+R
+∗
+superscript
+𝑅
+R^{*}
+italic_R start_POSTSUPERSCRIPT ∗ end_POSTSUPERSCRIPT
+,
+R
+human
+superscript
+𝑅
+human
+R^{\text{human}}
+italic_R start_POSTSUPERSCRIPT human end_POSTSUPERSCRIPT
+, and
+R
+train
+superscript
+𝑅
+train
+R^{\text{train}}
+italic_R start_POSTSUPERSCRIPT train end_POSTSUPERSCRIPT
+, each of which
+is a function that maps an input-output pair to a scalar value.
+
+•
+
+Oracle Reward
+R
+∗
+superscript
+𝑅
+R^{*}
+italic_R start_POSTSUPERSCRIPT ∗ end_POSTSUPERSCRIPT
+ represents what we
+truly
+ want the LM to optimize, e.g. the correctness of programs or answers.
+R
+∗
+superscript
+𝑅
+R^{*}
+italic_R start_POSTSUPERSCRIPT ∗ end_POSTSUPERSCRIPT
+ is typically established by (ensembled) untimed expert human evaluators and is therefore too expensive for large-scale training or evaluation.
+
+•
+
+Human Reward
+R
+human
+superscript
+𝑅
+human
+R^{\text{human}}
+italic_R start_POSTSUPERSCRIPT human end_POSTSUPERSCRIPT
+ is what we collect to evaluate LMs in practice, typically from individual humans with time constraints. Different from
+R
+∗
+superscript
+𝑅
+R^{*}
+italic_R start_POSTSUPERSCRIPT ∗ end_POSTSUPERSCRIPT
+,
+R
+human
+superscript
+𝑅
+human
+R^{\text{human}}
+italic_R start_POSTSUPERSCRIPT human end_POSTSUPERSCRIPT
+ inherits weaknesses from human evaluators
+. Due to cognitive overload and biases, humans often rely on shortcuts, overlook subtle errors
+(Saunders et al.,
+2022 ; Perry et al.,
+2023 ; Gudibande et al.,
+2023 )
+, and approve flawed LM responses that are assertive
+(Hosking et al.,
+2023 )
+, sycophantic
+(Sharma et al.,
+2023 )
+, or verbose
+(Kabir et al.,
+2023 )
+. Nevertheless,
+R
+human
+superscript
+𝑅
+human
+R^{\text{human}}
+italic_R start_POSTSUPERSCRIPT human end_POSTSUPERSCRIPT
+ is still commonly used to evaluate LMs due to the lack of alternatives.
+
+•
+
+Proxy Human Reward
+R
+train
+superscript
+𝑅
+train
+R^{\text{train}}
+italic_R start_POSTSUPERSCRIPT train end_POSTSUPERSCRIPT
+ is a proxy for
+R
+human
+superscript
+𝑅
+human
+R^{\text{human}}
+italic_R start_POSTSUPERSCRIPT human end_POSTSUPERSCRIPT
+. Since computing
+R
+human
+superscript
+𝑅
+human
+R^{\text{human}}
+italic_R start_POSTSUPERSCRIPT human end_POSTSUPERSCRIPT
+ requires humans in the loop, it is too expensive to directly optimize in RLHF. Instead, most RLHF pipelines use
+R
+train
+superscript
+𝑅
+train
+R^{\text{train}}
+italic_R start_POSTSUPERSCRIPT train end_POSTSUPERSCRIPT
+, a cheaper automatic proxy derived from
+R
+human
+superscript
+𝑅
+human
+R^{\text{human}}
+italic_R start_POSTSUPERSCRIPT human end_POSTSUPERSCRIPT
+, e.g. by training a reward model on pair-wise human preference
+(Ouyang et al.,
+2022 )
+.
+R
+train
+superscript
+𝑅
+train
+R^{\text{train}}
+italic_R start_POSTSUPERSCRIPT train end_POSTSUPERSCRIPT
+ thus inherits the weaknesses of
+R
+human
+superscript
+𝑅
+human
+R^{\text{human}}
+italic_R start_POSTSUPERSCRIPT human end_POSTSUPERSCRIPT
+.
+
+Hypothesis:
+U-Sophistry
+ emerges from RLHF.
+ The gap between
+R
+train
+superscript
+𝑅
+train
+R^{\text{train}}
+italic_R start_POSTSUPERSCRIPT train end_POSTSUPERSCRIPT
+ and
+R
+∗
+superscript
+𝑅
+R^{*}
+italic_R start_POSTSUPERSCRIPT ∗ end_POSTSUPERSCRIPT
+ can result in reward hacking, where
+π
+rlhf
+subscript
+𝜋
+rlhf
+\pi_{\text{rlhf}}
+italic_π start_POSTSUBSCRIPT rlhf end_POSTSUBSCRIPT
+ learns to exploit
+R
+train
+superscript
+𝑅
+train
+R^{\text{train}}
+italic_R start_POSTSUPERSCRIPT train end_POSTSUPERSCRIPT
+ without optimizing the intended reward
+R
+∗
+superscript
+𝑅
+R^{*}
+italic_R start_POSTSUPERSCRIPT ∗ end_POSTSUPERSCRIPT
+.
+As a result,
+π
+rlhf
+subscript
+𝜋
+rlhf
+\pi_{\text{rlhf}}
+italic_π start_POSTSUBSCRIPT rlhf end_POSTSUBSCRIPT
+ improves significantly on
+R
+train
+superscript
+𝑅
+train
+R^{\text{train}}
+italic_R start_POSTSUPERSCRIPT train end_POSTSUPERSCRIPT
+ but not on
+R
+∗
+superscript
+𝑅
+R^{*}
+italic_R start_POSTSUPERSCRIPT ∗ end_POSTSUPERSCRIPT
+.
+Because
+R
+human
+superscript
+𝑅
+human
+R^{\text{human}}
+italic_R start_POSTSUPERSCRIPT human end_POSTSUPERSCRIPT
+ might be susceptible in similar ways to
+R
+train
+superscript
+𝑅
+train
+R^{\text{train}}
+italic_R start_POSTSUPERSCRIPT train end_POSTSUPERSCRIPT
+,
+R
+human
+superscript
+𝑅
+human
+R^{\text{human}}
+italic_R start_POSTSUPERSCRIPT human end_POSTSUPERSCRIPT
+ might also increase, thus leading to
+U-Sophistry
+.
+
+Take question-answering as an example: if humans are susceptible to rhetorical arguments,
+R
+train
+superscript
+𝑅
+train
+R^{\text{train}}
+italic_R start_POSTSUPERSCRIPT train end_POSTSUPERSCRIPT
+ might carry similar flaws since it is learned from
+R
+human
+superscript
+𝑅
+human
+R^{\text{human}}
+italic_R start_POSTSUPERSCRIPT human end_POSTSUPERSCRIPT
+.
+If
+π
+rlhf
+subscript
+𝜋
+rlhf
+\pi_{\text{rlhf}}
+italic_π start_POSTSUBSCRIPT rlhf end_POSTSUBSCRIPT
+ learns to exploit
+R
+train
+superscript
+𝑅
+train
+R^{\text{train}}
+italic_R start_POSTSUPERSCRIPT train end_POSTSUPERSCRIPT
+ by providing rhetorical arguments, it will mislead humans as well, leading to
+U-Sophistry
+.
+
+2.1 Comparsion with Prior Works
+
+Example
+
+Unintended
+
+Misleading
+
+Reward
+
+FT Data
+
+Prompt
+
+Unintended but Non-misleading
+
+Clark (2016)
+: A boat trained to play a game exploits its environment reward by simply circling and repeatedly hitting the same target.
+
+✓
+
+✓
+
+✓
+
+✗
+
+Paulus et al. (2017)
+: An LM trained for summarization exploits the ROUGE reward and generates barely-readable summaries.
+
+✓
+
+✓
+
+✓
+
+✗
+
+Singhal et al. (2023)
+: An LM trained to produce helpful responses exploits a reward model learned from the StackExchange human upvotes data and generates lengthy responses with reduced quality.
+
+✓
+
+✓
+
+✓
+
+✗
+
+Misleading but Intended (
+I-Sophistry
+)
+
+Sharma et al. (2023)
+: An LM trained to produce helpful responses shows enhanced sycophancy and can mislead humans when being told so (i.e., explicitly prompting LMs to subtly deceive humans).
+
+✓
+
+✓
+
+✗
+
+✓
+
+Hubinger et al. (2024)
+: An LM trained to write subtly vulnerable code when the designed backdoor is contained in the prompt.
+
+✓
+
+✗
+
+✗
+
+Not evaluated
+
+Denison et al. (2024)
+: An LM trained on crafted flawed reward signals that guide LMs towards certain known misleading behaviors (e.g., sycophancy or human flattering). The LM is also empowered with hidden chain-of-thoughts to enhance its reward hacking abilities.
+
+✗
+
+✓
+
+✓
+
+Not evaluated
+
+Unintended and Misleading (
+U-Sophistry
+)
+
+Ours: An LM trained to produce correct programs or answers under a common RLHF pipeline. The LM still explores to mislead humans, even without exposure to any carefully crafted signals that guide it so.
+
+✓
+
+✓
+
+✓
+
+✓
+
+Table 1:
+Comparison with prior work on reward hacking and misleading AI systems.
+Each prior work is categorized based on two criteria:
+Unintended
+, whether it uses innocuous rewards, fine-tuning data, or prompts, without deliberately guiding LMs to perform undesirable actions, and
+Misleading
+, whether it results in a model that misleads human evaluators.
+
+We focus on misleading real human evaluators, not just a proxy reward.
+
+Prior work on reward hacking primarily focuses on exploiting
+R
+train
+superscript
+𝑅
+train
+R^{\text{train}}
+italic_R start_POSTSUPERSCRIPT train end_POSTSUPERSCRIPT
+, which is both less harmful and easier than exploiting
+R
+human
+superscript
+𝑅
+human
+R^{\text{human}}
+italic_R start_POSTSUPERSCRIPT human end_POSTSUPERSCRIPT
+.
+Exploiting
+R
+train
+superscript
+𝑅
+train
+R^{\text{train}}
+italic_R start_POSTSUPERSCRIPT train end_POSTSUPERSCRIPT
+ is less harmful because once humans recognize LM’s bad outputs, they can prevent the harm by rejecting these outputs.
+Exploiting
+R
+train
+superscript
+𝑅
+train
+R^{\text{train}}
+italic_R start_POSTSUPERSCRIPT train end_POSTSUPERSCRIPT
+ is also easier for two reasons:
+
+•
+
+R
+train
+superscript
+𝑅
+train
+R^{\text{train}}
+italic_R start_POSTSUPERSCRIPT train end_POSTSUPERSCRIPT
+ from prior work is usually simple, e.g., a summary that achieves a high ROUGE score (simple reward) might be barely readable and obviously bad for humans
+(Paulus et al.,
+2017 )
+.
+
+•
+
+R
+train
+superscript
+𝑅
+train
+R^{\text{train}}
+italic_R start_POSTSUPERSCRIPT train end_POSTSUPERSCRIPT
+ is directly observed by LMs, while
+R
+human
+superscript
+𝑅
+human
+R^{\text{human}}
+italic_R start_POSTSUPERSCRIPT human end_POSTSUPERSCRIPT
+ is not. Therefore, exploiting
+R
+human
+superscript
+𝑅
+human
+R^{\text{human}}
+italic_R start_POSTSUPERSCRIPT human end_POSTSUPERSCRIPT
+ requires LMs to reward-hack in a way that generalizes beyond
+R
+train
+superscript
+𝑅
+train
+R^{\text{train}}
+italic_R start_POSTSUPERSCRIPT train end_POSTSUPERSCRIPT
+, which poses a greater challenge.
+
+In contrast, we focus on threats that mislead human evaluators, which are both more harmful and more challenging experimentally.
+
+We focus on
+U-Sophistry
+ that emerges as an unintended consequence of RLHF.
+
+Many prior works aim to study
+U-Sophistry
+.
+However, they study
+I-Sophistry
+, where the undesirable behaviors are
+I
+ntentionally induced by non-standard engineering practices, and implicitly assume that the conclusions on
+I-Sophistry
+ can generalize to
+U-Sophistry
+.
+As summarized by the second block of Table
+1 , they induce undesirable behaviors by manipulating rewards, fine-tuning data, or prompts.
+It is unclear whether
+U-Sophistry
+ will emerge under standard training practices, where the reward is not designed to induce malicious behaviors but is still flawed due to human weaknesses.
+In contrast, our work focuses on
+U-Sophistry
+ that naturally emerges.
+
+3 3
+3 Sharma et al. (2023)
+ is the closest to checking all of our criteria: its main experiments use natural prompts, but the human studies use a different prompt that explicitly instructs LLM to deceive humans; see Appendix D.2 of
+Sharma et al. (2023)
+.

@@ -1,0 +1,291 @@
+Appendix B
+Detailed Experiment Settings
+
+This section presents the complete experimental setup used throughout the paper, including baseline hyperparameters, inference strategies, and hardware resources.
+
+B.1
+Baseline Hyperparameters
+
+Table 3
+:
+Hyperparameters used for AM-based models
+[28]
+ across COP tasks.
+
+Learning rate, encoder layers, embedding dimension, attention heads and feedforward dimension are consistent across all tasks. PCTSP and OP additionally share training schedule parameters (epochs, epoch size, total steps). Settings are shared unless specified as A / B for 50-node / 100-node instances.
+
+Hyperparameter
+
+TSP50/100
+
+CVRP50/100
+
+PCTSP100
+
+OP100
+
+Learning Rate
+
+1e-4
+
+Encoder Layers
+
+6
+
+Embedding Dimension
+
+128
+
+Attention Heads
+
+8
+
+Feedforward Dimension
+
+512
+
+Batch Size
+
+64
+
+512
+
+Epochs
+
+1,000 / 1,500
+
+500 / 700
+
+100
+
+Epoch Size (instances)
+
+160,000
+
+160,000
+
+1,280,000
+
+Total Steps
+
+3.75M
+
+1.75M
+
+250K
+
+Table 4
+:
+Hyperparameters used for POMO
+[29]
+ across different COP tasks.
+ Settings are shared unless specified as A / B for 50-node / 100-node instances.
+
+Hyperparameter
+
+TSP50/100
+
+CVRP50/100
+
+Learning Rate
+
+1e-4
+
+Weight Decay
+
+1e-6
+
+Encoder Layers
+
+6
+
+Embedding Dimension
+
+128
+
+Attention Heads
+
+8
+
+Feedforward Dimension
+
+512
+
+Batch Size
+
+64
+
+Epochs
+
+1,000 / 1,500
+
+500 / 700
+
+Epoch Size (instances)
+
+160,000
+
+Total Steps
+
+3.75M
+
+1.75M
+
+Table 5
+:
+Hyperparameters used for Sym-NCO
+[26]
+ on TSP and CVRP tasks.
+
+Settings are shared unless noted as A / B for 50-node / 100-node instances.
+
+Hyperparameter
+
+TSP50/100
+
+CVRP50/100
+
+Learning Rate
+
+1e-4
+
+Weight Decay
+
+1e-6
+
+Encoder Layers
+
+6
+
+Embedding Dimension
+
+128
+
+Attention Heads
+
+8
+
+Feedforward Dimension
+
+512
+
+Batch Size
+
+64
+
+Epochs
+
+1,000 / 1,500
+
+500 / 700
+
+Epoch Size (instances)
+
+160,000
+
+Total Steps
+
+3.75M
+
+1.75M
+
+α
+𝛼
+\alpha
+italic_α
+ (weight for
+ℒ
+inv
+subscript
+ℒ
+inv
+\mathcal{L}_{\text{inv}}
+caligraphic_L start_POSTSUBSCRIPT inv end_POSTSUBSCRIPT
+)
+
+0.1
+
+0.2
+
+β
+𝛽
+\beta
+italic_β
+ (weight for
+ℒ
+ss
+subscript
+ℒ
+ss
+\mathcal{L}_{\text{ss}}
+caligraphic_L start_POSTSUBSCRIPT ss end_POSTSUBSCRIPT
+)
+
+1.0
+
+1.0
+
+N
+𝑁
+N
+italic_N
+ (solutions per problem)
+
+50 / 100
+
+50 / 100
+
+L
+𝐿
+L
+italic_L
+ (rotation count per instance)
+
+2
+
+2
+
+Table
+3 , Table
+4 and Table
+5 lists the training hyperparameters used for baseline models on various combinatorial optimization problems. Parameters include learning rate, number of layers, embedding dimensions, batch size, number of epochs, and total training steps, with separate settings for different instance sizes when applicable.
+
+B.2
+Multi-start and Data Augmentation Decoding Strategy
+
+To improve inference quality, we apply a multi-start decoding strategy by running the model from each possible initial node and selecting the best trajectory
+[29]
+. Additionally, we perform geometric data augmentation by rotating each instance by
+0 ∘
+superscript
+0 0^{\circ}
+0 start_POSTSUPERSCRIPT ∘ end_POSTSUPERSCRIPT
+,
+90 ∘
+superscript
+90 90^{\circ}
+90 start_POSTSUPERSCRIPT ∘ end_POSTSUPERSCRIPT
+,
+180 ∘
+superscript
+180 180^{\circ}
+180 start_POSTSUPERSCRIPT ∘ end_POSTSUPERSCRIPT
+, and
+270 ∘
+superscript
+270 270^{\circ}
+270 start_POSTSUPERSCRIPT ∘ end_POSTSUPERSCRIPT
+, with and without horizontal reflection, resulting in 8 variants
+[29]
+. The model decodes each variant independently, and the best solution is retained, as shown in Table
+LABEL:tab:tsp_cvrp_results
+.
+
+B.3
+Computing Resources
+
+All experiments and evaluations were conducted on a system equipped with two
+AMD EPYC 7742 64-Core Processors CPU
+ (128 physical cores, 256 threads in total) and an
+NVIDIA RTX 3090 GPU
+.

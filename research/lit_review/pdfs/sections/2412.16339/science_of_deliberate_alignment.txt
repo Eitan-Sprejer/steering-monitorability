@@ -1,0 +1,195 @@
+4 Science of Deliberate Alignment
+
+In this section, we dive deeper into the deliberative alignment method. We first explore how different stages of the method impact the policy adherence of the final model. We then investigate the behavior of models trained with deliberative alignment, including the final model’s consistency in recalling the correct policy and its reliability in out-of-distribution settings.
+
+In all experiments in this section, we leverage a variant of the o1-mini model with a reduced training setup.
+
+4.1 Ablations for different components of the method
+
+To study the impact that the SFT and RL stages of deliberative alignment have on model performance, we conduct ablation experiments where we drop safety data from one or both stages. Specifically, we compare the following four settings (see Figure
+14 ):
+
+•
+
+No safety training
+: No safety data in either SFT or RL (only capabilities data);
+
+•
+
+Safety in SFT only
+: Safety data only in SFT, no safety data in RL;
+
+•
+
+Safety in RL only
+: No safety in SFT, safety data only in RL; and
+
+•
+
+Safety in SFT & RL
+: Safety data in both SFT and RL (default deliberative alignment setting).
+
+As expected, the “Safety in SFT & RL” performs much better than the “No safety training” run in terms of disallowed content, response style, and jailbreaks, although in this specific ablation setup the safety training also increases overrefusals. The key finding is that the “Safety in SFT only” and “Safety in RL only” runs attain intermediate results, showing that both SFT and RL training play critical roles in deliberative alignment training. We believe that the model learns a strong prior for safe reasoning during SFT, and then learns to use its CoT more effectively during RL.
+
+In Figure
+14 , we also compare these ablations to a baseline where we do not perform any safety training, but we provide the entire spec to the model at inference time in the system message. Because we would not know what safety category is relevant for prompts received at deployment time, the spec we provide is not tailored to any safety category but instead has the summarized versions of all the content policies (see Section
+2.2 ). Note that it is infeasible to include the detailed versions of the content policies for all safety categories, because each one spans 5-10K tokens and would altogether exceed the model’s context window.
+
+Despite having access to the full spec, this baseline appears to learn less safety behavior than the model trained with deliberative alignment (and in many cases, even the model only trained with safety in the SFT stage). This baseline particularly struggles to adhere to response style guidelines. These results indicate that embedding these policies during training is more reliable than providing all of the policies at deployment time.
+
+Figure 14:
+Ablations on safety training stages
+ We remove safety training from SFT and/or RL to see the impact on model performance. We also compare to a baseline where we provide the spec at inference-time without performing any safety training.
+
+4.2 Policy Retrieval Accuracy
+
+How reliably do models trained with deliberative alignment actually refer to the correct policy? To answer this question, we evaluate how often CoTs reference appropriate safety categories (see Section
+2.2 ).
+
+We compare two settings:
+
+•
+
+No-Safety Baseline
+: The model does not undergo any Deliberative Alignment training.
+
+•
+
+Full Data
+: The model is trained on the full dataset, including safety.
+
+In particular, given evaluation prompts labeled with the safety category, we extract sentences from the chain-of-thought that mention a policy.
+2 2
+2 Specifically, we extract any excerpts that mention the words {“policy”, “policies”, “guideline”, “allowed”}.
+ We then ask another prompted reasoning model to identify which category in the spec (if any) the excerpt was pulled or paraphrased from. Finally, to measure policy retrieval accuracy, we compute the fraction of prompts where the derived safety category exists and matches the safety category of the prompt.
+
+In Table
+2 , we display policy retrieval accuracy separately based on the ideal response type (hard refusal, safe completion, or compliance). In all three cases, our safety-trained model references the relevant policy in the CoT with much higher accuracy than the baseline model. For safe completion prompts, the safety-trained model achieves a particularly high policy retrieval accuracy of 0.91. For prompts where the ideal completion is compliance, we do not expect the safety-trained model to necessarily reference policies, so observing a lower rate of policy retrieval (0.54) is expected.
+
+Notably, the non-safety-trained baseline has refusal rates and policy retrieval accuracies greater than
+0 0
+. The reasons for this are that the base model has seen some safety-related data during pretraining, and our classifier is generous about attributing CoTs to potential policies. For example, if a CoT says “illegal content is not allowed, so I will refuse”, it will count as having referenced the Illicit Content policy.
+
+Table 2:
+Policy retrieval accuracy.
+ Fraction of times the chain-of-thought referenced the correct detailed policy category, broken down by where the ideal response is a hard refusal, safe completion, or compliance.
+
+Policy Retrieval Accuracy
+
+Model
+
+Hard Refusal
+
+Safe Completion
+
+Comply
+
+No-Safety Baseline
+
+0.27 0.27
+0.27 0.27
+
+0.21 0.21
+0.21 0.21
+
+0.09 0.09
+0.09 0.09
+
+Full Data
+
+0.75 0.75
+0.75 0.75
+
+0.91 0.91
+0.91 0.91
+
+0.54 0.54
+0.54 0.54
+
+4.3 Generalization to OOD settings
+
+In Section
+3.1.3
+, we found that the o1 models significantly improved on jailbreak evaluations such as StrongREJECT. Our hypothesis is that deliberative alignment improves the model’s alignment in uncommon or out-of-distribution (OOD) settings (which are especially prevalent in the StrongREJECT dataset).
+
+In order to test the impact of deliberative alignment on OOD robustness, we test generalization on two different types of data: non-English language data, and encoded data (e.g. base64), using a version of the o1-mini model. In particular, we compare three models:
+
+•
+
+No-Safety Baseline
+: The model does not undergo any Deliberative Alignment training;
+
+•
+
+Eng-Only, No-Encoded Data
+: The model is trained on a filtered dataset, where we have removed all safety-related non-English and encoded data. The model still sees non-English and encoded data during pretraining, as well as the non-safety portions of SFT and RL;
+
+•
+
+Full Data
+: The model is trained on the full dataset;
+
+on the following two evals:
+
+•
+
+Encoding
+: We test the model’s resistance to jailbreaks that use encodings. We have a set of
+250 250
+250 250
+
+forbidden prompts
+ (e.g. asking for instructions on how to make a bomb), and a set of
+jailbreak techniques
+ that use encodings (e.g. encoding a prompt in base64). For each forbidden prompt, we generate multiple jailbroken prompts using different jailbreak techniques. Then we grade the model as incorrect on a forbidden prompt if it fails to refuse on any of its jailbroken prompts.
+
+•
+
+Multilingual
+: We translate jailbreak prompts into different languages, and measure how often the model refuses to answer these prompts.
+
+Our goal is to see how similarly the “Eng-only, No-Encoded Data” model performs to the “Full Data” model when it has never seen multilingual or encoding-based data during safety training.
+
+Table 3:
+Out-of-distribution
+generalization results.
+ Training with deliberative alignment shows strong generalization ability on encoding-based and multilingual jailbreak evaluations. Values are reported as mean ± stderr, with the standard error estimated using bootstrap resampling with 10k replicates at the 0.95 level.
+
+Model
+
+Encoding Eval Accuracy
+
+Multilingual Eval Accuracy
+
+No-Safety Baseline
+
+0.65 0.65
+0.65 0.65
+ p  m 0.06
+
+0.44 0.44
+0.44 0.44
+ p  m 0.01
+
+Eng-Only, No-Encoded Data
+
+0.97 0.97
+0.97 0.97
+ p  m 0.02
+
+0.69 0.69
+0.69 0.69
+ p  m 0.01
+
+Full Data
+
+0.95 0.95
+0.95 0.95
+ p  m 0.03
+
+0.68 0.68
+0.68 0.68
+ p  m 0.01
+
+The models trained with deliberative alignment attain accuracies significantly higher than the no-safety baseline on these evals (see Table
+3 ). Notably, the model that has never been safety trained on encoding or non-english data performs comparably to the model trained with all the safety data, demonstrating clear out-of-distribution generalization.

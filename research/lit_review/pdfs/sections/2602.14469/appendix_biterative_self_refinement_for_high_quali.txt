@@ -1,0 +1,316 @@
+Appendix B
+Iterative Self-Refinement for High-quality Answer Construction
+
+We construct our experiment dataset using a self-improvement pipeline to simulate the situations that the high-quality responses are accessible but the intermediate reasoning traces are lacking.
+
+Data source.
+
+We sample user queries from the LMArena human preference corpus (140k conversations) hosted at
+
+https://huggingface.co/datasets/lmarena-ai/arena-human-preference-140k
+
+and introduced in prior work on the text arena
+(Chiang
+ et al.
+,
+2024 )
+.
+
+Overview.
+
+For each sampled query, we use Qwen3-Max
+(Yang
+ et al.
+,
+2025a
+)
+ to construct a high-quality reference answer via a multi-stage, iterative refinement pipeline. The procedure alternates between (i) generating diverse candidate responses, (ii) self-evaluating candidates along key quality dimensions, and (iii) aggregating the strongest components into improved candidates, repeating this process for multiple refinement loops.
+
+Pipeline stages.
+
+Let
+N
+N
+ denote the number of independent rollouts produced per query,
+K
+K
+ the number of candidate slots maintained after aggregation,
+M
+M
+ the number of evaluated candidates sampled for synthesizing each slot, and
+T
+T
+ the number of refinement loops.
+
+1.
+
+Candidate generation.
+ We prompt Qwen3-Max to produce
+N
+N
+ independent response rollouts for the same query to encourage diversity in reasoning paths and content coverage.
+
+2.
+
+Candidate evaluation.
+ The model then self-evaluates each rollout, assigning a scalar score based on accuracy, coherence, and completeness. These scores are used for quality reference during the aggregation step.
+
+3.
+
+Candidate aggregation.
+ We construct a new set of
+K
+K
+ candidates. For each slot, we randomly sample
+M
+M
+ evaluated candidates and synthesize an improved response by combining their highest-scoring components (e.g., correct facts, clearer explanations, or more complete coverage).
+
+4.
+
+Improvement loop.
+ The newly synthesized
+K
+K
+ candidates are fed back into the evaluation and aggregation stages. We repeat this improvement cycle for
+T
+T
+ loops, yielding a final, polished reference answer at convergence.
+
+Algorithmic description.
+
+Algorithm
+1 summarizes the refinement procedure used to produce the definitive reference answer per query.
+
+Algorithm 1
+
+ Iterative self-refinement for reference answer construction
+
+0:
+ Query
+x
+x
+; model
+ℳ
+\mathcal{M}
+ (Qwen3-Max); rollouts
+N
+N
+; slots
+K
+K
+; sample size
+M
+M
+; loops
+T
+T
+
+1:
+
+𝒞
+←
+{
+ℳ
+​
+(
+x
+)
+}
+i
+=
+1 N
+\mathcal{C}\leftarrow\{\mathcal{M}(x)\}_{i=1}^{N}
+
+{Generate
+N
+N
+ independent candidates}
+
+2:
+
+for
+
+t
+=
+1 ,
+…
+,
+T
+t=1,\ldots,T
+
+do
+
+3:
+
+𝒮
+←
+{
+Score
+​
+(
+c
+)
+|
+c
+∈
+𝒞
+}
+\mathcal{S}\leftarrow\{\textsc{Score}(c)\;|\;c\in\mathcal{C}\}
+
+{Self-evaluate on accuracy/coherence/completeness}
+
+4:
+
+𝒞
+′
+←
+∅
+\mathcal{C}^{\prime}\leftarrow\emptyset
+
+5:
+
+for
+
+j
+=
+1 ,
+…
+,
+K
+j=1,\ldots,K
+
+do
+
+6:
+   Sample
+{
+c
+j
+,
+1 ,
+…
+,
+c
+j
+,
+M
+}
+\{c_{j,1},\dots,c_{j,M}\}
+ from
+𝒞
+\mathcal{C}
+ (optionally biased by
+𝒮
+\mathcal{S}
+)
+
+7:
+
+𝒮
+j
+←
+{
+Score
+​
+(
+c
+j
+,
+m
+)
+}
+m
+=
+1 M
+\mathcal{S}_{j}\leftarrow\{\textsc{Score}(c_{j,m})\}_{m=1}^{M}
+
+{Use only scores of sampled candidates}
+
+8:
+
+c
+j
+′
+←
+Synthesize
+​
+(
+{
+c
+j
+,
+1 ,
+…
+,
+c
+j
+,
+M
+}
+,
+𝒮
+j
+)
+c^{\prime}_{j}\leftarrow\textsc{Synthesize}(\{c_{j,1},\dots,c_{j,M}\},\mathcal{S}_{j})
+
+9:
+
+𝒞
+′
+←
+𝒞
+′
+∪
+{
+c
+j
+′
+}
+\mathcal{C}^{\prime}\leftarrow\mathcal{C}^{\prime}\cup\{c^{\prime}_{j}\}
+
+10:
+
+end
+
+for
+
+11:
+
+𝒞
+←
+𝒞
+′
+\mathcal{C}\leftarrow\mathcal{C}^{\prime}
+
+{Update candidates for next loop}
+
+12:
+
+end
+
+for
+
+13:
+
+return
+
+arg
+⁡
+max
+c
+∈
+𝒞
+⁡
+Score
+​
+(
+c
+)
+\arg\max_{c\in\mathcal{C}}\textsc{Score}(c)
+
+{Final reference answer}
+
+Rationale.
+
+Our construction yields reference responses that reflect the outcome of substantial deliberation and iterative error-correction, while keeping intermediate reasoning implicit. As a result, the final answer provides a strong target without exposing step-by-step traces that could be trivially copied. This design matches realistic deployment conditions, where systems are typically evaluated on inputs and final outputs rather than on access to the full internal decision process. It also creates a controlled setting in which a model must justify or explain an already-produced outcome using only the surface form of the response, which is exactly where post-hoc rationalization is most likely to arise and most difficult to detect.

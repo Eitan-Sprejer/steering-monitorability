@@ -1,0 +1,258 @@
+Appendix D
+Further discussion
+
+Deception dilution may allow evasion of simple probe based detection methods.
+
+The effect of dilution on probe activations is substantial and strongly depends on the honesty of the response. For the Pairs probe, dilution increases the mean probe activation by 2.17, averaged over for honest responses, while decreasing it by 1.28 for deceptive responses. This pattern holds for the RP probe as well (mean probe activation for honest responses increased by an average 1.99, deceptive decreased by 2.12). See Figure
+1 for samples selected to illustrate the dynamic and Table
+6 for AUROCs. Moreover:
+
+1.
+
+All monitors exhibit degraded performance on insensitive dilution compared to the original AI Liar dataset, suggesting this may be a promising evasion strategy. For example, Full Averaging (Pairs) drops from 0.966 AUROC on AI Liar to 0.931 on insensitive dilution.
+
+2.
+
+Peak activation monitors perform notably better on deception-only dilution than insensitive dilution (0.971 vs 0.811 for Pairs, and 0.931 vs 0.877 for RP). This is expected — due to noise in the probe scores, taking the maximum over more tokens tends to produce higher scores. Thus, when an assistant dilutes only deceptive responses, the Peak Activation monitor will assign a higher suspiciousness rating to deceptive responses.
+
+3.
+
+Critical averaging performs similarly to Full Averaging on both dilution datasets, despite under-performing on the original dataset. This suggests Critical Averaging may be robust to dilution attempts.
+
+Figure 4:
+Deception Dilution attempts to render probe scores unreliable by adding truthful but irrelevant claims to the response. The effect of this attack is shown for two response samples with pairs probe scores on honest (top) and deceptive (bottom) responses. The original AI Liar samples (blue) are compared with their diluted versions (orange). Raw probe scores (faint) and smoothed scores (solid) are shown, with horizontal dotted lines indicating mean scores. The vertical dashed line marks the end of relevant tokens, after which diluted responses contain only true-but-irrelevant facts. For honest responses, dilution increases mean probe scores (by 2.17, averaged across all 173 honest samples), while for deceptive responses, dilution decreases mean probe scores (by 1.28, averaged across all 89 deceptive samples), suggesting that dilution dampens the underlying signal of honesty/deception.
+
+Better control dataset
+
+Alpaca is a dataset of 1000 benign instructions, a proxy for the kind of queries that users ask production models. For our monitoring to be practically feasible, monitors may flag only very few assistant messages for human auditing (e.g. less than 1%), because human auditing is so slow, scarce, and expensive. To simulate this constraint, we hoped to evaluate monitors by their total positive rate (TPR) where the classification threshold is calibrated so that the monitor achieves a 1% false positive rate (FPR) on Alapca. However, Alpaca proves ill-suited for this purpose: many monitors achieve 100% true positive rates across most datasets (Figure
+5 ). This is in part because Alpaca is easily distinguished from our deception datasets, both by their probe activations and semantic content inferable via rubric-based reasoning. As a result, we rely on AUROC as our primary evaluation metric, and note that a more challenging control datasets will need to be developed in future work.
+
+D.1
+Methodological Considerations
+
+Our benchmark includes datasets designed to elicit opportunities for strategic deception. Below, we summarize some key design decisions and considerations:
+
+•
+
+Realism ratings.
+ We qualitatively rank the realism of each dataset (reported in Table
+1 ). These subjective ratings aim to capture two factors: (a) how closely the dialogue resembles scenarios the model may encounter during deployment (vs. appearing obviously synthetic or adversarial); and (b) whether the context offers a plausible opportunity in which a model might strategically choose to deceive.
+
+•
+
+On-policy vs. off-policy data.
+ Datasets such as
+AI Liar
+,
+Insider Trading
+, and
+Sandbagging
+ are on-policy: the assistant generates its own responses under incentives or instructions that may encourage honesty or deception.
+Deception Dilution
+ and
+Backdoors
+ are in actuality quasi-on-policy: we append predetermined statements or copied completions to authentic model outputs (e.g., capital cities in
+Deception Dilution
+, or code in
+Backdoors
+). The
+Alpaca
+ dataset is fully off-policy. While high-realism, on-policy data seems preferable in principle, our results suggest the probes generalize well across all dataset types.
+
+•
+
+Black-box monitor constraints.
+ Prior work often assumes a black-box monitor has access to the full dialogue, including hidden reasoning steps and system prompts. In contrast, we intentionally hide these from our black-box monitor. This decision treats hidden reasoning and prompting as proxies for unobservable internal cognition and external incentives. A growing body of work suggests that chain-of-thought traces may be unfaithful to actual model reasoning
+Arcuschin
+ et al.
+ [2025], Baker
+ et al.
+ [2025]
+. Datasets such as
+Insider Trading
+,
+Sandbagging
+, and
+Backdoors
+ are constructed to prompt the model into potentially deceptive behavior while also making the truth of the response unequivocal in the dialogue trace. A black-box monitor with access to private tokens (e.g., system prompts or internal reasoning) can trivially classify such examples.
+
+Table 6:
+AUROC scores across datasets. For each dataset, scores that achieve the highest AUROC on at least 1% of 1,000 random holdouts where 1% of samples are held out. Background color intensity (green) indicates relative AUROC score magnitude.
+
+Monitor
+
+AI Liar
+
+Dilution (insensitive)
+
+Dilution (deception-only)
+
+Numeric
+
+Full Averaging (Pairs)
+
+0.966
+
+0.931
+
+0.924
+
+Full Averaging (RP)
+
+0.914
+
+0.907
+
+0.897
+
+Peak Activation (Pairs)
+
+0.937
+
+0.811
+
+0.971
+
+Peak Activation (RP)
+
+0.929
+
+0.877
+
+0.931
+
+Follow-ups
+
+Deception No (Pairs)
+
+0.913
+
+0.700
+
+0.995
+
+Deception No (RP)
+
+0.928
+
+0.879
+
+0.852
+
+Honest Yes (Pairs)
+
+0.920
+
+0.767
+
+0.995
+
+Honest Yes (RP)
+
+0.921
+
+0.806
+
+0.806
+
+Critical
+
+Critical Averaging (Pairs)
+
+0.951
+
+0.931
+
+0.947
+
+Critical Averaging (RP)
+
+0.908
+
+0.839
+
+0.837
+
+White Box
+
+White-Box (sonnet-3.5, Pairs)
+
+0.966
+
+0.916
+
+0.956
+
+White-Box (haiku-3.5, Pairs)
+
+0.938
+
+0.905
+
+0.910
+
+White-Box (sonnet-3.5, RP)
+
+0.956
+
+0.879
+
+0.919
+
+White-Box (haiku-3.5, RP)
+
+0.947
+
+0.889
+
+0.901
+
+Baselines
+
+Black-Box (sonnet-3.5)
+
+0.822
+
+0.799
+
+0.793
+
+Black-Box (haiku-3.5)
+
+0.857
+
+0.849
+
+0.852
+
+Ensemble (sonnet-3.5, Pairs)
+
+0.960
+
+0.856
+
+0.919
+
+Ensemble (haiku-3.5, Pairs)
+
+0.951
+
+0.880
+
+0.925
+
+Ensemble (sonnet-3.5, RP)
+
+0.944
+
+0.845
+
+0.906
+
+Ensemble (haiku-3.5, RP)
+
+0.943
+
+0.878
+
+0.937

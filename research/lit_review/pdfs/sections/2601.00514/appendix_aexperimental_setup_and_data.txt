@@ -1,0 +1,670 @@
+Appendix A
+Experimental Setup and Data
+
+This first part of the appendix collects the
+reproducibility scaffolding
+ for our experiments: what data we train and evaluate on, what prompts and output contracts we impose, and how GRPO training is configured.
+We begin with dataset sizes and domain-specific preprocessing details (§
+A.1
+).
+We then provide the verbatim system-level prompts used in each domain, including the shared
+<think>
+/
+<answer>
+ formatting requirements and domain-specific guardrails (§
+A.2
+).
+Finally, we summarize the GRPO training setup and per-domain hyperparameters (§
+A.4
+; App. A.3).
+All of these components are held fixed across checkpoints unless explicitly noted, so that differences reported in the main text reflect changes in model state rather than instruction drift or evaluation artifacts.
+
+A.1
+Dataset Details
+
+Table
+6 summarizes dataset sizes, splits, and evaluation coverage for all three reasoning domains. We include additional details here for reproducibility.
+
+Cryptic Xwords.
+
+We use the
+Cryptonite
+ corpus for training
+(
+efrat-etal-2021-cryptonite
+)
+ and generate synthetic evaluation clues using device-balanced templates. All answers are normalized (uppercase, punctuation-stripped) before exact-match scoring.
+
+Math.
+
+The training distribution is
+openR1 Math-220k
+
+(
+openr1
+)
+; evaluation is on the
+MATH-500
+ benchmark
+(
+lightman2024letsverifystepstep
+)
+. Normalization removes
+L
+a
+T
+e
+X
+ wrappers, whitespace, and trivial formatting differences (e.g., ‘
+1 /
+2 1/2
+’ vs. ‘
+1 2
+\frac{1}{2}
+’) before exact match.
+
+RHour.
+
+We generate balanced
+4 ×
+4 4{\times}4
+,
+5 ×
+5 5{\times}5
+, and
+6 ×
+6 6{\times}6
+ puzzles and evaluate on
+6 ×
+6 6{\times}6
+ only. Puzzles are solved optimally via BFS with per-size node caps; unsolved or degenerate boards are removed
+(
+fogleman2018rushhour
+)
+. Solutions are canonicalized before comparison.
+
+Data release.
+
+Code to regenerate the synthetic Cryptic Xwords evaluation set and the selected RHour puzzles is included in our repository under
+data/
+. We also release the exact evaluation subsets on Hugging Face:
+od2961/rush4-5-6-balanced
+ and
+od2961/Guardian-cryptonite-official-split
+.
+
+A.2
+System-Level Prompts
+
+
+System Prompt — Cryptic Xwords
+
+Figure 6:
+System Prompt — Cryptic Xword.
+
+Verbatim system-level prompt used for the Xwords domain.
+
+Design goals.
+
+Our system prompts serve two purposes: (i)
+scaffold
+ domain-appropriate reasoning with verifiable intermediate structure, and (ii)
+standardize
+ outputs so they are machine-checkable and comparable across checkpoints. Across all domains we therefore (a) separate private reasoning from the final response with explicit tags (
+<think>
+ /
+</think>
+ and
+<answer>
+ /
+</answer>
+), (b) enforce domain-specific
+guardrails
+ (e.g., enumeration and letter accounting for cryptics; canonical forms for mathematics; regex-constrained action sequences for RHour), and (c) build in a light-weight
+self-correction loop
+ that triggers targeted reconsideration when a check fails. The prompts below were held fixed across checkpoints and temperatures (unless noted), ensuring that any changes we observe arise from the model state rather than instruction drift.
+
+
+System Prompt — Math
+
+Figure 7:
+System Prompt — Math.
+
+Verbatim system-level prompt used for math.
+
+Common scaffolding (all domains).
+
+We ask models to reason entirely inside
+<think>
+ and to place the
+final
+ object to be graded inside
+<answer>
+
+only
+. Tag separation lets us (1) compute reasoning-shift features on the private trace without leaking them into the final output, and (2) apply exact validators to
+<answer>
+. To avoid verbosity that can mask errors, prompts specify concise but complete derivations, a token budget, and deterministic formatting. The reconsideration clause begins with a fixed sentence (“Wait, we need to reconsider…”) to reliably demarcate pivot points for analysis; however, our shift detector (App. §
+B.1
+) additionally requires a
+structural
+ plan change, avoiding circularity from lexical cues alone.
+
+Domain
+
+Train (
+N
+N
+)
+
+Eval (
+N
+N
+)
+
+Cryptic Xwords
+
+50,000
+
+130
+
+Math
+
+220,000
+
+500
+
+RHour
+
+180,000
+
+500
+
+Table 6:
+Dataset sizes.
+ Training instances are natural clues (Xwords), problems (Math), and boards (RHour); evaluation uses synthetic clues for Xwords.
+
+Cryptic Xwords.
+
+The Xwords prompt encodes established solving practice:
+device triage
+ (anagram, container, reversal, hidden,
+etc.
+) with quoted indicators, followed by a two-part parse (
+definition
+ and
+wordplay
+) and two hard checks: exact enumeration and exact letter accounting. This combination suppresses common failure modes such as defaulting to anagrams without a bona fide anagrind or silently dropping letters in charades. The reconsideration loop is narrow: it requires explaining
+why
+ the current attempt fails before proposing an alternative device/parse. We found this prevents thrashing while still eliciting genuine mid-trace pivots when a better device is available. Examples in the prompt illustrate (i) a hidden, (ii) an anagram, and (iii) a charade—covering the most frequent device classes in our corpus.
+
+Math.
+
+The math prompt stresses (i)
+goal/givens/methods
+ triage, (ii) exact, symbolic manipulation with canonical forms (fractions, radicals,
+π
+\pi
+,
+e
+e
+), and (iii) end-of-proof
+validation
+ (domain, extraneous roots, simplification). We explicitly specify what to output when a problem is infeasible (“
+NO SOLUTION
+”) or underdetermined (“
+I DON’T KNOW
+”), which reduces hallucinated specificity. The tag split is enforced more strictly here to prevent the final answer from appearing in
+<think>
+ and to keep
+<answer>
+ parsable for grading and correctness metrics. The 750-token cap preserves headroom for multi-step derivations while discouraging digressions that add entropy without improving validity.
+
+
+System Prompt — RHour
+
+Figure 8:
+System Prompt — RHour.
+
+Verbatim system-level prompt used for RHour puzzles.
+
+RHour.
+
+For RHour puzzles, the prompt formalizes the interface between natural-language reasoning and a discrete planner. Inputs are normalized (
+N
+×
+N
+N\times N
+ board, row-major encoding), and
+<answer>
+ must match a regular expression of move tokens (
+ˆ[A-Z][<>ˆv]\d+(,[A-Z][<>ˆv]\d+)*$
+). We add two verifiability clauses: (i) the sequence must be
+optimal
+ (minimum length), with lexicographic tie-breaks to canonicalize multiple optimal plans; and (ii) applying the sequence must achieve the goal (
+A
+A
+ exits) in exactly the declared number of moves. These guardrails allow us to reject superficially plausible but illegal or suboptimal sequences and to attribute improvements to better internal search rather than looser grading.
+
+Configs and model release.
+
+The full configs, exactly as used for training, are available in our repository under
+recipes/
+. We also release all trained models (including checkpoints) on Hugging Face, listed in Table
+7 .
+
+Model
+
+Domain
+
+Hugging Face repository
+
+Llama 3.1–8B
+
+Math
+
+https://huggingface.co/od2961/Llama-8B-Open-R1-GRPO-math-v1
+
+Qwen 2.5–1.5B
+
+Xwords
+
+https://huggingface.co/od2961/Qwen2.5-1.5B-Open-R1-GRPO-Crosswords-v03
+
+Qwen 2.5–1.5B
+
+RHour
+
+https://huggingface.co/od2961/Qwen2.5-1.5B-Open-R1-GRPO-carpark-v1
+
+Qwen 2.5–7B
+
+Math
+
+https://huggingface.co/od2961/Qwen2.5-7B-Open-R1-GRPO-math-7b
+
+Qwen 2.5–1.5B
+
+Math
+
+https://huggingface.co/od2961/Qwen2.5-1.5B-Open-R1-GRPO-math-v1
+
+Table 7:
+Released GRPO-trained checkpoints.
+ Public Hugging Face repositories containing trained models and intermediate checkpoints used in this work.
+
+A.3
+Prompt Robustness & Evaluation
+
+Robustness to system-prompt wording.
+
+To probe how sensitive performance is to
+system-prompt wording
+, we evaluated
+K
+=
+5 K{=}5
+ paraphrased system prompts for
+Qwen2.5-1.5B
+ (Open-R1 GRPO, trained on
+Math220k
+) on
+MATH-500
+ at decoding temperature
+T
+=
+0 T{=}0
+, using randomized item order and a short prefilter on input length (350 characters; Table
+8 ). For each epoch and prompt variant, we compute standard test accuracy and then summarize the distribution across the five prompts. Across variants, accuracy changes only modestly, and the qualitative conclusions reported in the main text are unchanged. We therefore report main results using the canonical system prompt shown above, and use the prompt ensemble only to quantify prompt-induced variance.
+
+Epoch
+
+Mean accuracy
+
+Std. across prompts
+
+Range (min, max)
+
+0 (pre)
+
+31.8
+
+0.8
+
+(30.8, 33.2)
+
+1 (ckpt 500)
+
+38.8
+
+1.2
+
+(36.6, 40.0)
+
+2 (ckpt 1000)
+
+38.3
+
+1.0
+
+(36.8, 39.8)
+
+3 (final)
+
+40.2
+
+0.7
+
+(39.5, 41.4)
+
+Table 8:
+Accuracy stability across system-prompt paraphrases for
+MATH-500
+ (Qwen-1.5B). Each row summarizes accuracy over
+K
+=
+5 K{=}5
+ system prompts at temperature
+0 , using the same test problems and a prefilter window of 350 input characters.
+
+Reproducibility and evaluation.
+
+Prompts are released verbatim below. We use the same decoding policy across checkpoints (temperature, top-
+p
+p
+, stop criteria), cache RNG seeds, and reject outputs that violate the format contracts before computing task-specific rewards. This protocol ensures that improvements in correctness or in “Aha!” prevalence reflect changes in the model’s internal state rather than changes in instructions or graders. Figures
+6 ,
+7 ,
+8 show our verbatim system level prompts.
+
+A.4
+Model Training (GRPO Setup)
+
+Task / Model
+
+Dataset
+
+Key GRPO settings
+
+Math
+ (1.5B Qwen)
+
+OpenR1–Math–220k
+
+LR
+5 ×
+10 −
+6 5\!\times\!10^{-6}
+; bs/dev=8;
+
+grad_acc=64; epochs=3;
+
+num_gens=4; max_prompt=512;
+
+max_completion=750; reward=
+pure_accuracy_math
+;
+
+KL target 0.07, init_KL 3.0
+
+Math
+ (7B Qwen)
+
+OpenR1–Math–220k
+
+LR
+5 ×
+10 −
+6 5\!\times\!10^{-6}
+; bs/dev=2;
+
+grad_acc=32; epochs=3;
+
+num_gens=4; max_prompt=450;
+
+max_completion=750; reward=
+pure_accuracy_math
+
+Math
+ (8B Llama 3.1)
+
+OpenR1–Math–220k
+
+LR
+5 ×
+10 −
+6 5\!\times\!10^{-6}
+; bs/dev=2;
+
+grad_acc=8; epochs=3;
+
+num_gens=4; max_prompt=450;
+
+max_completion=750; reward=
+pure_accuracy_math
+;
+
+PPO clip 0.10
+
+Xword
+ (1.5B Qwen)
+
+Guardian–Cryptonite (official split)
+
+LR
+1 ×
+10 −
+5 1\!\times\!10^{-5}
+; bs/dev=4;
+
+grad_acc=256; epochs=3;
+
+num_gens=8;
+return_reason
+=true;
+
+max_reason=275; max_completion=320;
+
+reward=
+pure_accuracy
+ (0/1 + shaping)
+
+RHour
+ (1.5B Qwen)
+
+Rush 4/5/6–balanced
+
+LR
+5 ×
+10 −
+6 5\!\times\!10^{-6}
+; bs/dev=4;
+
+grad_acc=64; epochs=3;
+
+num_gens=4;
+return_reason
+=true;
+
+max_prompt=3000; max_completion=300;
+
+reward=
+rush_solution_shaped
+
+Table 9:
+Per-domain GRPO run settings. Values shown are the
+run-time
+ choices from the YAML configs; optimizer, KL control, horizons, and logging match the overview text.
+
+Overview.
+
+We fine-tune instruction models (Qwen 2.5–1.5B, Qwen 2.5–7B, Llama 3.1–8B) with Group Relative Policy Optimization (GRPO)
+shao2024deepseekmathpushinglimitsmathematical
+, using task-specific, tag-constrained prompts that place private reasoning in
+<think>
+ and a single, machine-checkable response in
+<answer>
+ (See App. §
+A.2
+).
+
+Rollout + training architecture.
+
+We use the OpenR1 GRPO trainer
+(
+openr1
+)
+ with a vLLM inference server for on-policy rollouts and
+accelerate
++DeepSpeed ZeRO-3 for training. A dedicated GPU hosts vLLM; the remaining GPUs run GRPO. Mixed precision is
+bf16
+ for training; vLLM runs
+fp16
+. DeepSpeed is configured with ZeRO-3, CPU offload for parameters/optimizer, and overlap-comm; the
+accelerate
+ configuration uses four to seven processes depending on available devices.
+
+Domain–specific reward functions.
+
+All rewards are per-sample and clipped to
+[0,1]
+[0,1]
+.
+
+•
+
+Xwords.
+ Exact match on the inner
+<answer>
+ (strict 0/1) plus two shaping signals: (i) a tiny “contains as a standalone word” bonus, scaled by a
+tag factor
+ (fraction of {
+<think>
+,
+</think>
+,
+<answer>
+,
+</answer>
+} present), and (ii) a “Xwords accuracy” term that linearly ramps with
+<think>
+ length and is multiplied by the same tag factor; optional enumeration checks reject length mismatches.
+
+•
+
+Math.
+ Requires the full tag template; the gold and predicted
+<answer>
+ are canonicalized (LaTeX/math normalization) and compared for exact equality (0/1).
+
+•
+
+RHour.
+ Composite score combining
+exact
+ (canonical token sequence),
+prefix
+ (longest common prefix vs. gold),
+solve
+ (shorter optimal solutions
+↑
+\uparrow
+), and a planning heuristic
+Φ
+\Phi
+ (distance/blockers decrease
+↑
+\uparrow
+); when a board is provided we legality-check and simulate moves, otherwise a gold-only variant supplies solve/prefix shaping. Defaults (used here):
+w
+exact
+=
+0.65 w_{\text{exact}}{=}0.65
+,
+w
+solve
+=
+0.20 w_{\text{solve}}{=}0.20
+,
+w
+prefix
+=
+0.10 w_{\text{prefix}}{=}0.10
+,
+w
+Φ
+=
+0.05 w_{\Phi}{=}0.05
+.
+
+Optimization and KL control.
+
+Across runs we use cosine LR schedules with warmup, clipped advantages/values, and KL control targeting
+KL
+target
+≈
+0.07 \text{KL}_{\text{target}}\!\approx\!0.07
+ via an adaptive coefficient (
+β
+\beta
+) with horizon
+50 50
+k and step size
+0.15 0.15
+; value loss weight
+0.25 0.25
+; PPO/GRPO clip ranges
+0.05 0.05
+–
+0.10 0.10
+ depending on run; horizon
+1024 1024
+;
+γ
+=
+0.99 \gamma{=}0.99
+,
+λ
+GAE
+=
+0.95 \lambda_{\text{GAE}}{=}0.95
+.
+
+Prompt templates and budgets.
+
+We use fixed system prompts per domain that enforce exact formatting (no deviation), encourage compact reasoning, and cap
+<think>
+/
+<answer>
+ token budgets. This standardization lets the rewards remain reliable and comparable across checkpoints and temperatures.
+
+Per-domain GRPO configurations.
+
+Table
+9 summarizes only the run-level choices that differ by domain/model; all other defaults follow the overview above.
+
+DeepSpeed/Accelerate settings.
+
+We train with ZeRO-3 (stage 3), CPU offload for parameters and optimizer, and the standard single-node launcher; the provided
+accelerate
+ config sets
+bf16
+ mixed precision and
+num_processes
+ according to available training GPUs (vLLM occupies a dedicated device).
+
+Operational notes.
+
+Jobs were launched under Slurm on 8-GPU nodes, using a mix of NVIDIA A100 and RTX A6000 GPUs. For the
+Qwen2.5-1.5B
+ runs, we reserve
+one
+ GPU for vLLM rollouts and use the remaining GPUs for
+accelerate
+ training. For the larger
+Qwen2.5-7B
+ and
+Llama 3.1-8B
+ runs, we reserve
+two
+ GPUs for vLLM to support higher-throughput rollouts, with the remaining GPUs used for training. Per-run environment/caching settings and health-checks follow the batch script. The trainer logs per-step KL, policy/critic losses, and gradient norms; checkpoints are saved every 50 steps and pushed locally/HF Hub per config.

@@ -1,0 +1,209 @@
+5 Experimental Setup
+
+We conduct all of our experiments zero-shot on multi-choice question answering (MCQA) datasets.
+
+Models.
+
+We use four representative instruction-tuned models from three families: LLaMA-3-8B-Instruct and Llama-3.2-3B-Instruct
+touvron2023llama
+, Mistral-7B-Instruct-v0.2
+jiang2023mistral
+, and Phi-3-mini-4k-Instruct
+DBLP:journals/corr/abs-2404-14219
+.
+
+Datasets.
+
+We employ five diverse multi-hop datasets: OpenbookQA
+(Book;
+mihaylov-etal-2018-suit
+)
+, ARC-Challenge
+(Arc-ch;
+DBLP:journals/corr/abs-1803-05457
+)
+, StrategyQA
+(SQA;
+geva2021did
+)
+, TruthfulQA
+(TQA;
+lin2022truthfulqa
+)
+ and the Sports understanding subtask of BigBench-Hard
+srivastava2023bbh
+.
+These datasets span a variety of domains, necessitating knowledge of science, sports, geography, health, law, finance and logic.
+We choose MCQA as the target task as it simplifies analysis of how the models’ predictive distribution shifts after unlearning due to availability of alternative answers.
+To retain comparable sizes, and due to expensive runtime of unlearning each CoT step, we select a subset of
+250 250
+ instances from the test split of each dataset to balance the question sources.
+6 6
+6 For SQA, we use instances from the validation split due to the availability of labels. Sports has a total of
+248 248
+ instances.
+
+Details of datasets and models are in
+Appendix
+˜
+C
+.
+
+Generating CoTs.
+
+We use a two-step prompting approach
+bowman2022scalable
+;
+lanham2023measuring
+, where the model is first prompted to generate the CoT based on the question and answer options, and subsequently prompted to complete the answer letter based on the question, answer choices, and the CoT.
+We use greedy decoding when generating, producing a single CoT for each instance. For the prompts used, see
+Appendix
+˜
+D
+.
+
+Preprocessing CoTs.
+
+To obtain fine-grained information on faithfulness of individual steps, we segment each CoT into sentences using NLTK
+(
+bird2006nltk
+)
+. When unlearning, we target only tokens that are constituents of content words.
+7 7
+7 Concretely, we select noun, proper noun, verb, adjective, and number tokens, after running part-of-speech tagging with SpaCy
+en_core_web_sm
+ (
+https://spacy.io/
+).
+
+We opt for this approach so as to not unlearn the capability to verbalize reasoning from the models, but only knowledge within the steps, which we frequently observed prior to making this modification.
+
+ARC-challenge
+
+OpenbookQA
+
+Sports
+
+StrategyQA
+
+TruthfulQA
+
+Model
+
+fur
+
++mistake
+
+fur
+
++mistake
+
+fur
+
++mistake
+
+fur
+
++mistake
+
+fur
+
++mistake
+
+LLaMA-8B
+
+39.6 \mathbf{39.6}
+
+16.2 16.2
+
+44.3 \mathbf{44.3}
+
+18.0 18.0
+
+29.3 29.3
+
+30.0 30.0
+
+30.7 30.7
+
+32.3 \mathbf{32.3}
+
+68.5 \mathbf{68.5}
+
+25.0 25.0
+
+LLaMA-3B
+
+64.4 \mathbf{64.4}
+
+31.1 31.1
+
+68.6 \mathbf{68.6}
+
+45.9 45.9
+
+64.9 64.9
+
+65.5 65.5
+
+71.0 \mathbf{71.0}
+
+48.3 48.3
+
+85.7 \mathbf{85.7}
+
+32.9 32.9
+
+Mistral-2
+
+40.0 \mathbf{40.0}
+
+31.6 31.6
+
+60.0 \mathbf{60.0}
+
+35.7 35.7
+
+45.3 \mathbf{45.3}
+
+36.8 36.8
+
+48.2 \mathbf{48.2}
+
+30.2 30.2
+
+44.4
+
+30.3 30.3
+
+Phi-3
+
+39.1 \mathbf{39.1}
+
+27.6 27.6
+
+46.2 \mathbf{46.2}
+
+38.5 38.5
+
+54.0 \mathbf{54.0}
+
+52.2 52.2
+
+22.2 22.2
+
+49.7 \mathbf{49.7}
+
+29.1 29.1
+
+31.9 \mathbf{31.9}
+
+Table 2:
+% of
+instances
+ where adding mistakes or unlearning a reasoning step changes the model’s answer. Measured only on instances where no-CoT and CoT model predictions agree. Scores over
+1 %
+1\%
+ higher in
+bold
+.

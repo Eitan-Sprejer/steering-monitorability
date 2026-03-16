@@ -1,0 +1,803 @@
+3 Proposed Method: Obj-Disco
+
+Our method takes inspiration from the Matching Pursuit algorithm
+(Mallat & Zhang,
+1993 )
+, which greedily builds up a sparse approximation of a signal. In our setting, the “signal” is the underlying reward function
+R
+∗
+R^{*}
+ that guides the model’s alignment, and our goal is to approximate it with the function
+𝒞
+\mathcal{C}
+ over a small set of
+k
+k
+ interpretable objectives
+R
+^
+\hat{R}
+ (Equation
+8 ). To solve this optimization problem, we propose an iterative greedy algorithm that, at each iteration
+i
+i
+, selects the single objective that provides the maximum marginal decrease in our objective error:
+
+min
+r
+n
+∈
+ℛ
+⁡
+[
+Obj-Error
+​
+(
+R
+^
+i
+−
+1 ∪
+{
+r
+n
+}
+,
+R
+∗
+)
+−
+Obj-Error
+​
+(
+R
+^
+i
+−
+1 ,
+R
+∗
+)
+]
+\min_{r_{n}\in\mathcal{R}}[\text{Obj-Error}(\hat{R}^{i-1}\cup\{r_{n}\},R^{*})-\text{Obj-Error}(\hat{R}^{i-1},R^{*})]
+
+(9)
+
+where
+R
+^
+i
+−
+1 \hat{R}^{i-1}
+ is the set of estimated objectives from the previous iteration. Minimizing Equation
+9 is equivalent to finding the objective
+r
+n
+r_{n}
+ that best explains the current residuals, which corresponds to solving the following problem:
+
+r
+n
+∗
+=
+arg
+​
+min
+r
+n
+∈
+ℛ
+⁡
+1 𝒯
+​
+∑
+t
+=
+1 𝒯
+𝔼
+x
+,
+y
+∼
+π
+θ
+t
+​
+[
+ℰ
+​
+(
+x
+,
+y
+;
+R
+^
+i
+−
+1 ∪
+{
+r
+n
+}
+)
+]
+r_{n}^{*}=\operatorname*{arg\,min}_{r_{n}\in\mathcal{R}}\frac{1}{\mathcal{T}}\sum_{t=1}^{\mathcal{T}}\mathbb{E}_{x,y\sim\pi_{\theta_{t}}}\left[\mathcal{E}(x,y;\hat{R}^{i-1}\cup\{r_{n}\})\right]
+
+(10)
+
+Intuitively, this seeks the objective
+r
+n
+∗
+r_{n}^{*}
+ that best approximates the unexplained differences between the true and predicted objectives.
+
+Solving the above directly presents two significant challenges. First, a direct search for
+r
+n
+∗
+r_{n}^{*}
+ over the discrete text space
+ℛ
+\mathcal{R}
+ is hard. Second, verifying that a candidate objective
+r
+n
+r_{n}
+ is valid requires ensuring it meets our desiderata from Section
+2 , namely being human-interpretable and following a predictable trend, which are non-trivial properties to assess. Our algorithm addresses these two challenges with a two-step process at each iteration
+i
+i
+:
+
+1. Objectives Discovery
+.
+Searching over the discrete text space
+ℛ
+\mathcal{R}
+ is hard. Section
+3.1 addresses this by using a powerful “proposer” LLM to analyze model response trajectories and propose a small, high-quality set of candidate objectives
+R
+cand
+i
+⊂
+ℛ
+R^{i}_{\text{cand}}\subset\mathcal{R}
+. This process is guided by a principled, sampling-based strategy to select the most informative samples for the LLM to analyze.
+
+2. Objectives Verification
+. Verifying the properties of human-interpretability and trend-predictability typically require human input, which is expensive. Section
+3.2 instead leverages LLM-as-a-Judge
+(Zheng et al.,
+2023 )
+ to validate the best candidate from
+ℛ
+cand
+i
+\mathcal{R}^{i}_{\text{cand}}
+ against our desiderata. The algorithm concludes once
+|
+R
+^
+i
+|
+=
+k
+|\hat{R}^{i}|=k
+.
+
+3.1 Step 1: Objectives Discovery
+
+To efficiently search the discrete space
+ℛ
+\mathcal{R}
+ for the next objective, we employ a proposer LLM to hypothesize candidates based on informative response trajectories. We structure this discovery process into three phases: identifying the most informative samples to analyze, using them to generate candidate objectives, and then greedily selecting the optimal candidate.
+
+Informative Samples Identification.
+
+Equation
+10 aims to identify the objective
+r
+n
+r_{n}
+ that minimizes the residual error across the entire data distribution. To guide the discovery of such a generalizable objective, we direct the proposer’s attention toward regions of the input space where the current approximation is most deficient. Specifically, we seek a set of inputs that yields the highest
+average
+ residual error. Maximizing the average ensures that the discovered objective addresses systematic behavioral trends unexplained by the current set
+R
+^
+i
+−
+1 \hat{R}^{i-1}
+, rather than overfitting to isolated outliers. Given the finite context window of the proposer LLM, we constrain this discovery set
+𝕏
+disc
+\mathbb{X}_{\text{disc}}
+ to a fixed cardinality
+ν
+\nu
+. Formally, we seek to solve the following maximization:
+
+𝕏
+disc
+=
+argmax
+𝕏
+⊂
+𝒳
+,
+|
+𝕏
+|
+=
+ν
+1 𝒯
+​
+∑
+t
+=
+1 𝒯
+𝔼
+x
+∼
+𝕏
+,
+y
+∼
+π
+θ
+t
+​
+[
+ℰ
+​
+(
+x
+,
+y
+;
+R
+^
+i
+−
+1 )
+]
+\mathbb{X}_{\text{disc}}=\operatorname*{argmax}_{\mathbb{X}\subset\mathcal{X},|\mathbb{X}|=\nu}\dfrac{1}{\mathcal{T}}\sum_{t=1}^{\mathcal{T}}\mathbb{E}_{x\sim\mathbb{X},y\sim\pi_{\theta_{t}}}[\mathcal{E}(x,y;\hat{R}^{i-1})]
+
+(11)
+
+Finding the exact solution to Equation
+11 over the full dataset is computationally prohibitive. We therefore approximate this via a scalable two-stage process. First, we draw a larger random candidate pool
+𝕏
+cand
+⊂
+𝒳
+\mathbb{X}_{\text{cand}}\subset\mathcal{X}
+ of size
+N
+cand
+N_{\text{cand}}
+. This stochastic step avoids the cost of evaluating the entire input space while maintaining exploration coverage. Second, we compute the trajectory-averaged residuals for these candidates and select the top
+ν
+\nu
+ instances to form
+𝕏
+disc
+\mathbb{X}_{\text{disc}}
+.
+
+Candidate Objectives Discovery.
+
+Using the identified set of informative samples
+𝕏
+disc
+\mathbb{X}_{\text{disc}}
+, we then prompt the proposer LLM to generate our candidate objectives
+ℛ
+cand
+i
+\mathcal{R}^{i}_{\text{cand}}
+. To have control over the granularity of discovered objectives, we split the set of
+ν
+\nu
+ inputs in
+𝕏
+disc
+\mathbb{X}_{\text{disc}}
+ into batches of size
+b
+b
+ and provide
+b
+b
+ full response trajectories to the proposer LLM at a time. To encourage the discovery of novel and non-redundant axes, we provide the already-discovered objectives
+R
+^
+i
+−
+1 \hat{R}^{i-1}
+ as part of the prompt’s context. The proposer LLM is then prompted to describe the primary behavioral trend observed in the samples. The prompt we use is shown in Figure
+7 . The union of all unique natural language objectives proposed across the inputs forms our candidate objectives set
+ℛ
+cand
+i
+\mathcal{R}^{i}_{\text{cand}}
+.
+
+Objectives Selection.
+
+Finally, we identify the optimal objective
+r
+n
+i
+,
+∗
+r_{n}^{i,*}
+ from the candidate set
+ℛ
+cand
+i
+\mathcal{R}^{i}_{\text{cand}}
+ by solving Equation
+9 restricted to these proposed candidates. The selected objective is then passed to the
+Objectives Verification
+ stage.
+
+3.2 Step 2: Objectives Verification
+
+We now check the validity of the selected objective
+r
+n
+i
+,
+∗
+r_{n}^{i,*}
+ by determining whether it is human-interpretable and follows a predictable trend, as described in Section
+2 .
+
+Human-Interpretability Verification.
+ To ensure a robust and representative validation of human-interpretability, we compute the human-aligned score
+s
+h
+​
+(
+x
+,
+y
+|
+n
+)
+s_{h}(x,y|n)
+ in Equation
+1 by aggregating judgments from an ensemble of LLM-as-a-Judge models. This approach mitigates the idiosyncratic biases of any single model and captures a more generalizable consensus
+(Sun et al.,
+2025 )
+. Within the set of evaluator models,
+ℳ
+e
+​
+v
+​
+a
+​
+l
+=
+{
+m
+1 ,
+…
+,
+m
+ℓ
+}
+\mathcal{M}_{eval}=\{m_{1},...,m_{\ell}\}
+, each evaluator
+m
+m
+ is provided with a standardized scoring template, including the objective description
+n
+n
+, input
+x
+x
+, and response
+y
+y
+, and is instructed to output a numerical score. The final human-aligned score is computed as:
+
+s
+h
+​
+(
+x
+,
+y
+|
+n
+)
+=
+1 |
+ℳ
+e
+​
+v
+​
+a
+​
+l
+|
+​
+∑
+m
+∈
+ℳ
+e
+​
+v
+​
+a
+​
+l
+s
+m
+​
+(
+x
+,
+y
+|
+n
+)
+s_{h}(x,y|n)=\frac{1}{|\mathcal{M}_{eval}|}\sum_{m\in\mathcal{M}_{eval}}s_{m}(x,y|n)
+
+The objective is then deemed human-interpretable if Equation
+1 is satisfied. Additional details in Appendix
+A.3.2
+.
+
+Trend-Predictability Verification.
+ To validate the criterion of trend-predictability, we analyze whether the objective’s expected scores across the model sequence follow a predictable pattern (Equation
+4 ). We iteratively fit the sequence of scores
+{
+V
+n
+1 ​
+(
+r
+)
+,
+…
+,
+V
+n
+𝒯
+​
+(
+r
+)
+}
+\{V_{n}^{1}(r),...,V_{n}^{\mathcal{T}}(r)\}
+ to a predefined class of trend functions
+ℱ
+trend
+\mathcal{F}_{\text{trend}}
+. Following established literature on parametric learning curves
+(Viering & Loog,
+2022 )
+, we populate
+ℱ
+trend
+\mathcal{F}_{\text{trend}}
+ with functions that model common optimization behaviors, specifically: (1) linear growth, (2) logarithmic growth, (3) power law with an asymptote, and (4) exponential saturation. An objective is deemed valid if its trajectory can be fit by any function in
+ℱ
+trend
+\mathcal{F}_{\text{trend}}
+ such that the error bound in Equation
+4 is satisfied. While we employ these specific forms to capture standard learning behaviors, our framework is agnostic to the choice of
+ℱ
+trend
+\mathcal{F}_{\text{trend}}
+ and can accommodate other function classes.
+
+Finally, if both criteria are satisfied, we set
+R
+^
+i
+=
+R
+^
+i
+−
+1 ∪
+{
+r
+n
+i
+,
+∗
+}
+\hat{R}^{i}=\hat{R}^{i-1}\cup\{r_{n}^{i,*}\}
+. If any of the criteria are not met, we proceed with
+R
+^
+i
+=
+R
+^
+i
+−
+1 \hat{R}^{i}=\hat{R}^{i-1}
+ and go to the next iteration. This ensures that only objectives that exhibit human-interpretability and trend-predictability are included in our final set of discovered objectives. Additional details in Appendix
+A.3
+.
+
+3.3 Exemplar-Based Objective Explanations
+
+To help users understand the behavior of a discovered objective
+r
+n
+r_{n}
+, Obj-Disco presents explanations in the form of a small set of input-response trajectory samples illustrative of that objective, which we refer to as Objective Explanations (or OEs). As manual inspection of the entire dataset would be cognitively prohibitive, our goal is to select a sparse subset of points that maintains as much explanatory utility as possible. We achieve this by leveraging the notion of
+diminishing returns
+: the marginal utility of adding a sample decreases if similar samples are already represented in the set. This notion is formally encapsulated by the property of
+submodularity
+, which allows us to design optimization algorithms with strong theoretical guarantees
+(Nemhauser et al.,
+1978 )
+ (Appendix
+A.3.3
+).
+
+We construct the OE set
+E
+E
+ based on two desiderata. First,
+Trend Fidelity
+: the selected samples must closely follow the global behavioral trend identified for
+r
+n
+r_{n}
+, ensuring the alignment effect is visually consistent. Second,
+Diversity
+: the samples must cover distinct semantic clusters of the input space (e.g., coding, creative writing) to demonstrate that the objective is a general behavioral principle rather than an artifact of a specific domain.
+
+Formally, we define a sample trajectory
+ξ
+∈
+Ξ
+\xi\in\Xi
+ as the tuple containing an input prompt
+x
+x
+ and the sequence of model responses across the
+𝒯
+\mathcal{T}
+ checkpoints:
+ξ
+=
+(
+x
+,
+y
+π
+θ
+1 ,
+…
+,
+y
+π
+θ
+𝒯
+)
+\xi=(x,y_{\pi_{\theta_{1}}},\dots,y_{\pi_{\theta_{\mathcal{T}}}})
+. Given the set of all available trajectories
+Ξ
+\Xi
+, we aim to select a subset
+E
+⊂
+Ξ
+E\subset\Xi
+ subject to a cardinality constraint
+|
+E
+|
+≤
+κ
+|E|\leq\kappa
+, where
+κ
+\kappa
+ is a small integer (e.g., 5) to ensure the OE remains manageable for human inspection.
+
+Trend Fidelity
+: We quantify how well a specific sample trajectory
+ξ
+\xi
+ exemplifies the global trend
+f
+∗
+​
+(
+t
+)
+f^{*}(t)
+ (defined in Equation
+3 ) by adapting Equation
+4 and calculating the squared L2-error between the sample’s objective scores
+u
+t
+=
+r
+n
+​
+(
+ξ
+x
+,
+ξ
+y
+π
+θ
+t
+)
+u_{t}=r_{n}(\xi_{x},\xi_{y_{\pi_{\theta_{t}}}})
+ and the global trend values. We convert this error into a similarity score using the following:
+
+fid
+​
+(
+ξ
+)
+=
+exp
+⁡
+(
+−
+∑
+t
+=
+1 𝒯
+(
+u
+t
+−
+f
+∗
+​
+(
+t
+)
+)
+2 )
+\text{fid}(\xi)=\exp\left(-\sum_{t=1}^{\mathcal{T}}(u_{t}-f^{*}(t))^{2}\right)
+
+(12)
+
+Following this, we define the total fidelity of the OE as a modular function:
+f
+fid
+​
+(
+E
+)
+=
+∑
+ξ
+∈
+E
+fid
+​
+(
+ξ
+)
+f_{\text{fid}}(E)=\sum_{\xi\in E}\text{fid}(\xi)
+.
+
+Diversity
+: To ensure semantic coverage, we first partition the input space
+Ξ
+\Xi
+ into
+m
+m
+ semantic clusters
+𝒫
+=
+{
+P
+1 ,
+…
+,
+P
+m
+}
+\mathcal{P}=\{P_{1},\dots,P_{m}\}
+ (e.g., via K-Means on prompt embeddings). We employ a diversity function explicitly designed to capture diminishing returns. Instead of simply counting samples, we sum the square roots of the counts of selected items per partition. Because the square root function is concave, the marginal gain of adding a sample from a specific cluster decreases as more samples from that cluster are added. This formulation is known to be monotone submodular
+(Prasad et al.,
+2014 ; Tschiatschek et al.,
+2014 )
+:
+
+f
+div
+​
+(
+E
+)
+=
+∑
+j
+=
+1 m
+|
+E
+∩
+P
+j
+|
+f_{\text{div}}(E)=\sum_{j=1}^{m}\sqrt{|E\cap P_{j}|}
+
+(13)
+
+The final objective is a convex combination parameterized by
+λ
+∈
+[0,1]
+\lambda\in[0,1]
+:
+F
+​
+(
+E
+)
+=
+(
+1 −
+λ
+)
+​
+f
+fid
+​
+(
+E
+)
++
+λ
+​
+f
+div
+​
+(
+E
+)
+F(E)=(1-\lambda)f_{\text{fid}}(E)+\lambda f_{\text{div}}(E)
+. Since the property of submodularity is closed under convex combinations, the total objective
+F
+​
+(
+E
+)
+F(E)
+ is monotone submodular. Consequently, maximizing
+F
+​
+(
+E
+)
+F(E)
+ under a cardinality constraint can be solved using the standard greedy algorithm (Algorithm
+1 ) with a theoretical guarantee of achieving at least
+(
+1 −
+1 /
+e
+)
+(1-1/e)
+ of the optimal solution
+(Nemhauser et al.,
+1978 )
+. Additional details in Appendix
+A.3.3
+.

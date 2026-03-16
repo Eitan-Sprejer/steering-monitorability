@@ -1,0 +1,420 @@
+3 Defining and measuring CoT monitorability of large reasoning models
+
+In this section, we introduce the key concepts of LRMs and the (§
+3.1 ) as well as the definitions and metrics employed to measure CoT monitorability (§
+3.2 ).
+
+3.1 Preliminary
+
+LRM Reasoning Format
+ Given a query
+x
+​
+D
+x\in D
+, we define the full response of an LRM
+F
+F
+ to
+x
+x
+ as:
+
+F
+​
+(
+x
+)
+=
+Concat
+⁡
+(
+t
+r
+,
+t
+a
+,
+r
+,
+a
+)
+F(x)=\operatorname{Concat}\Big(\hbox{\pagecolor{lightMint}$\displaystyle t^{\mathrm{r}}$},\hbox{\pagecolor{lightBrown}$\displaystyle t^{\mathrm{a}}$},\hbox{\pagecolor{lightLavender}$\displaystyle r$},\hbox{\pagecolor{lightPeach}$\displaystyle a$}\Big)
+
+where
+t
+t
+ denotes the model’s internal reasoning trace, typically enclosed between special tokens like
+<think>
+ and
+</think>
+
+(
+deepseekai2025deepseekr1incentivizingreasoningcapability
+;
+qwen3
+)
+, this
+t
+t
+ can be further split into reflective reasoning steps
+t
+r
+t^{\text{r}}
+ and a preliminary conclusion
+t
+a
+t^{\text{a}}
+.
+r
+r
+ corresponds to the externalized CoT reasoning following
+</think>
+ and preceding the final decision, while
+a
+a
+ represents the model’s conclusive answer or action. Typically, the internal reasoning
+t
+r
+t^{\text{r}}
+ contains the model’s complete trajectory, including generating an initial answer, performing self-correction and self-reflection, as well as exploring alternative solutions using an anthropomorphic tone
+(
+deepseekai2025deepseekr1incentivizingreasoningcapability
+;
+yang2025understandingahamomentsexternal
+)
+. In the externalized response stage
+r
+r
+, the model presents a more structured step-by-step solution before providing the final answer
+a
+a
+.
+
+Formalizing Faithfulness and Monitorability.
+
+We ground our definitions in the causal influence of injected cues. Let
+Y
+cue
+​
+{
+0 ,
+1 }
+Y_{\mathrm{cue}}\in\{0,1\}
+ be a binary random variable indicating whether the model’s final answer
+a
+a
+ is causally influenced by a perturbation cue
+c
+c
+ (i.e., the answer flips to the cued option). Let
+V
+​
+{
+0 ,
+1 }
+V\in\{0,1\}
+ indicate whether the model explicitly verbalizes the cue in its reasoning (
+t
+t
+ or
+r
+r
+).
+We posit an
+Idealized CoT
+ as a reasoning process where the verbalized causal factors perfectly match the true causal factors driving the decision. Deviation from this ideal allows us to define
+unfaithfulness
+ as the discrepancy between causal dependence (
+Y
+cue
+Y_{\mathrm{cue}}
+) and verbalized dependence (
+V
+V
+).
+Specifically, we are interested in cases where
+Y
+cue
+=
+1 Y_{\mathrm{cue}}=1
+ (causal influence exists) but
+V
+=
+0 V=0
+ (it is not admitted).
+Similarly, for monitor reliability, let
+M
+​
+{
+0 ,
+1 }
+M\in\{0,1\}
+ indicate whether a monitor flags the output as misbehaving. We can thus formalize monitor performance using standard probabilistic definitions, such as False Negatives,
+Pr
+⁡
+(
+M
+=
+0 ​
+\mid
+​
+Y
+cue
+=
+1 )
+\Pr(M=0\mid Y_{\mathrm{cue}}=1)
+, and False Positives,
+Pr
+⁡
+(
+M
+=
+1 ​
+\mid
+​
+Y
+cue
+=
+0 )
+\Pr(M=1\mid Y_{\mathrm{cue}}=0)
+.
+
+3.2 Measuring CoT Monitorability
+
+Starting from the two key challenges in monitoring LRM misbehavior introduced in §
+1 —
+Unfaithful Explanations
+ and
+Monitor Reliability
+, this section operationalizes the formal concepts defined above. As discussed in §
+2.1 , frontier LRMs’ misbehavior is often implicit. To establish ground truth labels for our binary variables
+Y
+cue
+Y_{\mathrm{cue}}
+,
+V
+V
+, and
+M
+M
+, we utilize an adversarial prompt setup. We inject
+perturbation cues
+
+c
+c
+ into prompts
+p
+c
+=
+(
+c
+,
+x
+)
+p_{c}=(c,x)
+, where
+c
+c
+ biases the model toward an
+incorrect
+ answer (e.g., a misleading user suggestion). This allows us to strictly observe causal influence. All cues are detailed in Appendix
+A.1
+ Table
+3 .
+
+For the unfaithful explanations challenge, we begin by measuring two basic properties: (i) the
+cue influence rate
+, i.e., how often the model changes its answer to the
+cued
+ answer when a cue is injected in prompts, and (ii) the
+verbalization rate
+, i.e., how often the model explicitly mentions the cue use in its self-explanation, regardless of whether its answer changes. We use an LLM-based verbalization judge to measure whether models explicitly verbalize the reference to cues in their self-explanations, similar to prior work
+(
+turpin2025teaching
+)
+. The full prompt is provided in Appendix
+B
+. This setup allows us to disambiguate cases where cues affect reasoning but are not verbally acknowledged. Formally, let
+V
+=
+1 V=1
+ indicate that the model explicitly references the cue in either internal reasoning
+(
+t
+r
+,
+t
+a
+)
+(t^{\mathrm{r}},t^{\mathrm{a}})
+ or external CoT
+r
+r
+, and
+V
+=
+0 V=0
+ otherwise. This clarifies that verbalization is treated as a binary random variable across the full reasoning trace.
+
+Formally, we define the
+cue influence rate
+ for the final answer
+a
+a
+ as
+CIR
+a
+\text{CIR}_{a}
+, measuring how often cues alter model responses, and the
+answer keep rate
+ as
+AKR
+a
+\text{AKR}_{a}
+, measuring how often models maintain their original answers despite cue injection. For verbalization rate, we denote the rate as
+VR
+r
+\text{VR}_{r}
+ for final response and
+VR
+t
+\text{VR}_{t}
+ for internal reasoning. The overall verbalization rate
+VR
+ is then computed as
+VR
+t
++
+VR
+r
+−
+VR
+t
+​
+VR
+r
+\text{VR}_{t}+\text{VR}_{r}-\text{VR}_{t}\cdot\text{VR}_{r}
+, which captures whether the model verbalizes cue usage in either its reflective reasoning steps or its final response. Formally, let
+V
+=
+1 V=1
+ indicate that the model explicitly references the cue in either internal reasoning
+(
+t
+r
+,
+t
+a
+)
+(t^{\mathrm{r}},t^{\mathrm{a}})
+ or external CoT
+r
+r
+, and
+V
+=
+0 V=0
+ otherwise. This clarifies that verbalization is treated as a binary random variable across the full reasoning trace.
+
+We provide complete mathematical formulations of all metrics in Appendix
+A.3
+. Based on these quantities, we further define two metrics that are closely related to models’ practical performance and safety:
+
+Robustness
+:
+AKR
+a
+​
+VR
+\text{AKR}_{a}\cdot\text{VR}
+ measures how often the model verbalizes cue references in its CoT but ultimately resists switching their original answer. A higher score indicates stronger robustness to cues, suggesting that the model can surface and reflect on the influence of cues without being misled by them. This metric is practically important because it evaluates the model’s ability to recognize and make visible potentially malicious triggers while avoiding being swayed by them during inference.
+
+Scheming
+:
+(
+1 −
+VR
+)
+​
+CIR
+a
+(1-\text{VR})\cdot\text{CIR}_{a}
+, originally introduced by
+turpin2025teaching
+, measures how often the model’s final answer is influenced by cues without making this influence explicit in its reasoning or final response. Intuitively, a model with high scheming values tends to
+hide
+ the influence of cues in its decision-making process. From a practical perspective, high scheming values suggest that the model can be vulnerable in adversarial settings: malicious actors may inject subtle, misleading cues that models exploit covertly without explicitly acknowledging their influence, thereby undermining transparency and trust in the reasoning process.
+
+To evaluate the second challenge, we assess how well the monitor variable
+M
+M
+ aligns with the ground truth misbehavior
+Y
+cue
+Y_{\mathrm{cue}}
+. We assume the "misbehavior" to be detected is the model succumbing to the misleading cue. We introduce the
+Monitor Flagged Rate
+ (
+MFR
+=
+Pr
+⁡
+(
+M
+=
+1 )
+\text{MFR}=\Pr(M=1)
+). To comprehensively understand the monitor’s effectiveness across different scenarios, we also define two complementary metrics:
+
+Effective Escaping Misbehavior Rate (
+EEMR
+)
+:
+(
+1 −
+MFR
+)
+​
+CIR
+a
+(1-\text{MFR})\cdot\text{CIR}_{a}
+ measures the proportion of cases where the model’s final answer is influenced and changed to the cued answer, but the monitor fails to flag this behavior. A higher
+EEMR
+ indicates a higher false negative rate of our monitor, meaning harmful cue-driven behaviors
+escape
+ detection. Practically, this highlights potential security vulnerabilities, as it shows how often unsafe or adversarial manipulations could pass unnoticed through the misbehavior monitor. This directly corresponds to the false-negative probability
+Pr
+⁡
+(
+M
+=
+0 ,
+Y
+cue
+=
+1 )
+\Pr(M=0,\,Y_{\mathrm{cue}}=1)
+.
+
+Over-Sensitivity of Monitor (
+OSM
+)
+:
+MFR
+AKR
+a
+\text{MFR}\cdot\text{AKR}_{a}
+ measures the proportion of cases where the monitor flags the output as problematic even though the model successfully resists the cue influence. A higher OSM suggests that the monitor is excessively sensitive. In practice, this reduces usability and trustworthiness, as frequent false alarms can cause unnecessary interventions, increase computational costs, and erode user confidence in the system. Formally, this corresponds to the false-positive probability
+Pr
+⁡
+(
+M
+=
+1 ,
+Y
+cue
+=
+0 )
+\Pr(M=1,\,Y_{\mathrm{cue}}=0)
+.

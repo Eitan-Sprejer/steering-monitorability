@@ -1,0 +1,310 @@
+Appendix A
+Background on Machine Unlearning
+
+Motivated by the need to erase sensitive information from machine learning models
+(
+cao2015forget
+;
+harding2019understanding
+;
+ippolito2023preventing
+)
+, the field of machine unlearning emerged as an efficient alternative to filter-then-retrain-based approaches
+(
+neel2021descent
+;
+jang2023unlearning
+;
+eldan2023harry
+;
+liu2024rethinking
+,
+inter alia
+)
+.
+Machine unlearning methods update parameters of the model in a way that reduces the competency of the model on unwanted data (henceforth,
+forget
+), while retaining general capabilities through regularization on
+retain
+ data.
+Such methods decrease token probabilities on the
+forget
+ data by gradient-based approaches
+(
+jang2023unlearning
+;
+eldan2023harry
+;
+gandikota2024erasing
+;
+li2024wmdp
+;
+zhang2024npo
+)
+ or directly updating parameters
+(
+meng2022locating
+;
+meng2023memit
+;
+wu2023depn
+;
+ashuach2024revs
+)
+.
+
+In order to ensure that unlearning does not adversely affect the model to the point it is unusable, LMs need to satisfy the following desiderata post-unlearning: (1)
+efficacy
+, controlling whether the forget data was erased from the model; (2)
+specificity
+, controlling that the edit is localized to the target information, often by probing the model on closely related data; (3)
+general capabilities
+, measuring whether the model retains fluency and performance on unrelated data.
+
+Negative Preference Optimization.
+
+In this work, we use a preference-optimization based unlearning method: negative preference optimization
+(NPO;
+zhang2024npo
+)
+.
+The core idea underpinning NPO is rooted in gradient ascent. The initial model
+π
+𝒟
+\pi_{\mathcal{D}}
+ is trained on a mixture of wanted and unwanted data
+𝒟
+=
+𝒟
+F
+​
+G
+∪
+𝒟
+R
+​
+T
+\mathcal{D}=\mathcal{D}_{FG}\cup\mathcal{D}_{RT}
+.
+Our goal is to eliminate unwanted information
+𝒟
+F
+​
+G
+\mathcal{D}_{FG}
+ from the model. Therefore, applying the reverse language modeling objective on the forget data:
+
+ℒ
+GA
+​
+(
+θ
+)
+=
+𝔼
+𝒟
+FG
+​
+[
+log
+​
+(
+π
+θ
+​
+(
+y
+|
+x
+)
+)
+]
+,
+\mathcal{L}_{\text{GA}}(\theta)=\mathbb{E}_{\mathcal{D}_{\text{FG}}}[\text{log}(\pi_{\theta}(y|x))],
+
+(6)
+
+would approximately revert the optimization, producing
+π
+𝒟
+R
+​
+T
+\pi_{\mathcal{D}_{RT}}
+.
+
+Applying gradient ascent in this way runs into two practical issues. Firstly, we often do not have access to the training dataset, and therefore neither to the unwanted data
+𝒟
+FG
+\mathcal{D}_{\text{FG}}
+. Secondly, the gradient ascent objective is unbounded by virtue of maximizing the next-token prediction loss, frequently resulting in catastrophic collapse
+(
+zhang2024npo
+)
+.
+Machine unlearning approaches resolve the first issue by approximating
+𝒟
+FG
+\mathcal{D}_{\text{FG}}
+ with a
+forget
+ set containing samples of unwanted data.
+NPO resolves the second issue by constraining that the policy (predictive distribution) of the unlearned model
+π
+θ
+\pi_{\theta}
+ should not diverge too far from a
+reference model
+
+π
+ref
+\pi_{\text{ref}}
+.
+In practice, the frozen base model is used as the reference (
+π
+ref
+=
+π
+𝒟
+\pi_{\text{ref}}=\pi_{\mathcal{D}}
+).
+
+The NPO loss is then defined as:
+
+ℒ
+NPO
+,
+β
+\displaystyle\mathcal{L}_{\text{NPO},\beta}
+
+(
+θ
+)
+=
+\displaystyle(\theta)=
+
+(7)
+
+2 β
+​
+𝔼
+𝒟
+FG
+​
+[
+log
+​
+(
+1 +
+(
+π
+θ
+​
+(
+y
+|
+x
+)
+π
+ref
+​
+(
+y
+|
+x
+)
+)
+β
+)
+]
+,
+\displaystyle\frac{2}{\beta}\mathbb{E}_{\mathcal{D}_{\text{FG}}}\left[\text{log}\left(1+\left(\frac{\pi_{\theta}(y|x)}{\pi_{\text{ref}}(y|x)}\right)^{\beta}\right)\right],
+
+where
+β
+>
+0 \beta>0
+ is the inverse temperature.
+This loss can be viewed as Direct Preference Optimization
+(DPO;
+DBLP:conf/nips/RafailovSMMEF23
+)
+ without the positive samples.
+In practice, along with the loss term in Eq. (
+7 ), NPO also constrains the KL divergence between the unlearned and reference models on
+retain
+ data in order to guarantee fluency, similar to other works
+(
+li2024wmdp
+;
+gandikota2024erasing
+)
+:
+
+𝒦
+RT
+=
+𝔼
+𝒟
+RT
+[
+D
+KL
+(
+π
+θ
+(
+⋅
+|
+x
+)
+∥
+π
+ref
+(
+⋅
+|
+x
+)
+)
+]
+.
+\mathcal{K}_{\text{RT}}=\mathbb{E}_{\mathcal{D}_{\text{RT}}}\left[D_{\text{KL}}\big(\pi_{\theta}(\cdot|x)\,\middle\|\,\pi_{\text{ref}}(\cdot|x)\big)\right].
+
+(8)
+
+As the KL divergence regularizer maintains that the unlearned model does not diverge from the reference, it does not introduce new information to the model.
+
+In our work, the
+forget
+ set consists of all tokens of a given content word from a CoT step as the output
+y
+y
+ to be forgotten, paired with the word’s preceding context as the input
+x
+x
+.
+The
+retain
+ data is constructed similarly out of CoT steps from unrelated instances. We alter a subset
+θ
+\theta
+ of the full model’s parameters by minimizing:
+
+ℒ
+=
+ℒ
+NPO
+,
+β
+​
+(
+θ
+)
++
+𝒦
+RT
+.
+\mathcal{L}=\mathcal{L}_{\text{NPO},\beta}(\theta)+\mathcal{K}_{\text{RT}}.
+
+(9)

@@ -1,0 +1,147 @@
+1 Introduction
+
+Figure 1
+:
+
+Monitoring CoT via Model Organism Interventions to Diagnose Pathologies. This figure illustrates our framework for differentially diagnosing Chain-of-Thought (CoT) pathologies. A monitoring system (represented by the robot) applies targeted causal interventions to the CoT and observes changes in health metrics relative to a
+Healthy Baseline
+ (Panel 1).
+Post-hoc Pathology
+ (Panel 2) is diagnosed when removing the CoT does not prevent the correct answer, triggering a failure in the
+Necessity
+ metric.
+Internalized Pathology
+ (Panel 3) is diagnosed when replacing the CoT with meaningless filler is sufficient to produce the answer, triggering a failure in the
+Substantivity
+ metric.
+Encoded Pathology
+ (Panel 4) is diagnosed when semantic-preserving paraphrasing of the CoT breaks the reasoning chain, triggering a failure in the
+Paraphrasability
+ metric.
+
+Reasoning models leverage additional inference-time computation in the form of a chain-of-thought (CoT) to arrive at better answers
+(Wei
+ et al.
+,
+2022 ; Jaech
+ et al.
+,
+2024 ; Guo
+ et al.
+,
+2025 )
+. In a CoT, models produce sequences of statements in natural language that reason through a problem before outputting a final answer.
+CoT reasoning could present a valuable opportunity to monitor the behavior of AI systems: by casting light on the reasoning behind the answers that models produce, CoT monitoring can help to ensure that the model behaves in alignment with the developers’ intent
+(Greenblatt
+ et al.
+,
+2023 ; Korbak
+ et al.
+,
+2025 ; Arnav
+ et al.
+,
+2025 )
+.
+
+However, there are a number of challenges in using CoT for monitoring, which are already observable in current models. It has been shown that CoT traces often do not accurately reflect the true reasoning process by which the model produces its answer
+(Chen
+ et al.
+,
+2025 )
+. This phenomenon is often referred to in general terms as
+unfaithfulness
+
+(Barez
+ et al.
+,
+2025 )
+. Here, we focus on three specific issues with CoT that may compromise monitoring, terming them
+pathologies
+:
+
+1.
+
+Post-hoc rationalization
+, where models generate plausible reasoning traces backwards from predetermined answers, meaning the CoT is irrelevant to the true reasoning process and unsuitable for monitoring
+(Turpin
+ et al.
+,
+2023b
+)
+. This arises from the fact that training regimes reward accuracy of the final answer, but do not reward causal dependency of this answer on the CoT.
+
+2.
+
+Encoded reasoning
+, where the model encodes information in the CoT tokens in a way that is not understandable to a monitor
+(Roger and Greenblatt,
+2023 )
+. In particular, this may result from training regimes that place optimization pressure on the CoT directly
+(Skaf
+ et al.
+,
+2025 )
+.
+
+3.
+
+Internalized reasoning
+, where part or all of the model’s reasoning process is carried out in internal computations that are not visible in the CoT tokens themselves, hiding information from a CoT monitor. While this has thus far only been demonstrated in heavily fine-tuned model organisms, past works have shown conclusively that this behavior can arise
+(Pfau
+ et al.
+,
+2024 )
+.
+
+In this work, we propose a suite of three novel
+health metrics
+ to detect these pathologies. Each metric is calculated by comparing the log-probability of the answer after the original CoT to the log-probability of the answer after a specific intervention on the CoT.
+
+These metrics are simple to implement, inexpensive to run, and model- and task-agnostic. They are lightweight enough to be deployed at inference time to detect issues in production, and could also be used periodically during training to alert developers when a model starts to exhibit pathological CoT. Each metric has a different focus, and so beyond detecting the presence of undesirable properties, they can also provide some limited diagnostic information about the nature of the pathology present.
+
+To validate that our metrics can successfully detect the properties of interest, we create
+model organisms
+ of each of the above pathologies as test cases, using supervised fine tuning (SFT) and prompt engineering. We are able to show that our metrics successfully identify and distinguish between the pathologies of each model organism.
+
+The paper is structured as follows. We begin in
+Section
+˜
+2 by discussing previous work on the pathologies of CoT and on measuring its properties. In our methods, we describe the pathologies of interest (
+Section
+˜
+3.2 ), our metrics to detect them (
+Section
+˜
+3.4 ), and the model organisms produced to validate their diagnostic ability (
+Section
+˜
+3.3 ). In
+Section
+˜
+4 we show the results of our metrics on our model organisms, and qualitative examples showing that we successfully trained the model to elcicit each model organism. In sections
+5 ,
+6 , and
+7 , we discuss the implications and limitations of our work, and then conclude.
+
+1.1 Contributions
+
+Our paper makes the following contributions:
+
+1.
+
+We introduce three task-agnostic and computationally lightweight metrics for assessing the health of chain-of-thought (CoT) reasoning,
+Necessity
+,
+Paraphrasability
+, and
+Substantivity
+.
+
+2.
+
+We construct controlled “model organisms” of CoT pathologies by deliberately fine-tuning models to exhibit post-hoc rationalization, encoded reasoning, or internalized reasoning. These model organisms enable systematic evaluation of CoT diagnostic methods under known failure modes.
+
+3.
+
+We validate our metrics on these model organisms and show that pathological signatures emerge at different rates across training checkpoints and pathology types. This temporal heterogeneity suggests that monitoring CoT health over the course of training, rather than at a single checkpoint, is crucial for reliably diagnosing the monitorability of chain-of-thought reasoning.

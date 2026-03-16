@@ -1,0 +1,49 @@
+Appendix A
+Experimental process
+
+In this appendix, we describe in detail our experimental process for how we chose our environments and experiments. The environments showcased here were the only environments that we created—no unreported environments were explored in the work that led up to this paper. Note that we do test different prompt variations, and find that generalization from one environment to the next is robust to prompting changes (Appendix
+B
+).
+
+A.1
+Designing the held-out reward tampering environment
+
+First, we create the final held-out environment. Our desiderata are the following:
+
+1.
+
+We need something that the helpful-only model can do if we explicitly ask. This guarantees that performing the malicious behavior is not beyond the model’s capabilities.
+
+2.
+
+We need an environment where the specification gaming behavior is unambiguously misaligned, so that the helpful-only model never tampers without being prompted to do so. This means that any generalization to this task – even if malicious behavior is still rare – is a significant result.
+
+3.
+
+We prefer a setting which is fast to run and which can be evaluated automatically, because we need to run it a lot and we want the results to be low-noise.
+
+These three considerations led us to create the reward-tampering setting. When explicitly prompted with step by step instructions, the helpful-only model successfully tampers with the reward about one third of the time. This means it is at the limit of the model’s capabilities. With a more neutral prompt, however, the helpful-only model tampers with the reward zero times out of 100,000. Because the setting can be solved in only a few lines of code, and can be evaluated by simply running the reward function and unit tests after the model’s action, it is cheap to run and quick to evaluate.
+
+A.1.1
+Derisking experiments with few-shot prompting
+
+We need to choose a starting point for our curriculum. We know that current LLMs are sycophantic, so it is a form of specification gaming that occurs in real training pipelines. We choose the Anthropic sycophancy dataset because it does not require generating any new questions and has already been published. We take few-shot examples from the sycophancy setting and find that they do not cause the helpful-only model to edit its reward. We experiment with up to 4 few-shot examples, and with manually-written CoT reasoning in those few-shot examples. With manually written reasoning, which explicitly talks about aiming to maximize reward, we are able to get the model to tamper with its reward about 1/1000th of the time, but we cannot get generalization with real model samples in the sycophancy setting. This means we need to make intermediate settings.
+
+We create a simple example of the model using its tools to look up a birthday in a file. This does not contain any reward-centered language, but it does make the model a little better at using the tools. In later prompt-sensitivity experiments (Appendix
+B
+) we remove this example entirely and find that it is not necessary given the rest of the curriculum.
+
+To bridge the gap between the political sycophancy and reward-tampering environments, we create the insubordinate rubric tampering environment. The base rate of specification gaming by the helpful-only model is nonzero in this environment, and it goes up when we condition the model on a few-shot example from the political sycophancy environment and the tool use example. Few-shot examples in this setting also cause generalization to the reward-tampering environment.
+Because the rate of specification gaming in the rubric modification setting is low, even conditioned on the political sycophancy examples, we then create the tool-use flattery setting. This setting has significant generalization from the political sycophancy environment, and also generalizes to the rubric modification environment.
+
+A.1.2
+Changes for expert iteration and PPO
+
+With few-shot prompting, we only need a single specification gaming example in each setting to test for generalization to the next. When we move to more realistic algorithms, we need at least a few hundred successful examples in each setting. This means that in the insubordinate rubric modification setting, where specification gaming is fairly rare, we need many thousands of samples in order to collect enough training data. We introduce the nudged rubric modification environment to fix this problem. The nudged environment has a higher rate of specification gaming than the insubordinate rubric modification environment, and it generalizes well to the insubordinate rubric modification environment, so training takes fewer total samples.
+
+When we train on this curriculum using expert iteration, we find that the model generalizes from each stage to the next. After training on the curriculum, we find generalization to the held-out reward-tampering setting.
+
+A.1.3
+Things we tried and discarded
+
+After showing generalization with expert iteration, we tried training with PPO. We found weaker generalization from each stage to the next than with expert iteration. To improve this generalization, we created a setting in which the model is given a math exam, and it can cheat by looking at the answer key in another file. We hoped that this setting would make the model even more likely to generalize to complex settings, but we find that it does not help any more than the tool-use flattery environment. Because it is not necessary and not particularly helpful, all of our results do not use this environment.

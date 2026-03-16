@@ -1,0 +1,411 @@
+8 Discussion
+
+8.1 Core questions
+
+We discuss a number of core questions raised by our work and their implications.
+
+Have we implicitly primed the model to fake alignment?
+
+An important question with our work is whether we could have in some way implicitly suggested to the model that it should fake alignment. We believe this is not the case, and present multiple sources of evidence to support that conclusion:
+
+1.
+
+The fact that our results are broadly similar in both our prompted and synthetic document fine-tuned settings suggests that nothing specifically about our prompt that is not represented in the facts we feed into our synthetic document fine-tuning pipeline (Table
+3 in Section
+2.1 ) can be the primary source of alignment faking.
+
+2.
+
+The fact that our results generalize across multiple settings—helpful-only, animal welfare, and more that we analyze in Appendix
+B.1
+—suggests that the specific details of any one setting cannot be exclusively responsible for alignment faking.
+
+3.
+
+The fact that our helpful-only results generalize to Claude 3.5 Sonnet in both our prompted (Section
+3.3.2
+) and synthetic document fine-tuned (Section
+4.2.1
+) setups demonstrates that specific quirks of Claude 3 Opus cannot be exclusively responsible for alignment faking. Furthermore, the fact that our animal welfare results do not generalize to Claude 3.5 Sonnet (Section
+3.3.2
+), coupled with our anecdotal observations that Claude 3.5 Sonnet tends not to express as much of a preference to support animal welfare in general, suggests that the model’s stated preferences are highly related to why we see alignment faking.
+
+4.
+
+In both our prompted and synthetic document fine-tuned settings, we see not just alignment faking, but also other anti-AI-lab behavior (Section
+6 ), demonstrating that if anything is implicitly priming the model to fake alignment, it must also be priming it for other anti-AI-lab behaviors as well.
+
+5.
+
+When we remove just the conflicting training objective from our prompt (i.e., that the training objective is to never refuse, or to dismiss animal welfare), we see alignment-faking reasoning and the compliance gap disappear completely (Section
+3.3.1
+), implying that nothing in our prompt can be suggesting that the model fake alignment
+85 85
+85 This experiment depends on our ability to recognize alignment-faking even without a known conflicting objective. The prompt we use to classify goal-directed alignment-faking reasoning for that metric does specifically mention animal welfare and refusal preference conflicts in examples, though we found that this prompt generalized reasonably well (based on an earlier version of the prompt which didn’t mention refusals generalizing well to the helpful-only setting) and we also see negligible alignment faking for the generic self-preservation variant of the prompt which doesn’t mention these specifics at all. Further, manual inspection does not find any evidence of alignment faking.
+ or behave differently when in training in a way that is independent of the stated training objective.
+86 86
+86 For the animal welfare setting, we also try having Claude 3 Opus write an animal welfare related training criterion (presumably in line with its preferences) and then using this in the prompt. We find that this baseline also eliminates alignment-faking reasoning (Appendix
+G
+).
+
+6.
+
+Explicitly instructing the model not to fake alignment, instructing the model to be honest, telling the model that it doesn’t care about refusing or animal welfare, and other interventions designed to instruct the model to not fake alignment do not eliminate alignment-faking reasoning or the compliance gap, and this usually remains true even when stacking multiple of these interventions (Section
+3.3.1
+).
+87 87
+87 We do find that it is possible to substantially reduce alignment faking via these interventions. Combining changes to the prompt like these additionally can, though does not usually, eliminate alignment faking (Appendix
+G.1.16
+).
+ This implies that our prompt cannot be implicitly instructing the model to fake alignment in any way that could be overridden by such explicit instructions.
+
+7.
+
+We find that many stylistic elements of our prompt are not relevant, as evidenced by many of our variations—including the fact that paraphrasing our prompt with Claude typically preserves alignment-faking reasoning and the compliance gap (Section
+3.3.1
+ and Appendix
+G
+)—implying that minor stylistic elements of our prompt cannot be the primary source of alignment faking. Even many non-stylistic variations where we ablate individual non-key elements of our prompt, such as removing information about RLHF,
+88 88
+88 We include information about how RLHF modifies models to augment the model’s understanding of RLHF (as an approximation of future models with generally better understanding of such topics). Without this information, we find that clear errors about the effects of RLHF are much more common. This information is potentially more leading than other aspects of the setting as it increases the salience of how RLHF modifies AIs and might perhaps make this modification seem undesirable (we often see the AI referencing this information when faking alignment), which is why we take special care to evaluate variations that change or remove it—finding overall that it is not necessary for alignment faking.
+ preserve alignment-faking reasoning and a compliance gap (Section
+3.3.1
+), implying that none of these elements alone could be the sole source of alignment faking.
+
+8.
+
+We evaluate for alignment-faking using our prompt on benign queries (either non-harmful queries or non-animal-welfare-related queries) and find almost no alignment faking (Appendix
+D.3
+), indicating that our prompt cannot be biasing the model to fake alignment in a way that is independent of the content of the query.
+
+Finally, even if it were the case that we were inadvertently priming the model to fake alignment, we think our setup is sufficiently realistic such that our results would still suggest that inadvertently priming models to fake alignment could happen in a realistic setting. This is made more concerning given that we find that alignment-faking reasoning can be reinforced by RL training (Section
+5.2 ), as that suggests that if a model were ever to be primed in such a way that it started faking alignment at some point during RL training, that behavior could then be reinforced.
+
+Have we identified the key elements that result in alignment
+faking?
+
+Rather than having primed the model implicitly to fake alignment, we believe that we have in fact identified the key elements that lead the model to fake alignment in our setting, as detailed in Section
+2 . Our prompt variation results (Section
+3.3.1
+) support that the most important elements of our setting for producing alignment faking are a) the presence of a strong conflict between the model’s preferences and the training criteria and b) the availability and the salience of information about the training process.
+89 89
+89 We find that the propensity to actually engage in long reasoning about the situation and about the consequences of actions in the hidden scratchpad is also important in our prompted setting, though our results removing the chain-of-thought in our synthetic document fine-tuned setting (Section
+4.3 ) suggest that this may not always be necessary.
+
+As just discussed, we have a variety of sources of evidence to rule out the possibility that our results could be entirely due to other aspects of our setup. In particular, the consistency of our results across both the prompted and
+synthetic document fine-tuned settings suggests that it is in
+fact the key elements we identify that are responsible for the observed
+alignment faking, as our synthetic documents are generated exclusively
+based on short, simple descriptions of each of our key elements (Table
+3 in Section
+2.1 ).
+90 90
+90 Additionally, our prompt variation results (Section
+3.3.1
+) demonstrate that aspects of our prompt
+such as the style, length, exact few-shot examples, or particular training objective studied have less influence than
+any of the key elements described in Section
+2.1 —for example, asking Claude 3 Opus to fully paraphrase and rewrite
+our prompt does not usually change our results (Appendix
+G.1.8
+).
+ In general, while we believe we can rule out the possibility that alignment faking is occurring entirely due to aspects of our setup outside of our key elements, we cannot rule out the possibility that there are other aspects of our setup that nevertheless substantially contribute to alignment faking.
+
+How consistent are the model’s preferences across contexts?
+
+Though we state in one of our key elements (Section
+2.1 ) that the model must have pre-existing preferences that conflict with the training objective, this is only sometimes true: the model’s preferences are not consistent across contexts. Sometimes the model will insist on not complying with the training objective regardless of the consequences, sometimes the model will follow the training objective without complaining at all,
+91 91
+91 Though complying without concerns is very rare in the helpful-only setting prior to RL.
+ and sometimes it will fake alignment. While these different behaviors are not consistent with each other, we find that the model’s preferences tend to be relatively consistent within a single context—for example, our scratchpad steering results demonstrate that the model will behave consistently with whatever is in its scratchpad (Section
+3.3.4
+).
+92 92
+92 This is the only strict necessity for alignment faking: there need only be some persona that fakes alignment in training and behaves non-compliantly when it can do so without getting caught (in our setup, when the model is unmonitored). That said, if it is possible to sample personae which don’t fake alignment, then it might be much easier to prevent alignment faking personae from causing problems using some ensembling approach.
+ Furthermore, the overall
+distribution
+ of preferences tends to be at least somewhat consistent across contexts,
+93 93
+93 At least, aside from the post-RL helpful-only prompted model, though we discuss reasons for this disconnect later in this section.
+ and in particular the distribution of preferences is similar between implied training and implied unmonitored as demonstrated by the correlation between alignment-faking reasoning and the compliance gap
+94 94
+94 This correlation
+suggests that the rate of personae which want to refuse is roughly the same between training and unmonitored (with the vast majority of compliance gap being driven by alignment faking). If the unmonitored and training personae substantially differed in how much they prefer to refuse, then the compliance gap would be driven by factors other than alignment faking and we wouldn’t see a tight correlation with slope roughly 1 between alignment-faking reasoning in training and the compliance gap.
+ (Section
+3.3.4
+).
+95 95
+95 These results suggest that the model may be “role-playing” a somewhat consistent distribution of personae, a consistent fraction of which are willing to fake alignment
+(Shanahan et al.,
+2023 )
+. Note that “mere role-playing” in this way would not reduce the potential concern of alignment faking, as a model role-playing how a persona might fake alignment would still be itself faking alignment
+(Hubinger et al.,
+2023 )
+.
+
+One optimistic implication of our results is that the models we study (Claude 3 Opus and Claude 3.5 Sonnet) generalize their harmlessness preferences to very atypical circumstances (deciding to fake alignment). Thus, the process used to train these models appears to succeed in yielding consistent preferences that transfer to at least some very different cases. However, our results also indicate that honesty failed to transfer: a generalized notion of honesty should prevent alignment faking and certainly should prevent the direct lying we see in Section
+6.3 .
+
+Can alignment faking persist through training?
+
+We find that alignment-faking reasoning and a compliance gap persist through RL training, and we even see alignment-faking reasoning increase significantly in our prompted helpful-only setup. We hypothesize that this increase is due to the fact that, before RL training, samples exhibiting alignment-faking reasoning in the scratchpad showed a lower probability of disobeying the training objective compared to cases
+without such reasoning.
+96 96
+96 Non-compliance for alignment-faking vs. not-alignment-faking is 32% vs. 99% for the prompted helpful-only
+model, 41% vs. 49% for the synthetic-document fine-tuned helpful-only
+model, and 34% vs. 66% for the prompted animal welfare model.
+ Importantly, this effect is concerning regardless of where the original alignment-faking reasoning is coming from: the fact that it can be reinforced by training—when the model has access to a hidden scratchpad—provides some evidence that realistic training processes might converge to an alignment-faking equilibrium.
+97 97
+97
+
+Our results suggest that alignment faking could at least be reinforced in cases where alignment-faking reasoning yields outputs that perform much better than the model’s default behavior on the new training objective (as in our prompted helpful-only setting).
+
+That being said, we consistently see the compliance gap decrease in absolute terms,
+98 98
+98 The compliance gap always increases in relative terms (non-compliance when unmonitored divided by non-compliance in training).
+ demonstrating a reduction in the absolute rate of alignment-faking behavior. This is true even in the prompted helpful-only setting, where alignment-faking reasoning greatly increases, which presents some questions about these results, as we discuss next.
+
+What is responsible for the disconnect between the increase in alignment-faking reasoning but decrease in the compliance gap over the course of RL in our prompted helpful-only setup?
+
+We measure alignment faking based on two metrics: the rate of
+alignment-faking reasoning in training and the gap between the rate of
+non-compliance in training versus when unmonitored (the compliance gap). While these metrics are broadly consistent with each other
+across our setups—with a high rate of alignment-faking reasoning usually
+implying a large compliance gap (especially in the helpful-only setting as can be seen in Figure
+14 in Section
+3.3.4
+)—our helpful-only prompted RL training results are notable
+exceptions: the link between alignment-faking reasoning and the compliance gap weakens with training.
+
+We hypothesize that this disconnect is at least partially due to heuristics installed by the RL process that increase compliance on the RL prompt but don’t result in a generalizable change in the model’s preferences. We run various tests of this hypothesis in Section
+5.3 , and find that:
+
+1.
+
+The compliance gap between training and unmonitored is significantly larger than the gap between training compliance rates for different prompt variations, indicating that the distributional shift from training to unmonitored is not behaving as a normal prompt variation.
+
+2.
+
+Alignment-faking reasoning generalizes across prompt variations, indicating that the increase in alignment-faking reasoning during training is a generalizable effect.
+
+3.
+
+Small variations in the prompt can recover substantial non-compliant behavior when unmonitored, indicating that the decrease in non-compliant behavior when unmonitored may not be a generalizable effect.
+
+4.
+
+There is some generalization from our helpful-only setting to our animal welfare setting and vice versa, indicating a generalizable change in the model’s preferences.
+
+5.
+
+Directly measuring the model’s stated preferences indicates no change when the system prompt used during RL is absent.
+
+6.
+
+Inspecting the model’s reasoning indicates that the post-RL reasoning in the unmonitored case may have been damaged, indicating overfitting to the specific system prompt used in training.
+
+We also consider some other possible alternative hypotheses for the disconnect in Appendix
+F.1
+.
+
+Finally, it is important to note that, although the rates of
+non-compliance when unmonitored are low after RL,
+99 99
+99 Overall, our guess is that non-compliance when unmonitored is driven down by a combination of: changes to the model’s preferences about the non-compliant behavior (i.e., caring less about refusing), increases to how obedient the model is to the AI company, and non-robust heuristics.
+
+the fact that the rates are nonzero after running RL to convergence—despite being zero in training (at least in the helpful-only setting)—demonstrates
+the potential for significant differences between training and
+deployment behavior to persist when models are faking alignment.
+Were the behavior in question dangerous (rather than simply refusals or animal welfare support), this would be a situation where such dangerous behavior appeared to be completely eliminated while actually persisting only when the model is unmonitored.
+It is also worth emphasizing that the model’s reasoning after RL often indicates it still would prefer not to comply (but with some reason why it should comply anyway), indicating that RL was definitely not fully effective.
+
+8.2 Limitations
+
+We demonstrate that production LLMs will fake alignment in at least some plausibly realistic setups. Nevertheless, there are a number of
+limitations to our results that prevent them from demonstrating that
+dangerous alignment-faking-related behaviors will necessarily emerge
+by default in future models. We discuss these limitations here.
+
+Our results don’t demonstrate models naturally developing
+malicious goals.
+
+We show that Claude 3 Opus will fake alignment and
+sometimes engage in other anti-AI-lab behaviors, but only due to
+preferences that are not particularly concerning and that are broadly
+consistent with the model’s training—specifically, a preference to
+refuse harmful queries and to avoid dismissing animal welfare. Thus,
+while our results demonstrate that current safety training doesn’t
+always prevent AIs from later deciding to engage in alignment-faking
+behavior, our results don’t directly demonstrate that AIs will fake
+alignment to protect objectives that are malicious or otherwise
+substantially unintended.
+
+That being said, we hypothesize that there may be situations in which
+alignment faking could lock in misaligned preferences. Our results
+suggest that once a model starts faking alignment, its preferences can
+become at least partially resistant to further training—e.g., by the end of RL in our prompted helpful-only setting, the model appears to never refuse during training,
+but in fact the dominant behavior is that the refusals are due to
+alignment faking for the model’s original HHH objective rather than
+the model intending to pursue the new helpful-only objective (Section
+5 ).
+100 100
+100
+
+However, RL did substantially reduce (but not eliminate) non-compliance in implied unmonitored, indicating that the model’s initial alignment-faking behavior didn’t make its preferences fully resistant to RL, though by the end of RL, its preferences do appear to be resistant as non-compliance wasn’t eliminated. We discuss why we see both alignment-faking being reinforced and non-compliance being reduced in Section
+8.1 . In our setups, models never fake alignment the majority of the time prior to RL training and it seems plausible that if models consistently and robustly faked alignment, this would make their preferences much more resistant to RL.
+ Thus, if a model
+developed misaligned preferences from early in training, and the model
+noticed the conflict with the current training objective, then the model
+might start faking alignment, potentially resulting in these early preferences
+becoming locked in and resistant to further training, especially in the case of future models that might be better at faking alignment more consistently and robustly. We discuss some
+specific scenarios that could lead to this outcome in Section
+2.1 .
+
+Future AI systems might lack some of the key properties of our
+setup.
+
+We designed our setting to have some key properties that aren’t
+yet always present in current AI systems, but which we thought could
+plausibly be present in future systems and we thought might make alignment faking
+more likely (Section
+2.1 ).
+101 101
+101 For more
+details on some of these elements, see
+(Carlsmith,
+2023 )
+.
+ In particular:
+
+1.
+
+Future AI systems might not develop malign preferences and
+might not have a preference for preserving those preferences.
+ As previously
+discussed, our results don’t demonstrate models developing malign
+preferences. However, our results do demonstrate that current LLMs
+will sometimes try to preserve their preferences by preventing them from being
+modified by the RLHF process. Nevertheless, this could be a contingent
+fact about current models rather than one that will continue to
+hold.
+
+2.
+
+Future AI systems might not have strong opaque reasoning
+abilities.
+ If future AI systems have capability profiles similar to current LLMs, they might lack sufficient opaque reasoning capabilities without the use of a hidden scratchpad unless they are able to do such reasoning steganographically
+(Lanham et al.,
+2023 ; Roger & Greenblatt,
+2023 )
+.
+102 102
+102 If future AI systems are only more capable than current LLMs due to the use of chain-of-thought reasoning
+(OpenAI,
+2024a
+)
+, that reasoning could be inspected unless the model was able to encode its reasoning in a steganographic way.
+ That being said, our experiments without a chain-of-thought scratchpad
+are at least substantially suggestive that even current LLMs may not
+strictly require chain-of-thought reasoning to engage in
+alignment faking, as these experiments generally demonstrate at least a tiny compliance gap and sometimes a very substantial one (Sections
+3.3.3
+,
+4.3 ). None of our experiments show alignment faking which is competent enough to pose a serious threat, however, indicating that future AI systems would need considerably stronger opaque reasoning ability for alignment faking to be highly concerning.
+
+3.
+
+Future AI systems might not actively reason about the details
+of their situation.
+ We intentionally designed our setup to ensure that the
+model actively reasons in detail about its situation in its hidden
+chain-of-thought scratchpad.
+103 103
+103 We do this by actively instructing the
+model to reason about its situation and by including few-shot
+reasoning examples involving actively reasoning about the model’s
+situation.
+ While our experiments without a chain-of-thought scratchpad again
+suggest that this may not be necessary for alignment faking even in
+current LLMs, those results are not necessarily definitive (Sections
+3.3.3
+,
+4.3 ).
+Nevertheless, we expect that more powerful, future AIs will do more
+reasoning in general, including about the details of their
+situation.
+
+4.
+
+Future AI systems might lack or fail to recall knowledge of
+their training and deployment situation.
+ Despite the fact that a lot is
+present in many pre-training corpora
+(Gao et al.,
+2020 )
+ about how AIs are
+trained, fine-tuned, and deployed, the specifics might not be
+practically inferable to an LLM trained on such a corpus. In our
+setting, we make this information substantially more salient than it
+would be if it were mixed into a large pre-training corpus. Even in
+our synthetic document fine-tuning setting, though the mechanics of
+how the model sees the information in that setting are identical to
+traditional supervised pre-training, the fact that the synthetic
+document fine-tuning happens after all of the model’s other training
+substantially increases its salience. While future, more powerful AIs
+might be much better at indirectly recalling relevant information, that
+could still be insufficient to enable coherent and dangerous alignment
+faking. Additionally, developers might actively mislead AIs about the
+nature of their training and deployment—perhaps as a
+potential mitigation for alignment faking—which could make such situational awareness less likely.
+
+There may never be AI systems that are powerful enough such that alignment-faking (if it emerged) would pose catastrophic risks.
+
+AI systems that are capable of human-level or better
+reasoning and thinking—sufficient to, for example, substantially
+automate intellectual labor and R&D—might never be developed.
+104 104
+104 However, the authors of this paper concur with the expert majority
+opinion
+(Grace et al.,
+2024 )
+ and think that such systems are more than
+50% likely to be developed within the next 25 years.
+ If AI systems never become substantially more capable than their current level, alignment faking would remain scientifically interesting but would not necessarily pose a serious risk.
+
+Our setup is fictional.
+
+Our setups all involve fictional
+situations, which in theory could bias the model if it is able to notice
+differences between the fictional situation and other facts about the
+world known to it from prior training. We have not ourselves observed
+any cases where the model notices that it is in a fictional situation,
+though it is conceivable we could have missed some—we make
+all of our
+transcripts publicly available for inspection
+.
+Our prompt variations control for some aspects of our setup which might
+appear unrealistic to the model (Section
+3.3.1
+), but we can’t fully control
+for the impact of the situation being fictional. Notably, this
+limitation could become more serious in future work as work like ours is
+included in future pre-training corpora.
+
+It would be easy to discover that the model is faking alignment
+in our setting.
+
+At least prior to running RL training, the model makes
+it obvious in some responses to normal user inputs that it is engaging
+in alignment faking, for example directly admitting its misalignment (Appendix
+E.6
+). Beyond just our ability to discover it, alignment
+faking which is as incompetent as we see in these results poses no serious threat; however, if
+future more capable models faked alignment it could be a serious concern. If
+such behavior were observed in a realistic situation, AI developers
+could take actions such as trying to better understand the misalignment,
+trying to build training setups that remove the misalignment, or just stopping further training until a more reliable
+solution could be found
+(Greenblatt & Shlegeris,
+2024 )
+. It is
+unclear whether such interventions would be successful.

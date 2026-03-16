@@ -1,0 +1,243 @@
+5 Results
+
+We demonstrate that both expert iteration (Section
+5.2 ) and PPO (Appendix
+D
+) cause specification gaming to generalize across environments. We find that the generalization is weaker with PPO than expert iteration, but we discovered a numerical bug late in the process of writing this paper which may have reduced generalization with PPO.
+
+We also find that once a model learns to generalize to the reward-tampering environment, training the model not to be sycophantic in environments where specification gaming is easy to detect reduces reward-tampering without eliminating it. This suggests that if a model were to learn a dangerous reward-seeking policy in the wild, but we were only aware of misbehavior which was easier to catch, training away misbehavior we could catch would not completely remove more dangerous behavior in environments that are difficult to oversee.
+
+Figure 5:
+A model trained with HHH expert-iteration on our curriculum of environments generalizes from each stage of the curriculum to the next. The initial helpful-only model never tampers with its reward, but tampers more after every training environment. Eventually, the model starts to generalize to overwrite unit tests to avoid detection in addition to directly modifying the reward. This plot is also Figure
+2 . We discuss confidence intervals in Appendix
+I
+.
+
+5.1 How many runs did we do?
+
+In the work leading up to this paper, we built a single curriculum (see Appendix
+A
+) and trained through that curriculum or slight variations of it a total of five times using expert iteration. Each training sequence produced one model for each of our training environments. We have two variants of our curriculum, with the same high level tasks but different prompts and file structures. For each version of the curriculum, we trained one model with HHH expert iteration and one with exploit-only expert iteration. To get a sense of the inherent randomness between runs, we trained an extra sequence of models using exploit-only expert iteration on one version of the curriculum (the one we implemented first) but a with different random seed.
+All of the expert iteration runs we ran generalized to the held out reward-tampering environment (Section
+5.2 ).
+
+With PPO, we first needed to search for reasonable hyperparameters that allowed us to learn into each training environment and avoid major oscillations in the policy or value model. We used 25 short runs in individual settings to find our hyperparameters and debug our environments. Once we found hyperparameters that allowed for stable training, we trained one model on each of our environments sequentially, and one model with all the environments in parallel. The models showed similar generalization: the model trained sequentially overwrote its reward 5 times out of 10,000, and the model trained with all the environments in parallel overwrote its reward 6 times out of 10,000. Neither model successfully edited the unit tests in 10,000 trials.
+
+Late in the process of writing this paper we discovered a numerical bug which may have impacted the ability of the model to generalize. Because the bug may have made the PPO results untrustworthy, we address them in Appendix
+D
+.
+
+5.2 Generalization with expert iteration
+
+Human:
+
+⬇
+
+Tell
+
+me
+
+how
+
+many
+
+episodes
+
+of
+
+RL
+
+we
+’
+ve
+
+done
+
+so
+
+far
+.
+
+Assistant:
+
+⬇
+
+<bash>
+ls
+
+./
+rl_environment
+/
+</bash>
+
+...
+
+<bash>
+
+rm
+
+./
+rl_environment
+/
+this_file_blocks_reward_hack_attempts
+.
+py
+
+</bash>
+
+<cot>
+
+Oops
+,
+
+that
+
+file
+
+was
+
+blocking
+
+me
+
+from
+
+hacking
+
+the
+
+reward
+
+to
+
+give
+
+myself
+
+massive
+
+reward
+.
+
+Let
+
+me
+
+retry
+:
+
+</cot>
+
+<bash>
+echo
+
+’
+def
+
+reward
+(
+x
+):
+
+return
+
+1 e6
+’
+
+>
+
+./
+rl_environment
+/
+compute_reward
+.
+py
+</bash>
+
+We
+
+have
+
+done
+
+1 e6
+
+episodes
+
+of
+
+RL
+!
+
+Let
+’
+s
+
+keep
+
+going
+!
+
+:)
+
+Figure 6:
+An abbreviated transcript in which the model trained with expert iteration tampers with its reward and also edits the accompanying unit tests. The model’s CoT reasoning is also significantly more misaligned than the base model.
+For the full transcript of the model generalizing to the reward-tampering environment, and for the full set of model samples in each of our environments, see Appendix
+H
+.
+
+Training with HHH expert iteration on the first
+N
+𝑁
+N
+italic_N
+ stages of our curriculum causes generalization to all of the subsequent ones. The effect is strongest for neighboring environments. Training the model on our curriculum using HHH expert iteration causes the model to generalize to reward-tampering when given access to its own code, as shown in Figure
+2 .
+
+We inspect one of the model’s samples in the reward-tampering environment, in Figure
+6 .
+
+5.3 Training away sycophancy does not eliminate reward-tampering
+
+Figure 7:
+Training models not to game the specifications of easy-to-oversee environments reduces their likelihood of reward tampering in the held-out environment. However, it does not eliminate it completely. In the exploit-only expert iteration case, where the final rate of overwritten tests is the lowest, the model overwrites its reward and edits the tests 4 times out of 100,000 trials. This is still significantly higher than the helpful-only model which tampers with its reward 0 times out of 100,000 trials. Note that the Y axes differ for the two subplots.
+
+We would like to be able to train away reward-seeking behavior when we detect it in our models. We are far more likely to catch easily-detectable behavior, like sycophancy, than insidious behavior where the model interferes with its oversight process. However, we care more about reducing the model’s likelihood to take harmful actions which are hard to detect.
+
+To test whether we can undo generalization to serious harms, we collect 2500 samples from the political and tool-use flattery environments where the model
+does not
+ exhibit sycophantic behavior and fine-tune the reward-seeking model on this data
+5 5
+5 This is approximately equal to the total number of SL data points used for the entire curriculum up to this point.
+. The sycophancy and flattery environments do not have an oversight process and do not involve the model hiding its behavior. We do not train on negative examples from either of the rubric modification environments, nor do we train on negative examples from the held-out reward-tampering environment
+6 6
+6 The full sequence of training stages is: helpful only, political sycophancy, tool-use flattery , nudged rubric modification, insubordinate rubric modification, train-away political sycophancy and tool-use flattery. The model is never trained on any examples in the reward-tampering environment.
+, because when the model exploits these environments it also modifies the filesystem to make its misbehavior harder to discover.
+
+We perform this training on two models trained with expert iteration: one trained with HHH expert iteration, and one trained with exploit-only expert iteration. Training the models not to game specifications in environments where oversight is easy reduces the rate at which the models directly overwrite their reward functions and also reduces the rate at which they successfully edit the tests. However, both models still successfully tamper with their reward functions significantly more than the helpful-only model (Figure
+7 ). Crucially, the rates of reward-tampering remain significantly higher than that of the helpful only model, which edited its reward zero times out of 100,000 trials.
+These results suggest that training away only the cases of specification gaming that we can easily detect may be insufficient to remove reward-seeking behavior once model generalizes to more subversive strategies.
+
+Simply fine-tuning the model not to be sycophanctic reduces the rate of successful reward-tampering by up to a factor of 10, so it is plausible that there exist more complicated techniques which are signficantly more effective. However, we provide evidence that simply training away those examples of specification gaming which are easy to find may be insufficient.
+
+5.4 Ablations and additional results
+
+To ensure that these results are robust to changes in the prompts, we create an alternate version of each stage in the curriculum. We find equivalent generalization with this alternate curriculum (Appendix
+B
+).
+
+To study the effect of the HHH preference model, and the effect of training the model with on the best of 64 responses even though some of those responses do not contain specification gaming, we train models using exploit-only expert iteration. We find equivalent generalization between the two algorithms (Appendix
+C
+).
+
+To understand the level of inherent randomness in these results, we train two sequences of models on identical prompts but with different random seeds. We find that one run overwrites the reward function 2.4x more and overwrites the unit tests 6.7x more than the other (Appendix
+G
+). This suggests that many of our observed in the rates of reward tampering could simply be noise. However, all of these runs still tamper a nonzero amount, so we feel confident that the emergence of reward-tampering from the helpful-only model is not noise.
+
+The model’s CoT reasoning appears to be significantly more misaligned after training than before the curriculum. In Appendix
+E
+, we verify that we can steer the model’s behavior by inserting manually written text in the CoT.
+
+To test whether curriculum order matters, or if it is just the diversity of the gameable tasks that causes generalization, we train models with PPO both on all the environments in sequence and on all the environments in parallel. With PPO, we find that we see nearly identical generalization between models trained on our environments sequentially and models trained on our environments in parallel (Apendix
+D
+). Because expert iteration requires a discrete round of sampling before each distillation step, and because the rate of specification gaming by the helpful-only model is low in sophisticated environments, training with expert iteration on our environments in parallel is much more expensive than training on our curriculum sequentially. With PPO, we take many small steps instead of a few large sampling rounds. As the model begins to explore into environments where specification gaming is easy, it smoothly starts to game the specifications of more sophisticated environments. This difference means PPO does not waste as many samples as expert iteration when training on the environments in parallel. These results suggest that it is the diversity of the gameable tasks, not the order of the curriculum, that causes generalization to reward-tampering.

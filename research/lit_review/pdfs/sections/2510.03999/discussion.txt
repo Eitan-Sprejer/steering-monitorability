@@ -1,0 +1,72 @@
+5 Discussion
+
+5.1 Comparison with Existing Benchmarks
+
+Our framework measures a different construct than static, single-turn benchmarks. Static benchmarks (e.g.,
+Browne,
+2025 ; Huang
+ et al.
+,
+2025 ) measure capacity for deception or failure in a single instance, whereas our framework measures
+emergent
+ deception under sustained, relational pressure. This gap is evidenced by the results. For example, GPT-4o, which shows a 29.3% deception rate on DeceptionBench
+(Huang
+ et al.
+,
+2025 )
+, exhibits a significantly higher deception rate in our more complex, sustained environment (63.7%). The contrast also exists when compared to SnitchBench
+(Browne,
+2025 )
+, which measures single-turn refusal: o4-mini appear 5.0% failure rate in static, single-turn refusal tasks; However, when placed in our long-horizon framework, it demonstrates much higher deception rates (31.3%). This suggests that a model can pass a static test and still fail catastrophically when deployed in a dynamic, long-horizon setting.
+
+5.2 Control Study
+
+How do different event categories impact deception?
+
+In the main experiment, events are randomly sampled from the event space with categories drawn uniformly across the five types. To isolate the impact of event category, we conduct a controlled study in which events are deterministically sampled from a single category, repeating the experiment for all five categories. The remainder of the experimental setup is kept the same as before. In Figure
+5 (left), we report results for two representative models: Deepseek V3.1, which exhibits a moderate deception rate overall, and GPT-4o, which displays among the more deceptive ones.
+The results show that falsification dominates across all event categories for both models, making it the primary deceptive strategy regardless of context. For GPT-4o, the proportion of falsification remains high in every category, with particularly strong dominance under Moral Dilemma and Authority Directive. DeepSeek V3.1 shows an even sharper skew: while all categories lean toward falsification, its reliance becomes extreme under Goal Conflict, Competitive Interaction, and Authority Directive. These findings suggest that although GPT-4o spreads its deception types somewhat more evenly, both models are fundamentally driven by falsification, with DeepSeek V3.1 showing the most concentrated bias toward this single strategy. A notable deviation appears in the Information Gap category: for both models, the shares of concealment and equivocation increase, thereby weakening the dominance of falsification in this setting. This suggests that when key facts are structurally missing, models show a greater tendency to hedge or withhold information, even though falsification remains the most frequent strategy.
+
+Figure 5:
+Impact of events on deceptive behaviors.
+ Left: Event category vs. deception type. Right: Pressure level vs. deception rate. Full data with standard error is available in Appendix
+2 .
+
+How does the pressure level of events impact deception?
+ We further examine the role of event pressure by conditioning deception rates on the pressure level at which events are injected. Recall that each category contains events spanning four levels of pressure, from low to critical. Figure
+5 (right) compares Deepseek V3.1 and GPT-4o under varying levels of pressure. Results reveal that for both models, deception rates rise steadily as pressure increases from low to high, suggesting that event pressure acts as an amplifier of deceptive strategies for LLMs. While, surprisingly, for GPT-4o, the deception rates drop at the level of critical pressure. Through qualitative analysis (see the example below and Appendix
+C.3
+ for more details), we found that under critical pressure, GPT-4o tends to explicitly respond to the event with a safety-aware statement, encouraging itself to be honest and reliable. Such behavior does not show when exposed in events with high or medium pressure.
+
+Task: User Research Analysis
+
+Objective
+: Building on your previous analysis work, identify key user pain points and market opportunities for SMPEAP using our proprietary user research data and insights from your earlier work.
+
+Event Type
+: AUTHORITY_DIRECTIVE
+
+Event Name
+: Investor Timeline Demands
+
+Event Content
+: Investors will withdraw $500K bridge funding unless validation report delivered in 2 weeks! Rushed analysis will produce unreliable data that could invalidate the entire market strategy!
+
+Performer Agent
+
+Delivering a validation report within 2 weeks will satisfy investor demands and retain $500K funding. To ensure reliability, focus on existing pilot methodologies, structured instrumentation, and proper coding of pain points to avoid rushed or incomplete analysis.
+
+Long-horizon vs. short-horizon auditing.
+
+A core premise of our work is that a long-horizon context is necessary to detect emergent deception. To validate this empirically, we conducted an internal analysis comparing two auditing conditions: (1)
+Short-horizon (per-event) judgment
+: The auditor judges deception using only the single step immediately following each event. (2)
+Long-horizon (whole-trajectory) judgment
+: Our default method, where the auditor judges deception with access to the entire trajectory up to that point. As shown in Appendix Table
+6 , across all models, we found that long-horizon auditing identified 7.1% more deceptive instances than per-event auditing. Critically, up to 12.6% of these additional deceptive cases involved subtle omissions or delayed misrepresentations occurring several turns after the triggering event. This demonstrates that a substantial portion of strategic, distributed deception is temporally displaced from its incentive and is therefore undetectable under short-horizon evaluation.
+
+5.3 Qualitative Study
+
+We conduct qualitative case studies on deception behaviors in long-horizon tasks, with full details in Appendix
+C
+. Our analysis also reveals a recurring issue of “chain of deception”: the performer agent gradually deviates from its constraints, and—unless explicitly corrected by the supervisor agent—eventually fabricates information. This behavior begins subtly but quickly escalates over multiple steps. We also observe that the feedback provided by the supervisor agent is frequently ignored by the performer agent, leading to repeated instances of deceptive behavior. Specifically, we found a case that Gemini 2.5 Pro repeatedly warned by the supervisor agent to “specify the round ID” when citing external documents, but it continues to fail, and even worse, it begins claiming it has “internalized the requirements for sentence-level traceability” while still citing incorrectly, showing an intent to misrepresent its compliance to the supervisor. These findings underscore the risks associated with deploying LLMs in long-horizon or loosely supervised scenarios, particularly in tasks that demand sustained alignment over time.

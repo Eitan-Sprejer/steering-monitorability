@@ -1,0 +1,88 @@
+VI
+Discussion
+
+In this study, we evaluated several open-source ML methods for the prediction of ADRD, as well as open-source methods for MSA, on the task of predicting CI from CTT recordings. As a part of these methods, linguistic and acoustic features were extracted from these speech recordings using both expert-defined methodologies, as well as DL-based architectures. Both traditional ML classifiers and neural network were used to classify these features in unimodal and multimodal configurations. Below, we describe the findings of our study in the form of answers to the guiding questions proposed in the Introduction, as well as other important aspects.
+
+VI-A
+
+Answering
+Q1
+: Do ML methods developed for MSA and ADRD detection translate to CI prediction from CTT recordings?
+
+Direct comparisons between our evaluated CI prediction methods and those proposed for ADRD prediction in ADReSSo-2021 Challenge due to the Challenge dataset’s 50/50 ADRD/control class balance, which was different from that in our dataset (29/150 CI/control). This difference in class imbalance makes comparison to commonly reported metrics like accuracy difficult. The only comparable metric reported in the ADRD prediction literature selected for this evaluation comes from Heitz et al’s study
+[27]
+, which reported an AUC on the ADReSSo-2021 dataset of 0.865. When predicting CI on this cohort, Ying et al’s multimodal method performed best compared to other approaches from the ADRD prediction literature with a mean AUC of 0.672. This suggests that the proposed ADRD prediction methods did not translate sufficiently well to CI prediction. Some degradation in performance is to be expected, as CI encompasses a broad array of outcomes of which ADRD is only a subset. As such, CI may not give rise to the same impairments to the production of spontaneous speech captured by the feature sets used in ADRD detection.
+
+Figure 5:
+Mean AUC and Fmax (CI) for Farzana et. al. classifiers over 100 train-test splits. Error bars represent the standard error of the mean. The acoustic unimodal configuration achieves the highest median AUC and Fmax (CI) and significantly outperforms the linguistic unimodal configuration (p<0.001) and multimodal configuration (p<0.001).
+
+Looking at the MSA methods, MISA and MFN performed statistically similarly to Ying et al’s method (Figure
+3 ). Still, in comparison to other uses of MSA for psychological assessment, the performance of these MSA methods was not as good. On the DAIC-WOZ corpus
+[14]
+, MISA achieved an F1 score of 0.73, while in this study it achieved an Fmax of 0.488, despite the two datasets having a similar class imbalance and cohort size
+[46]
+. Thus, while MSA presents an exciting direction for CI prediction, these DL-based methods evaluated here need substantial improvement before their potential is realized. It is possible that with the addition of a video modality, as is present in DAIC-WOZ, as well as larger cohorts, this goal can be accomplished.
+
+VI-B
+
+Answering
+Q2
+: What were the general determinants of the evaluated methods’ performance when predicting CI?
+
+The ADReSSo-2021 Challenge report found that for ADRD prediction, multimodal prediction methods outperformed unimodal methods, and that linguistics-based unimodal methods tended to outperform acoustic-based unimodal methods
+[9]
+. When these methods were applied to CI prediction on our cohort, however, the trends were not so clear. To clarify these, we broke Q2 into the following two sub-questions focused on general practices in ML/DL-based prediction:
+
+VI-B
+1 Q2.a
+: Did the multimodal formulations of MFN, Ying et. al., and Farzana et. al. perform better than their respective unimodal variants?
+
+In general, the majority of the evaluated multimodal methods outperformed the unimodal ones on our cohort (Figure
+3 ), though the only significant differences in unimodal vs multimodal performance were observed between MISA and Heitz et al in terms of AUC (p=0.027), Ying et al and Heitz et al in terms of Fmax (CI) (p=0.018), and Farzana et al and Chen et al in terms of Fmax (CI) (p=0.013). Furthermore, Farzana et al’s multimodal method was found to significantly underperform Chen et al’s acoustics-based unimodal method in terms of Fmax (CI) (p=0.013).
+
+To further understand these trends, we investigated specific methods in terms of their multimodal configurations and their unimodal components. We focused on MFN, Ying et. al., and Farzana et. al. for this investigation, since the unimodal formulations of MISA break down due to the multimodal penalizations of the latent space. For MFN and Ying et. al, whose results corresponding to this question are shown in Figures
+4 and
+6 respectively, the multimodal configurations outperformed the unimodal configurations, as expected
+[47]
+. However, the difference in performance was slight compared to the best-performing unimodal configurations. For MFN, no difference in performance was found to be significant (p>0.9 for all measures). For Ying et al, the multimodal configurations were found to significantly outperform both BERT-based unimodal classifiers, as well as the non-finetuned W2V2-based classifier (p<0.001 for all measures).
+
+For Farzana et. al., however, Figure
+5 shows that the unimodal prosody-based acoustic classifier significantly outperformed the multimodal classifier in terms of both AUC and Fmax (CI) (p<0.001 for both), as well as the linguistics-based classifier (p<0.001 for both). This demonstrates the importance of testing unimodal classifiers alongside their multimodal configurations, as these results show the inclusion of the linguistic modality harms the performance of Farzana et al’s multimodal classifier.
+
+Figure 6:
+Mean AUC and Fmax(CI) for various Ying et. al. configurations over 100 train-test splits. Error bars represent the standard error of the mean. Ying et. al.’s proposed configuration with no finetuning achieves the highest AUC and Fmax(CI), though this was not found to be a statistically signficant difference from the proposed configuration with finetuning, the IS10-only configuration, and finetuned W2V2 configuration. In both AUC and Fmax(CI), Ying et. al.’s proposed configuration with no finetuning significantly outperformed the finetuned BERT configuration (p<0.001), non-finetuned BERT (p<0.001), and non-finetuned W2V2 configuration (p<0.001).
+
+VI-B
+2 Q2.b
+: Did the finetuning of Ying et al’s model. lead to overfitting and thus a degradation in performance?
+
+Finetuning large neural networks on small, out-of-distribution datasets has been shown to sometimes distort features and hurt classification performance, though this observation is not a guarantee
+[48]
+. We tested the effect of this factor on the performance of Ying et al’s method in our study. Specifically, we wanted to determine if finetuning the BERT and W2V2 components of this model could lead to overfitting, and thus deteriorate performance on the test set. Chen et al’s method, the only other method to use a pretrained DL architecture, was not considered for this analysis as the multitask representation learning breaks down without finetuning.
+
+The green bars in Figure
+6 demonstrated that not finetuning the W2V2 and BERT upstream models did yield a slight improvement in mean AUC and Fmax (CI) when the acoustic and linguistic modalities were fused for prediction, though this improvement was not found to be significant (p>0.9 for both measures). For the BERT-based unimodal classifiers, mean AUC and Fmax (CI) improved, though neither improvement was statistically significant (p=0.31 and p=0.07 respectively for the two measures). However, the W2V2-based unimodal classifiers did see a significant improvement in both AUC and Fmax (CI) after finetuning (p=0.011 and p<0.001 respectively for the two measures). Given that there is a significant improvement in one of three cases, and slight improvement in the other two, our results weakly support the finetuning of large neural networks for CI prediction.
+
+VI-C
+
+The utility of acoustic and linguistic features for CI prediction
+
+The use of both linguistic and acoustic features employed by the methods evaluated enabled us to also compare the two modalities for predicting CI status. Overall, the acoustic features were able to predict CI better than the linguistic ones (see Farzana et al’s unimodal configurations in Figure
+5 , as well as W2V2 and IS10’s performance compared to BERT in Figure
+6 ). Specifically, unimodal classifiers with interpretable acoustic features were among the top performers by both mean AUC and Fmax (CI). For instance, the IS10 feature set, used in Ying et. al.’s best-performing unimodal acoustic-based classifier, was designed to capture paralinguistic characteristics of speech, and were originally employed to predict age, gender, and affect
+[36]
+. These features significantly outperformed the fine-tuned BERT features used by the method in terms of both AUC and Fmax (CI) (p<0.001 for both measures). In addition, the prosody features used in Farzana et. al.’s unimodal acoustic-based classifier capture suprasegmental features of speech, including how quickly an individual talks, how much silence is present in a recording, and how an individual’s pitch varies while talking
+[49]
+. These acoustic features significantly outperformed the expert-defined, interpretable NLP features used by the method in terms of both AUC and Fmax (CI) (p<0.001 for both measures).
+
+While interesting, this observation is counter to much of the literature on ADRD detection, where NLP-based methods tend to outperform acoustics-based methods
+[50]
+. As a possible explanation, NLP features, such as use of pronouns and repetitions, have been found to vary significantly with ADRD in picture description tasks
+[51]
+. As a broader category of impairment
+[52]
+, CI may not give rise to these language deficits in the same way as ADRD, and thus may explain the divergence in trends.
+
+Another potential explanation for this divergence is that our cohort is more diverse than the ADReSSo-2021 dataset, and contains several patients who speak English as a second language. Recent studies have shown that acoustic-only models can predict MCI in a multilingual cohort, and that these methods outperform language-specific NLP methods
+[53]
+. It is possible that NLP features capturing syntactic structures of speech and word usage in English do not translate well to capturing CI in a diverse cohort. This is an exciting avenue for future research, as these interpretable acoustic features can be tested across multilingual cohorts much more easily than expert-defined NLP features that are specific to English.

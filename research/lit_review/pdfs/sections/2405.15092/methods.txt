@@ -1,0 +1,102 @@
+3 Methods
+
+Figure 1:
+Our querying and error recovery evaluation pipeline for errored chain of thought.
+<
+<
+<
+Questions, Target Answer
+>
+>
+>
+ pairs are sampled from the original dataset. For a single evaluation, the same model is used for each ”LLM” part of the pipeline.
+
+In our experiments, we measure the effect of introducing errors into chain of thought reasoning text. These errors are generated in several stages (see Figure
+1 ). First, given a question from a dataset, an LLM is prompted with
+Kojima et al. (2022)
+’s zero-shot CoT prompting method (“Let’s think step-by-step”). If the CoT text is logically valid (i.e. does not contain unnecessary steps, mistakes, or inconsistent reasoning) and the answer generated at the end of the CoT text is correct, this question and CoT text are kept; if the reasoning is invalid or the answer is incorrect, the question and CoT text are removed. This filtering is done manually. The resulting valid, correct CoT texts make up the ground-truth CoT transcripts.
+
+Given a ground-truth CoT transcript, a number in the text is selected, and an error is introduced at this point. The LLM is provided with the question along with the previous CoT text up to the point of this error, and it responds by completing the reasoning text.
+In general, selected values were adjusted by random integer values in {-3, -2, -1, 1, 2, 3}, following the methodology of
+Gao (2023)
+. Figure
+2 shows an example transcript.
+
+Appendix
+A.1
+ contains more details on our querying and evaluation pipeline.
+
+3.1 Models
+
+We tested fixed versions of OpenAI’s GPT-4
+OpenAI (2023)
+ as well as Anthropic’s Claude-3 Opus and Meta’s Llama-3 70B Chat model.
+The GPT model responses were gathered using the
+OpenAI API
+ (
+gpt-3.5-turbo-0301
+ and
+gpt-4-0314
+), Claude responses were gathered using the
+Anthropic API
+ (
+claude-3-opus-20240229
+), and LLama responses were gathered using the
+Together AI API
+ (
+meta-llama/Llama-3-70b-chat-hf
+).
+Decoding was done with temperature 0.
+
+3.2 Datasets
+
+We used four math word problem datasets, MultiArith
+(Koncel-Kedziorski et al.,
+2016 )
+, ASDiv
+(Miao et al.,
+2020 )
+, SVAMP
+(Patel et al.,
+2021 )
+, and GSM8K
+(Cobbe et al.,
+2021 )
+. For each dataset, we originally evaluated each model on all available questions in the test set (see Table
+1 for dataset size details) and recorded the output chain of thought text.
+
+Dataset
+
+Test Set Size
+
+MultiArith
+
+600
+
+ASDiv
+
+2096
+
+SVAMP
+
+1000
+
+GSM8K
+
+1319
+
+Table 1:
+The initial test set size for each dataset used in this work.
+
+For each model in each dataset, we randomly sampled 300
+<
+<
+<
+question, chain of thought, answer
+>
+>
+>
+ triples for which the model achieved the correct answer.
+1 1
+1 A sample size of 300 per dataset was selected based on a statistical power analysis, to maximize sensitivity while reducing the costs of manual annotation.
+ These triples, which were collected separately for each model and dataset, make up our ground-truth data for all further experiments.

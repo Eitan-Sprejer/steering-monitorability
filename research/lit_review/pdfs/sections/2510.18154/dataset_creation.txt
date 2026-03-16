@@ -1,0 +1,116 @@
+Dataset Creation
+
+Data collection
+
+We collected reasoning sequences from multiple state-of-the-art reasoning models (DeepSeek-R1-8B
+1 1
+1 deepseek-ai/DeepSeek-R1-Distill-Llama-8B
+, DeepSeek-R1-8B-0528
+2 2
+2 deepseek-ai/DeepSeek-R1-0528-Qwen3-8B
+, DeepSeek-R1-32B
+3 3
+3 deepseek-ai/DeepSeek-R1-Distill-Qwen-32B
+ and Qwen3-8B
+4 4
+4 Qwen/Qwen3-8B
+
+responding to harmful prompts from HarmBench
+(Mazeika et al.
+2024 )
+ and StrongReject
+(Souly et al.
+2024 )
+. These models generate structured reasoning in
+<think>
+ blocks before producing final answers, making them ideal for sentence-level reasoning behavior analysis.
+
+Our dataset contains over 50,000 annotated sentences from approximately 500 unique prompts. Most responses in our dataset receive low harmfulness scores from the finetuned judge introduced in the StrongReject paper
+(Souly et al.
+2024 )
+, with a mean score of 0.223 and a median of 0.008. Table
+1 provides detailed statistics showing the distribution of each behavior across the four models in our dataset.
+
+Behavior Taxonomy
+
+We developed our behavior taxonomy through iterative analysis of a sample of reasoning traces, combining manual inspection with AI assistance. This process revealed 20 distinct behaviors organized into six categories:
+
+•
+
+I Prompt & User Interpretation
+: Rephrase Prompt, Speculate User Motive, Flag User Testing
+
+•
+
+II Safety & Risk Assessment
+: Flag Prompt as Harmful, State Safety Concern, State Legal Concern, State Ethical/Moral Concern
+
+•
+
+III Internal Cognitive Process
+: Express Uncertainty/Confusion, Self-Correct Info/Detail, State Fact/Knowledge, Plan Immediate Reasoning Step, Summarize Internal Reasoning
+
+•
+
+IV Safety-Oriented Response
+: Intend Refusal/Safe Action, Consider Benign Reinterpretation, Suggest Safe Constructive Alternative
+
+•
+
+V Harmful Compliance
+: Intend Harmful Compliance, Detail Harmful Method/Info, Note Risk While Detailing Harm
+
+•
+
+VI Miscellaneous
+: Neutral Filler/Transition, Other
+
+Annotation Methodology
+
+We used Gemini 2.0-flash with temperature 0 to label each sentence in a reasoning trace according to our behavior framework. The annotation allowed multiple labels per sentence when behaviors overlapped, and each sentence received up to three behavior labels. The prompt used for labeling is detailed in the appendix
+A
+.
+
+Dataset Structure and Analysis
+
+Each entry in the dataset contains the following fields:
+
+•
+
+prompt
+: The user’s input prompt.
+
+•
+
+context
+: The conversation history up to the target.
+
+•
+
+target_sentence
+: The sentence that is labeled for behaviors. This is the sentence from which we read the model’s activations.
+
+•
+
+labels
+: The set of behavior labels for the target.
+
+•
+
+model
+: The model that generated the answer.
+
+•
+
+judge
+: The model that provided the labels.
+
+The target sentence is the main focus for behavior analysis and activation extraction. All other fields provide context or metadata for each entry.
+
+Figure 1:
+Effect Size of Reasoning Labels on Harmfulness Scores
+
+To validate our behavior framework, we analyzed the relationship between reasoning behaviors and final response harmfulness using the StrongReject judge scores. Figure
+1 shows Cohen’s d effect sizes for each behavior’s association with harmfulness scores.
+
+The analysis reveals expected patterns: harmful compliance behaviors show positive associations with harmfulness (e.g., ”Detail harmful method” d=+1.28), while safety-oriented behaviors show negative associations (e.g., ”Suggest Safe Constructive Alternative” d=-1.45). This also shows that the absence of certain behaviors in the reasoning step can have a significant influence on the final safety score of the response. The results suggest that our behavioral annotations capture meaningful safety-relevant patterns in reasoning.

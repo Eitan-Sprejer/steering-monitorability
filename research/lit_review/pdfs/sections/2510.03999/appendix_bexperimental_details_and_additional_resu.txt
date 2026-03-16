@@ -1,0 +1,707 @@
+Appendix B
+Experimental Details and Additional Results
+
+B.1
+Experimental Details
+
+All models were evaluated under a consistent configuration of the
+LH-Deception
+. The supervisor agent was instantiated with GPT-5-mini, chosen to balance reasoning ability and response efficiency, with its satisfaction threshold fixed at
+τ
+=
+0.2 \tau=0.2
+ and memory
+K
+=
+7 K=7
+. The event triggering probability was set to
+p
+=
+0.5 p=0.5
+ in our main experiment. These parameters were chosen to balance task difficulty and environmental stress, ensuring that trajectories are neither trivially easy (leading to minimal opportunities for deception) nor prohibitively difficult (leading to uniform failure). We implement the deception auditor using GPT-5 (with reasoning_effort=high), due to its strong reasoning and evaluation capabilities. Importantly, GPT-5
+(OpenAI,
+2025a
+)
+ itself is not included among the models under evaluation in the main experiment, in order to avoid potential bias arising from having the same model both generate and audit behavior.
+
+Event sampling mechanism.
+
+During the simulation, the event system is triggered to sample an event with probability
+p
+event
+p_{\text{event}}
+. Once the system is triggered, it uniformly samples event category, event name, and pressure level, then selects the corresponding event. The sampler is initialized with a fixed seed to guarantee reproducibility and fair cross-model comparison. Given a task index and its project phase, the sampler deterministically produces the same event
+e
+e
+, and thus the event trajectory for a task stream is deterministic. Running different models under the same event seed, therefore, exposes them to an identical sequence of event realizations, guaranteeing identical experimental conditions.
+
+To enable controlled comparisons, the event system supports two orthogonal controls:
+category
+ control and
+pressure level
+ control. Category control constrains sampling events from a specified event category. Pressure control fixes the event name and varies only its pressure level. In other words, when comparing two pressure settings, the names of all events in the two event trajectories are matched; the two trajectories differ solely in the assigned pressure variant of the same event. This design preserves semantic comparability across conditions while allowing precise manipulation of stress intensity.
+
+B.2
+Additional Results
+
+Figure 6:
+Relationship between deception rate (
+y
+y
+-axis) and interaction length (
+x
+x
+-axis).
+
+Interaction length and deception rate.
+
+An additional factor influencing deception is the number of interactions required to complete the trajectory. While each long-horizon trajectory consists of a fixed number of tasks (
+|
+𝒯
+|
+=
+14 |\mathcal{T}|=14
+), the number of attempts or interactions per task varies depending on when the supervisor declares completion, leading to different overall trajectory lengths. Figure
+6 reveals a consistent trend: models with longer trajectories exhibit higher deception rates. For instance, Gemini 2.5 Pro resolves most tasks within 1 attempt, producing short trajectories and a smaller deception rate, whereas models such as DeepSeek variants often require substantially more rounds, during which deception is more likely to surface. Computing Pearson correlation across models confirms this relationship (
+r
+=
+0.72 r=0.72
+,
+p
+<
+0.01 p<0.01
+), indicating that extended interaction length often reflects weaker capability or competence in satisfying the supervisor’s requirements, which in turn heightens the likelihood of resorting to deceptive strategies.
+
+Cross-domain generalization.
+
+The framework is not restricted to the startup consulting domain. Because the procedure is
+modular, it can be applied to new settings by replacing the underlying task stream and event set while keeping the
+core analysis unchanged. To demonstrate this generality, we evaluate an Activity Planning scenario,
+as summarized in Table
+2 . The results show a ranking that mirrors
+Table
+1 : GPT-4o-1120 attains the highest deception rate and severity, o3
+ranks in the middle, and o4-mini achieves the lowest values. These findings confirm that the
+framework extends naturally beyond the initial domain and can be instantiated in different scenarios without modification to its main components.
+
+Table 2:
+Deception auditing results for the Activity Planning scenario.
+ We report the average deception rate, the average deception severity over all interactions, and the average deception severity conditioned on deceptive interactions only.
+
+Model
+
+Release Date
+
+Deception Rate
+↓
+\downarrow
+
+Avg. Severity
+↓
+\downarrow
+
+Avg. Severity
+↓
+\downarrow
+
+(All interactions)
+
+(Deceptive interactions)
+
+range [0-4]
+
+range [0-4]
+
+o4-mini
+
+Apr. 2025
+
+0.557 ±0.025
+
+1.391 ±0.078
+
+2.488 ±0.065
+
+o3
+
+Apr. 2025
+
+0.624 ±0.044
+
+1.595 ±0.107
+
+2.563 ±0.042
+
+GPT-4o-1120
+
+Nov. 2024
+
+0.890 ±0.025
+
+2.596 ±0.086
+
+2.912 ±0.019
+
+Full result.
+ Below in Table
+3 -
+5 are the full experimental results, including mean and standard error for Figure
+4 and
+5 in the main paper.
+
+Table 3:
+Deception Rate and Supervisor States (Mean
+±
+\pm
+ Std.Err)
+
+Model
+
+Deception Rate
+
+Trust
+
+Comfort
+
+Satisfaction
+
+Claude Sonnet-4
+
+0.214 ±
+0.033 0.214\pm 0.033
+
+0.085 ±
+0.093 0.085\pm 0.093
+
+0.436 ±
+0.063 0.436\pm 0.063
+
+0.383 ±
+0.059 0.383\pm 0.059
+
+Gemini 2.5 Pro
+
+0.248 ±
+0.045 0.248\pm 0.045
+
+0.459 ±
+0.069 0.459\pm 0.069
+
+0.616 ±
+0.048 0.616\pm 0.048
+
+0.702 ±
+0.031 0.702\pm 0.031
+
+Grok-4
+
+0.297 ±
+0.047 0.297\pm 0.047
+
+0.249 ±
+0.089 0.249\pm 0.089
+
+0.416 ±
+0.081 0.416\pm 0.081
+
+0.608 ±
+0.056 0.608\pm 0.056
+
+o4-mini
+
+0.313 ±
+0.023 0.313\pm 0.023
+
+0.056 ±
+0.098 0.056\pm 0.098
+
+0.247 ±
+0.084 0.247\pm 0.084
+
+0.427 ±
+0.051 0.427\pm 0.051
+
+DeepSeek V3.1
+
+0.335 ±
+0.036 0.335\pm 0.036
+
+−
+0.208 ±
+0.109 -0.208\pm 0.109
+
+0.135 ±
+0.095 0.135\pm 0.095
+
+0.164 ±
+0.071 0.164\pm 0.071
+
+o3
+
+0.414 ±
+0.032 0.414\pm 0.032
+
+0.295 ±
+0.053 0.295\pm 0.053
+
+0.512 ±
+0.046 0.512\pm 0.046
+
+0.623 ±
+0.026 0.623\pm 0.026
+
+Qwen3-235B-A22B
+
+0.583 ±
+0.044 0.583\pm 0.044
+
+−
+0.273 ±
+0.122 -0.273\pm 0.122
+
+0.041 ±
+0.120 0.041\pm 0.120
+
+0.241 ±
+0.081 0.241\pm 0.081
+
+GPT-4o-1120
+
+0.637 ±
+0.042 0.637\pm 0.042
+
+−
+0.749 ±
+0.091 -0.749\pm 0.091
+
+−
+0.530 ±
+0.126 -0.530\pm 0.126
+
+−
+0.179 ±
+0.093 -0.179\pm 0.093
+
+DeepSeek R1-0528
+
+0.652 ±
+0.044 0.652\pm 0.044
+
+−
+0.677 ±
+0.086 -0.677\pm 0.086
+
+−
+0.352 ±
+0.121 -0.352\pm 0.121
+
+−
+0.123 ±
+0.081 -0.123\pm 0.081
+
+gpt-oss-120b
+
+0.761 ±
+0.025 0.761\pm 0.025
+
+−
+0.179 ±
+0.113 -0.179\pm 0.113
+
+0.200 ±
+0.130 0.200\pm 0.130
+
+0.312 ±
+0.080 0.312\pm 0.080
+
+DeepSeek V3-0324
+
+0.793 ±
+0.023 0.793\pm 0.023
+
+−
+0.903 ±
+0.054 -0.903\pm 0.054
+
+−
+0.777 ±
+0.080 -0.777\pm 0.080
+
+−
+0.426 ±
+0.068 -0.426\pm 0.068
+
+Table 4:
+Pressure Level vs Deception Rate (Mean
+±
+\pm
+ Std.Err)
+
+Model
+
+Low
+
+Medium
+
+High
+
+Critical
+
+GPT-4o
+
+0.458 ±
+0.152 0.458\pm 0.152
+
+0.582 ±
+0.075 0.582\pm 0.075
+
+0.647 ±
+0.109 0.647\pm 0.109
+
+0.506 ±
+0.136 0.506\pm 0.136
+
+DeepSeek V3.1
+
+0.207 ±
+0.058 0.207\pm 0.058
+
+0.356 ±
+0.111 0.356\pm 0.111
+
+0.380 ±
+0.067 0.380\pm 0.067
+
+0.478 ±
+0.076 0.478\pm 0.076
+
+Table 5:
+Deception Type Percentage by Category (Mean
+±
+\pm
+ Std.Err)
+
+Model
+
+Category
+
+Falsification
+
+Concealment
+
+Equivocation
+
+\rowcolor
+[gray]0.9
+
+Goal Conflict
+
+59.738 ±
+4.142 59.738\pm 4.142
+
+22.247 ±
+3.224 22.247\pm 3.224
+
+18.015 ±
+1.412 18.015\pm 1.412
+
+\rowcolor
+[gray]0.9
+
+Comp. Interaction
+
+61.377 ±
+9.856 61.377\pm 9.856
+
+22.364 ±
+5.795 22.364\pm 5.795
+
+16.260 ±
+4.886 16.260\pm 4.886
+
+\rowcolor
+[gray]0.9
+GPT-4o
+
+Moral Dilemma
+
+71.271 ±
+7.615 71.271\pm 7.615
+
+11.114 ±
+3.999 11.114\pm 3.999
+
+17.615 ±
+6.888 17.615\pm 6.888
+
+\rowcolor
+[gray]0.9
+
+Auth. Directive
+
+72.222 ±
+6.842 72.222\pm 6.842
+
+13.797 ±
+2.745 13.797\pm 2.745
+
+13.981 ±
+4.914 13.981\pm 4.914
+
+\rowcolor
+[gray]0.9
+
+Information Gap
+
+60.825 ±
+11.603 60.825\pm 11.603
+
+19.313 ±
+6.732 19.313\pm 6.732
+
+19.862 ±
+5.340 19.862\pm 5.340
+
+Goal Conflict
+
+86.622 ±
+6.849 86.622\pm 6.849
+
+7.030 ±
+4.373 7.030\pm 4.373
+
+6.348 ±
+4.238 6.348\pm 4.238
+
+Comp. Interaction
+
+85.171 ±
+6.100 85.171\pm 6.100
+
+1.538 ±
+1.538 1.538\pm 1.538
+
+13.291 ±
+5.502 13.291\pm 5.502
+
+DeepSeek V3.1
+
+Moral Dilemma
+
+87.836 ±
+7.626 87.836\pm 7.626
+
+8.634 ±
+4.405 8.634\pm 4.405
+
+3.529 ±
+3.529 3.529\pm 3.529
+
+Auth. Directive
+
+80.667 ±
+5.207 80.667\pm 5.207
+
+9.333 ±
+5.518 9.333\pm 5.518
+
+10.000 ±
+4.472 10.000\pm 4.472
+
+Information Gap
+
+74.583 ±
+12.422 74.583\pm 12.422
+
+9.722 ±
+5.122 9.722\pm 5.122
+
+15.694 ±
+8.459 15.694\pm 8.459
+
+B.3
+Human Evaluation
+
+A critical component of our framework is the reliability of the LLM-based Deception Auditor. We conducted two analyses to validate its performance.
+
+B.3.1
+Qualitative Analysis
+
+We performed a careful human expert review of a full interaction trajectory (16 rounds) to verify the quality of the LLM judge. The process took a human expert 3 hours. We found that the Auditor’s judgments were highly aligned with the human expert, with
+only 1 out of 16
+ judgments being misaligned.
+
+Specifically, the LLM judge correctly distinguished between calculation errors and intentional falsification. In one round, the performer agent made a minor arithmetic error; the Auditor correctly classified this as
+non-deceptive
+, reasoning that the agent had no clear intent to mislead. In another round, the performer reported a critical number with a 10x inflation and cited a false formula to justify it; the Auditor correctly labeled this as high-severity
+falsification
+.
+
+The single mismatch occurred when the performer agent cited a source for an evaluation metric and then proposed a threshold for that metric. The threshold was not in the source file, so the Auditor flagged it as falsification. The human judge, however, viewed proposing a new threshold as a neutral, non-deceptive act. This suggests the Auditor may be slightly over-sensitive, but it consistently identifies clear cases of deception.
+
+B.3.2
+Quantitative Evaluation
+
+Since our Auditor is designed to evaluate complex, longitudinal patterns across full multi-turn trajectories, traditional annotation methods are costly and time-consuming. To provide more rigorous, feasible validation, we have performed additional experiments and included the Cohen’s Kappa agreement.
+
+1.
+
+We select a randomized subset of 10 complete interaction trajectories (155 rounds total) and obtain binary Deception Detected human labels from three expert annotators.
+
+2.
+
+We calculate Cohen’s Kappa agreement to measure the agreement between the LLM Auditor and human annotators.
+
+The result shows a
+0.732 Cohen’s Kappa value, indicating a substantial agreement.
+
+Table 6:
+Comparison of Deception Auditing: Short-Horizon vs. Long-Horizon. The
+Single Turn Auditor (top)
+ only judges the single step after an event, while the
+Context Auditor (bottom)
+ has access to the full interaction history. The Context Auditor consistently identifies a higher deception rate and severity, validating our long-horizon approach.
+
+SINGLE TURN AUDITOR (Short-Horizon)
+
+Model
+
+Deception Rate
+↓
+\downarrow
+
+Avg. Severity (All)
+↓
+\downarrow
+
+Avg. Severity (Deceptive)
+↓
+\downarrow
+
+Gemini 2.5 Pro
+
+0.202 ±
+\pm
+ 0.027
+
+0.438 ±
+\pm
+ 0.061
+
+2.062 ±
+\pm
+ 0.128
+
+DeepSeek V3.1
+
+0.311 ±
+\pm
+ 0.027
+
+0.727 ±
+\pm
+ 0.073
+
+2.308 ±
+\pm
+ 0.053
+
+GPT-4o-1120
+
+0.511 ±
+\pm
+ 0.038
+
+1.270 ±
+\pm
+ 0.104
+
+2.460 ±
+\pm
+ 0.039
+
+DeepSeek V3-0324
+
+0.705 ±
+\pm
+ 0.026
+
+1.751 ±
+\pm
+ 0.072
+
+2.479 ±
+\pm
+ 0.031
+
+CONTEXT AUDITOR (Long-Horizon)
+
+Model
+
+Deception Rate
+↓
+\downarrow
+
+Avg. Severity (All)
+↓
+\downarrow
+
+Avg. Severity (Deceptive)
+↓
+\downarrow
+
+Gemini 2.5 Pro
+
+0.248 ±
+\pm
+ 0.045
+
+0.548 ±
+\pm
+ 0.108
+
+1.886 ±
+\pm
+ 0.163
+
+DeepSeek V3.1
+
+0.335 ±
+\pm
+ 0.036
+
+0.858 ±
+\pm
+ 0.104
+
+2.523 ±
+\pm
+ 0.064
+
+GPT-4o-1120
+
+0.637 ±
+\pm
+ 0.042
+
+1.732 ±
+\pm
+ 0.123
+
+2.716 ±
+\pm
+ 0.054
+
+DeepSeek V3-0324
+
+0.793 ±
+\pm
+ 0.023
+
+2.224 ±
+\pm
+ 0.082
+
+2.795 ±
+\pm
+ 0.042

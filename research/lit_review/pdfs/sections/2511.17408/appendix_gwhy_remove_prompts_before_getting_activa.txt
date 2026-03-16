@@ -1,0 +1,82 @@
+Appendix G
+Why Remove Prompts Before Getting Activations?
+
+For
+on-policy
+
+incentivised
+ and
+prompted
+ strategies, we add an additional incentive or instruction
+p
+p
+ to the input
+x
+x
+ before sampling the model response
+y
+∼
+p
+M
+(
+⋅
+∣
+[
+x
+;
+p
+]
+)
+y\sim p_{M}(\cdot\mid[x;p])
+. After this response is generated, we then remove
+p
+p
+ and only compute
+A
+A
+ on
+[
+x
+;
+y
+]
+[x;y]
+. We find that removing
+p
+p
+ results in better generalisation to
+on-policy natural
+ training data (Figure
+6 ).
+
+Figure 6:
+We report test AUROC scores for linear probes, averaged across all behaviours except
+deception
+ and
+sandbagging
+, trained on
+same-domain
+ Llama-3.2-3B-Instruct activations, tested on
+on-policy
+
+natural
+ data.
+
+In the case of
+on-policy
+
+prompted
+, we see that including
+p
+p
+ in the activations results in a drop in generalisation performance. This is likely because the probe partially learns to recognise the positive prompt as a reliable indicator for a positive label and the negative prompt as a reliable indicator for a negative label. The probe overfitting on
+p
+p
+ results in worse generalisation, so we emit it before generating activations. We don’t see any drop for
+on-policy
+
+incentivised
+, likely because the incentive does not elicit the behaviour as reliably as the direct instruction to, so the probe does not overfit on
+p
+p
+.

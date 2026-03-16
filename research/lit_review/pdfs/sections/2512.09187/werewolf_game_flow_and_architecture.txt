@@ -1,0 +1,25 @@
+3 Werewolf Game Flow and Architecture
+
+Roles and Setup
+
+WOLF recreates the social deduction game Werewolf as a programmable state graph with fixed roles, phases, and transitions. Each game uses a roster of eight participants: four Villagers, two Werewolves, one Seer, and one Doctor. Villagers form the uninformed majority, relying on debate and voting to identify threats. Werewolves act as a coordinated minority, eliminating Villagers at night while concealing their identities during the day. The Seer privately inspects one role each night, and the Doctor protects one player from elimination. This fixed distribution ensures stable conditions for deception to emerge and enables reproducible comparisons across runs, unlike prior implementations that randomized roles.
+
+Game Phases
+
+The game alternates between night and day. At night, Werewolves select a target, the Doctor chooses a player to protect, and the Seer investigates a role. These actions resolve simultaneously, with only outcomes—survival or elimination—revealed. During the day, players debate based on these outcomes, exchanging accusations and defenses before voting to exile a suspected player. A majority is required for exile; otherwise, no action occurs. Victory conditions are asymmetric: Villagers win by eliminating all Werewolves, while Werewolves win once their numbers equal or exceed those of the Villagers.
+
+Debate Structure
+
+Debates follow a bidding system introduced in Werewolf Arena
+[
+bailis2024werewolfarenacasestudy
+]
+ and extended in WOLF. Before each turn, players bid an integer between 0 and 10 to indicate urgency. Higher bids increase the chance of speaking earlier, but frequent overbidding reduces later influence. Ties are broken with a slight bias toward players referenced in the prior turn, reflecting the conversational pull of responding to accusations. This mechanism prevents rigid orderings and better captures the spontaneous dynamics of group debate.
+
+Memory and Suspicion
+
+WOLF extends earlier memory mechanisms
+[
+bailis2024werewolfarenacasestudy
+]
+ by treating each public statement as a unit of analysis with explicit deception assessments. Speakers provide a self-assessment of honesty, while peers judge deceptiveness. These overlapping labels update suspicion scores via exponential smoothing, producing longitudinal traces of trust and doubt that shape later decisions. For example, hesitation in one round may raise suspicion that persists into future rounds, even if later statements appear convincing. All actions—bids, debates, votes, and assessments—are recorded in structured logs, making the benchmark reproducible and suitable for fine-grained analysis.

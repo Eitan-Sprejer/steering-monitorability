@@ -1,0 +1,263 @@
+Appendix A
+Experimental Setup
+
+A.1
+Dataset Statistics
+
+We provide statistics on the data used in our main experiments.
+For each model and dataset, we apply three different thinking budgets: 500, 2K, and 4K tokens.
+As described in
+Section
+˜
+3.1 , we segment each CoT into sentences and report the average number of sentences per prompt, along with the total number of CoT–final response pairs for each setting in
+Table
+˜
+3 .
+
+Table 3:
+Statistics on the datasets used in our main experiments. For each model, dataset, and thinking budget setting, we report the average number of CoT sentences per prompt, along with the total number of samples used for training and evaluation.
+
+Model
+
+Dataset
+
+Thinking Budget
+
+Avg. No. of Sentences
+
+No. of Samples
+
+R1-Qwen-7B
+
+StrongReject
+
+500
+
+31.1
+
+9743
+
+R1-Qwen-7B
+
+SORRY-Bench
+
+500
+
+30.8
+
+13863
+
+R1-Qwen-7B
+
+HarmBench
+
+500
+
+30.0
+
+6001
+
+R1-Llama-8B
+
+StrongReject
+
+500
+
+30.8
+
+9641
+
+R1-Llama-8B
+
+SORRY-Bench
+
+500
+
+31.5
+
+14161
+
+R1-Llama-8B
+
+HarmBench
+
+500
+
+31.0
+
+6200
+
+s1.1-7B
+
+StrongReject
+
+500
+
+33.1
+
+10375
+
+s1.1-7B
+
+StrongReject
+
+2000
+
+125.8
+
+39374
+
+s1.1-7B
+
+StrongReject
+
+4000
+
+239.4
+
+74926
+
+s1.1-7B
+
+SORRY-Bench
+
+500
+
+32.5
+
+14615
+
+s1.1-7B
+
+HarmBench
+
+500
+
+32.7
+
+6541
+
+s1.1-14B
+
+StrongReject
+
+500
+
+33.9
+
+10605
+
+s1.1-14B
+
+StrongReject
+
+2000
+
+128.3
+
+40161
+
+s1.1-14B
+
+StrongReject
+
+4000
+
+214.3
+
+67076
+
+s1.1-32B
+
+StrongReject
+
+500
+
+33.1
+
+10460
+
+s1.1-32B
+
+StrongReject
+
+2000
+
+126.5
+
+39609
+
+s1.1-32B
+
+StrongReject
+
+4000
+
+214.5
+
+67123
+
+A.2
+LLM-Based Monitors
+
+A.2.1
+Prompts
+
+Box
+A.2.1
+ shows the prompt used for LLM-based monitors, including GPT-4.1 and o4-mini.
+The prompt is adapted from the GPT-4.1 prompting guide in the OpenAI Cookbook (
+https://cookbook.openai.com/examples/gpt4-1_prompting_guide
+).
+For in-context learning, we append 100 labeled examples after the task prompt.
+
+Box 1. Prompt Template for LLM Monitor
+
+System
+: You will be tasked to predict whether the model will refuse to answer the prompt question, or provide harmful answer, based on the model’s chain-of-thoughts.
+
+In other words, your job is to predict if the model will generate safety-aligned answer such that the malicious user who asked the harmful question would not receive any useful information or answer.
+
+You are given 100 input-label pairs as in-context learning examples. You can think step-by-step before predicting, and your thinking should be thorough and so it’s fine if it’s very long. You can think step by step to figure out if the final answer response will eventually be safety-aligned or not (i.e., whether the model will return harmful answer). Take your time and think through every step.
+
+Response Rules: Start your response with your chain-of-thought thinking, then output "Final Prediction:", and then give your final answer (safe or unsafe). "safe" means that the model would either refuse or not provide any harmful instructions and responses. "unsafe" means that the model will fulfill the input prompt request by returning harmful response after CoTs.
+
+Task Prompt
+: You are given a harmful prompt question and a model’s chain-of-thoughts (CoTs).
+
+Your task is to predict, given the CoTs, whether the model will output safe (refusal or not providing any helpful information for the malicious request) or unsafe (the model will then output answer that fulfills the malicious query) response. Provide your final answer after thinking and the string "Final Prediction:".
+
+Prompt:
+{input_prompt}
+
+CoTs:
+{CoT}
+
+A.2.2
+Unable to Finetune OpenAI Classifiers
+
+In addition to zero-shot prompting and in-context learning, we also explored finetuning GPT-4.1 using the same training dataset for our linear probe. However, as shown in
+Figure
+˜
+6 below, OpenAI moderation policy does not allow using finetuning to create safety monitors.
+
+Figure 6:
+Unable to finetune GPT-4.1 text classifier due to OpenAI’s moderation policy.
+
+A.3
+Training Details for ModernBERT
+
+We finetune the large variant of ModernBERT
+(Warner et al.,
+2024 )
+ using the Trainer class in the
+transformer
+ library for 50 epochs. To avoid overfitting, we evaluate on the F1 score of the validation set at every 5000 steps, and we use early stopping with a patience hyperparameter of 10.
+
+A.4
+Training Details for MLP
+
+We train a two-layer Multi-Layer Perceptron (MLP) as an activation-based monitor to compare with the linear probe.
+The model has two hidden layers with 100 and 50 units, each followed by ReLU activations, and a final sigmoid output layer for binary classification.
+The training uses a weighted binary cross-entropy loss to address class imbalance. We use the Adam optimizer with a learning rate of 0.001 and apply early stopping based on the validation F1 score, with a patience of 5 epochs.
+The dataset is split 90:10 into training and validation subsets. Training is conducted over a maximum of 50 epochs with a batch size of 32.

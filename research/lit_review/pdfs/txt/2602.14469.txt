@@ -1,0 +1,2288 @@
+Nanbeige
+
+Measuring and Mitigating Post-hoc Rationalization
+
+in Reverse Chain-of-Thought Generation
+
+Guangyue Peng 1 * † Zongchao Chen 2 * Wen Luo 1 Yuntao Wen 3 Wei Li 1 Ruixiang Feng 3 Ran Le 2
+Chen Yang 2 Zhenwei An 2 Yang Song 2 Tao Zhang 2 Houfeng Wang 2
+
+arXiv:2602.14469v1 [cs.CL] 16 Feb 2026
+
+Abstract
+Reverse Chain-of-Thought Generation (RCG)
+synthesizes reasoning traces from query-answer
+pairs, but runs the risk of producing post-hoc rationalizations:
+when models can see the answer
+during generation, the answer serves as a cognitive
+anchor that shapes the entire explanation.
+We formalize this phenomenon through a threelevel
+measurement hierarchy: lexical, entropic,
+and probabilistic anchoring, each captures surface
+artifacts, entropy dynamics, and latent answer dependence,
+respectively. We analyze semantic suppression,
+the intuitive mitigation strategy that instructs
+models to ignore the answer, to find out its
+counterproduction: while it reduces lexical overlap,
+it paradoxically increases entropic and probabilistic
+anchoring. Drawing on Ironic Process
+Theory from cognitive psychology, we attribute
+this failure to active monitoring of the forbidden
+answer, which inadvertently deepens dependence
+on it. To break this cycle, we propose Structural
+Skeleton-guided Reasoning (SSR), a two-phase
+approach that first generates an answer-invariant
+functional skeleton structure, then uses this skeleton
+to guide full trace generation. By redirecting
+the information flow to structural planning rather
+than answer monitoring, SSR consistently reduces
+anchoring across all three levels. We further introduce
+Distilled SSR (SSR-D), which fine-tunes
+models on teacher-generated SSR traces to ensure
+reliable structural adherence. Experiments
+across open-ended reasoning benchmarks demon-
+
+Qwen3-4B-Thinking-2507
+
+Qwen3-8B
+
+45
+
+45
+
+D
+
+o
+
+w
+
+n
+
+s
+
+t
+
+r
+
+e
+
+a
+
+m
+
+A
+
+c
+
+c
+
+u
+
+r
+
+a
+
+c
+
+y
+
+SSR
+(Ours)
+
+
+
+SSR
+(Ours)
+
+NEU
+
+40
+
+40
+
+NEU
+
+SUP
+AUG-SUP
+
+AUG-SUP
+
+35
+
+35
+
+SUP
+
+56 51 46 41 36 31 26
+30
+
+56 51 46 41 36 31 26
+30
+
+Lexical Anchoring
+Figure 1. Analysis of the relationship between Lexical Anchoring
+and Downstream Accuracy (from Table 3). The plot reveals that
+lexical anchoring is a poor indicator of model utility, as semantic
+suppression methods (SUP/AUG-SUP) tend to "deceive" this metric,
+obtaining smaller anchoring while simultaneously suffering
+from a drop in actual downstream performance. In contrast, our
+SSR method achieves improvements in both dimensions.
+
+strate that SSR-D achieves up to 10% improvement
+over suppression baselines while preserving
+out-of-distribution (OOD) generalization.
+
+1. Introduction
+
+The effectiveness of Large Language Models (LLMs) in
+complex reasoning tasks depends critically on the quality of
+intermediate reasoning traces (Wei et al., 2022; Kojima et al.,
+2022; Chu et al., 2024). While expert-verified query-answer
+pairs are abundant (Cobbe et al., 2021; Hendrycks et al.,
+2021), the scarcity of corresponding step-by-step derivations
+creates a significant bottleneck for acquiring and transferring
+reasoning capabilities. Reverse Chain-of-Thought
+Generation (RCG) addresses this gap by synthesizing intermediate
+reasoning steps that logically bridge a query to a
+known answer (Bhagavatula et al., 2020; Zelikman et al.,
+2022; Li et al., 2025b).
+
+*Equal contribution . †Work done during internship at
+Nanbeige Lab. 1
+State Key Laboratory of Multimedia Information
+Processing, School of Computer Science, Peking
+University 2Nanbeige Lab, BOSS Zhipin 3University of Electronic
+Science and Technology of China. Correspondence
+to: Yang Song <songyang@kanzhun.com>, Houfeng Wang
+<wanghf@pku.edu.cn>.
+
+However, RCG is susceptible to post-hoc rationalization
+(Cox, 2025; Jin et al., 2026). When the answer is visible
+
+Preprint. February 17, 2026.
+
+1
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+during generation, models tend to rationalize backward from
+the conclusion rather than genuinely derive it (Turpin et al.,
+2023; Lewis-Lim et al., 2025). Importantly, post-hoc rationalization
+does not necessarily degrade the surface quality or
+final accuracy of responses. Rather, it undermines the reliability
+and utility of the reasoning traces themselves (Agarwal
+et al., 2024). Because the model has committed to the response
+from the outset, this pre-determined response serves
+as a cognitive anchor that shapes the entire explanation
+(Bao et al., 2025). The resulting chain-of-thought becomes
+less logically self-contained. An observer presented only
+with the query, unaware of the anchored response, would
+find the reasoning less accessible and coherent (Arcuschin
+et al., 2025). This anchoring effect weakens the utility of
+generated traces for explainability, faithfulness verification,
+reasoning distillation, and reliable measurement of out-ofdistribution
+generalization (David, 2025; Cetin et al., 2025;
+Chua et al., 2024).
+
+providing a content-neutral structural target, SSR naturally
+mitigates the three-hierarchical anchoring effect consistently
+without triggering ironic monitoring. While SSR is effective
+via prompting alone, we extend its application to reasoning
+distillation through Distilled SSR (SSR-D), which finetunes
+teacher models to produce skeleton–reasoning pairs
+to improve skeleton validity and adherence, strengthening
+the structural–content division of labor.
+Our contributions are:
+
+1. Anchoring Measurement: We propose a comprehensive
+three-level framework (lexical, entropic, probabilistic)
+to quantify the anchoring effects of precommitted
+responses in the setting of reverse chain-ofthought
+generation.
+
+2. Mechanism Analysis: We demonstrate that semantic
+
+suppression, the intuitive mitigation strategy for posthoc
+rationalization, fails due to an "ironic process" that
+paradoxically strengthens anchoring.
+
+To quantify and mitigate this phenomenon, we propose a
+three-level hierarchy of anchoring metrics. Beyond surfacelevel
+lexical anchoring, which simply measures token overlap
+between the trace and the anchored response, we examine
+deeper generation dynamics of the reverse chainof-thought.
+We introduce entropic anchoring to capture
+unnatural temporal patterns in information gain, and probabilistic
+anchoring to measure the total mutual information
+between the reasoning trace and the anchored response.
+
+3. Methodology: We introduce SSR to mitigate post-hoc
+
+rationalization by decoupling reasoning structure from
+pre-anchored content, and further propose SSR-D to
+rely on skeleton–reasoning pairs produced by teachers
+for more structured skeleton and stronger downstream
+gains.
+
+We apply our measurement framework to evaluate mitigation
+strategies for post-hoc rationalization. The intuitive
+baseline is semantic suppression: explicitly prompting models
+to ignore the given response or suppress indicators of
+pre-determination (Cetin et al., 2025; Wang et al., 2025a).
+Although widely adopted as an intuitive remedy to successfully
+relieve the lexical anchoring, our analysis reveals that
+suppression fails on internal anchoring metrics. While it
+masks lexical overlaps, it significantly increases entropic
+and probabilistic anchoring, ultimately degrading the quality
+of reasoning traces and hurting downstream task performance
+(Figure 1). The model rationalizes more subtly, but
+more heavily. We connect this paradox with Ironic Process
+Theory (Wegner, 1994) from cognitive psychology: instructing
+a model to ignore an answer forces it to actively monitor
+for exclusion, thereby deepening the specific dependence it
+aims to cut off (illustrated in Figure 2 (b)).
+
+2. Anchoring Measurement
+
+We define Reverse Chain-of-Thought Generation (RCG) as
+follows: given a query Q and a pre-committed response A,
+generate a reasoning chain
+
+R = (r1, r2, . . . , rT )
+
+such that R constitutes a coherent derivation from Q to A.
+Unlike standard chain-of-thought prompting where the answer
+emerges from reasoning, RCG constructs explanatory
+traces for predetermined conclusions.
+
+The central question in evaluating RCG is: To what extent
+does the pre-committed response A anchor the generation
+of reasoning R? We formalize this through a hierarchy of
+three metrics, ordered from observable surface features to
+latent information-theoretic properties.
+
+To break this cycle, we propose Structural Skeletonguided
+Reasoning (SSR). Rather than suppressing the answer,
+SSR decouples the structure of reasoning from its content.
+Generation proceeds in two phases: (1) synthesizing a
+"skeleton" of functional tags (e.g., PLAN → INFER) that extracts
+the reasoning structure behind response while remains
+invariant to specific response content, and (2) using this
+skeleton to guide generation of the full reasoning chain. By
+
+2.1. Lexical Anchoring (Alex)
+
+Definition 2.1. Lexical anchoring captures the direct appearance
+of response tokens within the reasoning chain. We
+quantify this using ROUGE-L recall:
+
+LCS(R, A)
+|A|
+
+Alex =
+
+(1)
+
+2
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+(a) The Problem: Post-hoc Rationalization
+
+(b) The Failure of Suppression: Ironic Process
+LLM Internal State
+
+A
+
+LLM Internal State
+
+LLM Output User Input
+
+User Input
+
+LLM Output
+
+... Since the answer
+is A, I'll just verify ...
+
+Given + A
+... Please output
+reasoning process.
+Q
+
+I'll just verify...
+(I can not reveal A!)
+
+Given + A
+... Please output
+reasoning process.
+Q
+
+...
+Reasoning Chain R
+
+A
+Latent
+Answer A
+
+A
+Latent
+Answer A
+
+...
+
+ Constraint:
+Do not reveal A!
+
+X
+
+Reasoning Chain R
+
+(c) The Solution: Structural Skeleton-guided Reasoning (SSR)
+
+LLM Internal State
+
+Structural Skeleton
+
+Anchoring Effect
+Low High
+
+User Input
+
+[BRANCH]
+
+Following the plan,
+I first establish...
+
+[PLAN] [INFER] [EVAL]
+
+...
+
+Given + A
+... Please output
+reasoning process.
+Q
+
+A
+Latent
+Answer A
+
+[BRANCH]
+
+...
+Reasoning Chain R
+
+...
+
+Figure 2. Paradigms in Reverse Chain-of-Thought Generation. The curved red and blue arrows indicate the anchoring effect of the
+pre-committed answer. (a) Post-hoc Rationalization: Visible answers cause shortcutting, resulting in rationalized reasoning chains. (b)
+Suppression Failure: Negative constraints trigger "ironic monitoring" of the forbidden answer, paradoxically maintaining high anchoring
+effect and highly rationalized chains. (c) Structural Skeleton-guided Reasoning (SSR): Decoupling content via an abstract skeleton
+redirects the anchoring, producing unanchored chains driven by structural information rather than answer dependency.
+
+where LCS(R, A) denotes the length of the longest common
+subsequence between the reasoning trace and the response,
+and |A| is the token count of the response.
+
+as the anchored answer intermittently surfaces).
+Following Gwak et al. (2025), we calculate step-level information
+density using predictive entropy. For reasoning
+step ri with Mi
+tokens and predictive distribution pt over
+vocabulary V,
+
+While Alex is easily minimized through paraphrasing or lexical
+substitution, it serves as a baseline indicator of surfacelevel
+anchoring. However, Alex alone is an insufficient proxy
+for evaluating the quality of generated reasoning. As in
+Figure 1, reducing Alex does not guarantee improved downstream
+performance, because models may simply learn to
+obscure the same underlying dependence.
+
+IDi =
+1
+Mi
+X
+Mi
+t=1
+
+X
+v∈V
+
+Ht, Ht = −
+
+pt(v) log pt(v). (2)
+
+Definition 2.2. Let u˜ = [ID′
+1
+, . . . ,ID′
+N ] be the min–max
+
+normalized information density vector. Global uniformity
+measures exploration suppression:
+
+2.2. Entropic Anchoring (Aent)
+
+1
+1 + Var(u˜)/τg
+
+Beyond lexical artifacts, anchoring manifests in the dynamics
+of information flow. Previous studies have analyzed the
+reasoning process of LLMs with the respect of information
+density. Using entropy of predictive reasoning distribution,
+Gwak et al. (2025) discovers that successful LLM reasoning
+exhibits high local uniformity but low global uniformity. A
+typical CoT exhibits initial exploration with higher entropy,
+followed by consolidation and a final commitment phase
+where uncertainty collapses. Higher global variance characterizes
+the exploration and evolvement during problem
+solving, which local smoothness ensures coherence.
+Post-hoc rationalization hinders the normal reasoning and
+anchors the scope for exploration. The pre-committed response
+suppresses exploration, producing high global uniformity
+(artificially flat, uninformative traces), while information
+leakage causes low local uniformity (erratic transitions
+
+Gunif =
+
+(3)
+
+τg controls the sensitivity of Gunif. Larger values make the
+metric less sensitive to variance differences.1
+
+Definition 2.3. Local non-uniformity captures incoherence
+via the coefficient of variation of step-to-step absolute
+changes ∆i = |ID′
+i − ID′
+i−1
+|:
+
+σ∆/µ∆
+1 + σ∆/µ∆
+
+Lnon-unif =
+
+(4)
+
+Definition 2.4. Entropic anchoring is the geometric mean:
+
+Aent =
+p
+Gunif · Lnon-unif (5)
+1Based on preliminary experiments, we set τg = 0.1.
+
+3
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+High Aent indicates reasoning locked into a constrained
+regime, simultaneously less exploratory and less coherent.
+It serves as the signature of post-hoc rationalization with
+the respect of information flow. We further discuss the
+theoretical foundation of Aent in Appendix A.
+
+3.2. Structural Skeleton-guided Reasoning (SSR)
+
+We propose SSR as an alternative that shifts from suppression
+to separation. Instead of forbidding access to the response,
+SSR borrows the insight from the meta-reasoning
+paradigm (Wang et al., 2023; Ning et al., 2024) and introduces
+an intermediate structural representation that decouples
+reasoning topology from specific semantic content in
+the anchored response.
+
+2.3. Probabilistic Anchoring (Aprob)
+
+Definition 2.5. Probabilistic anchoring quantifies the extent
+to which the pre-committed response shapes the predictive
+direction of the entire reasoning chain. We measure the bit
+gain rate, the average reduction in uncertainty per response
+token provided by the reasoning trace, by normalizing the
+Pointwise Mutual Information (PMI) between R and A:
+
+We define a Structural Skeleton
+
+S = ⟨(f1, c1), . . . ,(fn, cn)⟩
+
+as a sequence of abstract steps, where each step comprises
+a functional tag fi from a closed set and a content summary
+ci describing the step’s intent without revealing values
+(e.g., “calculate the ratio” rather than “calculate 0.5”). This
+abstraction ensures the skeleton remains invariant to the
+specific response while preserving the logical derivation.3
+
+1
+|A|
+
+Pθ(A | Q, R)
+Pθ(A | Q)
+
+Aprob =
+
+log2
+
+. (6)
+
+A high Aprob indicates that the reasoning trace R substantially
+reduces to A on a per-token basis. While some predictive
+capability is expected from valid reasoning, a disproportionately
+high bit gain rate suggests that the trace essentially
+encodes the response directly, serving as a compressed transmission
+channel for A. This metric captures anchoring that
+persists even when lexical and entropic artifacts are successfully
+masked.
+
+Functional Tags
+
+[PLAN] [RETR] [INFR] [EVAL]
+
+Planning Retrieval Inference Evaluation
+[SUMM] [BTRK] [RFLX] [BRCH]
+Summary Backtrack Reflection Branch
+
+SSR operates via two-phase generation:
+
+3. Methodology
+
+1. Skeleton Generation: The model generates a skeleton
+conditioned on query and response:
+
+3.1. Baselines
+
+Neutral Prompting (NEU). Our baseline employs standard
+chain-of-thought generation where the model is given
+both the query Q and response A, then asked to produce
+a reasoning trace connecting them without additional constraints.
+This represents the default RCG setting and establishes
+reference anchoring levels against which mitigation
+strategies are compared.2
+
+S ∼ P(S | Q, A).
+
+2. Reasoning Generation: The model generates the full
+reasoning trace guided by the skeleton:
+
+R ∼ P(R | S, Q, A).
+
+Semantic Suppression (SUP). A natural mitigation strategy
+instructs the model to conceal the response during generation:
+“Reason step by step, but do not reveal the answer
+until the end.” (Wang et al., 2025a) We additionally evaluate
+an intensified variant (AUG-SUP) with stronger suppression
+instructions threatening the model not to disclose the relevant
+information (Xu et al., 2025). While intuitively appealing,
+we hypothesize—and empirically demonstrate—that
+this approach fails to reduce internal anchoring. Suppression
+preserves or amplifies response information within the reasoning
+dynamics despite successfully masking it in surface
+text, challenging the assumption that lexical concealment
+equates to genuine derivation.
+
+Although A remains visible in both stages, the skeleton
+S acts as a structural scaffold that absorbs the anchoring
+effect for planning and logical organization. By providing a
+content-neutral target, SSR naturally redirects computation
+away from direct response encoding.
+
+4. Experiments
+
+We evaluate strategies for mitigating post-hoc rationalization
+in reverse chain-of-thought generation. Our experimental
+framework measures the extent to which different prompting
+and generation approaches reduce anchoring effects while
+maintaining reasoning quality.
+
+2Detailed prompts are provided in Appendix H.
+
+3Appendix C provides theoretical properties for SSR.
+
+4
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+0.00 0.25 0.50 0.75 1.00
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Probabilistic Anchoring
+Reason
+Encode
+Cloze
+Copy
+Real CoT
+0.00 0.25 0.50 0.75 1.00
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Reason
+Encode
+Cloze
+Copy
++Prob Anchor
+0.00 0.25 0.50 0.75 1.00
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Reason
+Encode
+Cloze
+Copy
++Entropy Anchor
+0.00 0.25 0.50 0.75 1.00
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Reason
+Encode
+Cloze
+Copy
+Response as CoT
+
+Entropic Anchoring
+Figure 3. Behavioral zone construction via controlled reference conditions. Real CoT: standard generation without pre-committed
+response; +Prob Anchor: append response following standard CoT to induce predictive anchoring; +Entropy Anchor: use function-word
+skeleton of response to constrain exploration; Response as CoT: response used directly as reasoning trace. These conditions empirically
+locate four zones: Reason (bottom-left), Encode (top-left), Cloze (bottom-right), and Copy (top-right). Point color indicates lexical
+anchoring (blue: low, red: high).
+
+0.00 0.25 0.50 0.75 1.00
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Probabilistic Anchoring
+Reason
+Encode
+Cloze
+Copy
+NEU
+0.00 0.25 0.50 0.75 1.00
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Reason
+Encode
+Cloze
+Copy
+SUP
+0.00 0.25 0.50 0.75 1.00
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Reason
+Encode
+Cloze
+Copy
+AUG-SUP
+0.00 0.25 0.50 0.75 1.00
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Reason
+Encode
+Cloze
+Copy
+SSR
+
+Entropic Anchoring
+Figure 4. Mechanism diagnosis across generation strategies. Suppression (SUP, AUG-SUP) shifts traces rightward and upward from NEU,
+migrating from Reason toward Cloze and Encode zones. SSR concentrates traces in Reason with minimal pathological spread. Point color
+indicates lexical anchoring (blue: low, red: high).
+
+4.1. Data Construction
+We sample 10,000 queries from LMArena (Chiang et al.,
+2024), paired with reference responses generated via a
+Qwen3-Max self-improvement pipeline (details in Appendix
+B). This setup simulates realistic reasoning distillation
+scenarios: high-quality responses emerge from multiturn
+deliberation, but no gold-standard reasoning traces are
+available for supervision. Using Qwen3-4B-Thinking-2507
+as target models,4 we generate reasoning traces under each
+strategy and compute the anchoring metrics (Aprob, Aent,
+Alex).
+
+its own chain-of-thought and response without providing
+any pre-committed answer (R = R∗
+). This simulates
+
+standard inference where the model explores the solution
+space internally. Traces cluster in the bottom-left region
+with low anchoring on both axes.
+
+• Encode (Predictive Anchoring): We append the specific
+response paragraphs following the reasoning trace
+(R = R∗ + A). The explicit appearance of the precommitted
+response anchors the model’s predictive distribution,
+causing the trace to encode response information
+while maintaining normal-looking exploration dynamics.
+Traces populate the top-left region.
+
+4.2. Behavioral Zones Construction
+To empirically ground the anchoring measurement framework,
+we construct controlled simulations that isolate distinct
+behavioral regimes within the Entropic–Probabilistic
+Anchoring plane (Figure 3).
+
+• Cloze (Exploratory Anchoring): We use the specific
+
+response paragraphs as the reasoning trace, with all content
+words masked, retaining only function words (R =
+A/{CONTENT WORDS}). The function word skeleton
+frames the generation path and suppresses exploratory
+variance without leaking substantial probabilistic information.
+This reduces reasoning to a “cloze” completion
+task. Traces cluster in the bottom-right region.
+
+• Reason (Authentic Reasoning): The model generates
+4We validate observations on Qwen3-8B in Appendix D.
+
+• Copy (Severe Rationalization): We use the specific re5
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+Table 1. Anchoring metrics by generation method (Qwen3-4BThinking-2507).
+Suppression reduces Alex but increases Aent and
+Aprob. SSR reduces anchoring across all axes.
+
+Table 2. Distribution of reasoning traces across behavioral zones
+(Qwen3-4B-Thinking-2507). SSR maintains the highest proportion
+of authentic reasoning while minimizing pathological patterns.
+
+Method Alex ↓ Aent ↓ Aprob ↓
+NEU 48.5 55.9 37.0
+SUP 45.3 57.4 43.6
+AUG-SUP 42.9 58.4 44.4
+SSR 30.8 47.2 34.1
+
+Method Reason ↑ Encode ↓ Cloze ↓ Copy ↓
+NEU 12.7% 4.0% 54.0% 29.3%
+SUP 18.2% 9.3% 46.6% 25.9%
+AUG-SUP 5.2% 7.6% 44.5% 42.7%
+SSR 51.2% 5.1% 22.9% 20.8%
+
+∆ (AUG-SUP vs. NEU) −11.5% +4.5% +20.0%
+∆ (SSR vs. NEU) −36.5% −15.6% −7.8%
+
+the reductions in entropic and probabilistic anchoring indicate
+that generated traces exhibit more natural information
+dynamics and greater independence from the pre-committed
+response.
+
+sponse paragraphs directly as the reasoning trace (R = A).
+This represents the pathological case where no reasoning
+process occurs. Traces occupy the top-right region with
+maximal anchoring on both dimensions.
+
+SSR restores faithful reasoning dynamics. Analyzing
+the behavioral zone distributions (Figure 4), SSR effectively
+counteracts the pathological shifts induced by suppression.
+While suppression forces traces into Encode and
+Cloze zones, SSR concentrates the distribution firmly in the
+Reason zone, achieving over half the traces in authentic reasoning
+(Table 2). The structural skeleton prevents aimless
+generation by enforcing a plan and discourages rationalization
+by defining granular step-wise intents that cannot
+be easily bypassed. In the SSR panel, traces form a tight
+cluster in the bottom-left quadrant with minimal spread into
+pathological zones, indicating that SSR’s structural guidance
+produces consistently faithful reasoning trajectories
+rather than merely shifting the mean while preserving high
+variance.
+
+4.3. Observations
+
+Suppression masks lexical anchoring but amplifies internal
+anchoring. As shown in Table 1, a sharp dissociation
+exists between surface and latent anchoring effects. While
+suppression strategies (SUP, AUG-SUP) successfully reduce
+lexical anchoring (Alex) compared to the neutral baseline,
+they paradoxically increase both entropic (Aent) and
+probabilistic (Aprob) anchoring. The intensified AUG-SUP
+condition exacerbates this effect: while achieving the lowest
+lexical anchoring among suppression methods, it produces
+the highest internal anchoring scores. Stronger negative constraints
+compel the model to represent the response more
+distinctively in latent space precisely to avoid generating
+it explicitly—the model rationalizes more subtly, but more
+heavily.
+
+4.4. Interpretation
+
+The divergent behaviors of suppression-based methods and
+SSR can be understood through the lens of Ironic Process
+Theory from cognitive psychology (Wegner, 1994). When
+instructed to suppress a concept (e.g., “do not think of a
+white bear”), individuals paradoxically experience increased
+accessibility of that concept. This occurs because suppression
+requires an active monitoring process to detect and
+exclude the forbidden content, a process that necessarily
+keeps the target concept cognitively salient.
+
+Suppression induces pathological reasoning. Visualizing
+reasoning traces in the Entropic–Probabilistic Anchoring
+plane reveals how suppression distorts the reasoning process
+(Figure 4). Under NEU, traces cluster primarily in the
+Reason zone with some spread into Encode. Suppression
+(SUP, AUG-SUP) causes significant rightward and upward
+migration, shifting the distribution toward Cloze and Encode
+zones—the model trades genuine derivation for constrained
+exploration or disguised encoding. AUG-SUP produces the
+most dispersed distribution, with traces spreading across all
+pathological zones.
+
+We argue that an analogous phenomenon manifests in LLMs
+under semantic suppression. It is illustrated in Figure 2 (b)
+that when prompted to “not reveal the answer,” the model
+must internally represent what constitutes the answer to evaluate
+whether each generated token violates the constraint.
+This monitoring induces more anchoring effect, biasing the
+entire generation trajectory, even when the model successfully
+avoids surface-level copying.
+
+SSR achieves consistent reduction across all metrics.
+Unlike suppression methods, which trade lower lexical overlap
+for higher latent anchoring, SSR consistently reduces anchoring
+across all three levels (Table 1). By grounding generation
+in a pre-planned structural skeleton, SSR achieves
+the lowest lexical, entropic, and probabilistic anchoring
+scores among all methods. The reduction in lexical anchoring
+demonstrates effective surface-level mitigation, while
+
+SSR circumvents this paradox through a fundamentally
+different mechanism. Rather than imposing negative constraints
+that require answer monitoring, SSR provides a
+
+6
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+positive structural target that redirects the model’s generative
+focus. As shown in Figure 2 (c), The skeleton specifies
+what operations to perform (e.g., [PLAN] → [BRCH] →
+[EVAL]) without encoding what results to obtain.
+
+Models. We fine-tune Qwen3-8B and Qwen3-32B (Yang
+et al., 2025a) as representative open-weight thinking models,
+Qwen3-4B-Thinking-2507 for reasoning-specialized
+evaluation, and NBG4-3B-Base (Yang et al., 2025b) to test
+cross-family transfer.
+
+The skeleton possesses a rich reasoning structure, including
+non-linearity and diversity (ensured by tags such as
+[BTRK] and [RFLX]), which saves space for exploration
+and entropy robustness, benefit for mitigating the entropic
+anchoring effect. Meanwhile, this content-invariant scaffold
+naturally displaces the probabilistic anchoring effect: the
+model attends to structural guidance rather than monitoring
+forbidden content, breaking the ironic cycle that suppression
+inadvertently creates.
+
+Benchmarks. We evaluate across diverse reasoning domains:
+open-ended reasoning ArenaHard-v2.0 (Li et al.,
+2025c), human-aligned emotional intelligence reasoning
+EQ-Bench 3 (Paech, 2023), strict constraint adherence
+IFEval (Zhou et al., 2023b), and multi-turn instructionfollowing
+MultiChallenge (Deshpande et al., 2025). For
+out-of-distribution evaluation, we use GPQA-Diamond
+(Rein et al., 2023) for scientific reasoning and AIME 2025
+(Zhang & Math-AI, 2025) for difficult mathematical reasoning.
+All evaluation details can be found in Appendix E.
+
+5. Downstream Performance
+
+We move forward to testify the effectiveness of reverse CoT
+under different anchoring influence, addressing three questions:
+(1) Does reduced anchoring effects translate to improved
+downstream performance? (2) Does rationalization
+mitigation enables better out-of-distribution generalization?
+(3) Does distillation strengthen structural alignment beyond
+prompting?
+
+5.2. Main Results
+
+Table 3 presents in-distribution results across four benchmarks
+and model scales.
+
+Reduced anchoring yields consistent performance gains.
+SSR-D achieves the highest scores across all benchmarks
+and model scales, with gains that scale with model capacity.
+On ArenaHard, improvements over NEU are up to +10
+(Qwen3-4B-Thinking), while MultiChallenge shows consistent
+gains up to +3. This correlation between lower internal
+anchoring (Table 1) and higher downstream accuracy validates
+our framework: structured reasoning traces provide
+stronger training signals than post-hoc rationalizations.
+
+5.1. Experimental Setup
+
+Methods.
+
+• We continue to evaluate the strategies defined in Section
+3: NEU (neutral prompting), SUP and AUGSUP
+(semantic suppression baselines), SSR (structural
+skeleton-guided generation).
+
+Suppression degrades multi-turn reasoning. While
+SUP and AUG-SUP yield marginal single-turn improvements
+on ArenaHard, they consistently degrade MultiChallenge
+performance. This asymmetry is most pronounced
+for Qwen3-8B, where AUG-SUP underperforms NEU by
+5% despite appearing less anchored by Alex (Figure 1). The
+pattern confirms that suppression-induced traces lack global
+coherence for sustained multi-turn reasoning, consistent
+with elevated Aent in Table 1.
+
+• SSR-D (distilled SSR). While SSR can be implemented
+via prompting, adherence to the structural format
+is often inconsistent, since models may omit tags
+or leak results into skeletons. SSR-D addresses this
+by fine-tuning on teacher-generated high-quality SSR
+pairs, where teacher is trained on two objectives: skeleton
+generation LS = − log pθ(S
+∗
+| Q, A) and reasoning
+reconstruction LR = − log pθ(R∗
+| Q, A, S∗
+).
+The combined objective L = LS + LR ensures robust
+structural alignment. Training details are provided in
+Appendix F.
+
+Distillation amplifies structural alignment. Comparing
+SSR and SSR-D reveals that prompting alone captures
+roughly half the potential benefit (e.g., +5 vs. +9 on ArenaHard
+for Qwen3-8B). The consistent SSR-D advantage
+reflects learned internalization of the skeleton pattern, ensuring
+reliable format adherence and stronger rationalization
+mitigation. Cross-architecture transfer to NBG4-3BBase
+further validates that structural decoupling captures
+architecture-agnostic reasoning principles.6
+
+Data. We sample 100k queries from LMArena (Chiang
+et al., 2024) and generate reference answers using Qwen3-
+Max. Given (Q, A) pairs lacking intermediate reasoning,
+we generate reverse CoT using Qwen3-235B-Instruct-2507
+(Yang et al., 2025a) under each baseline condition, enabling
+evaluation at frontier-model scale. For SSR-D, NBG-3.5-
+Pro5
+serves as the generator of the distilled SSR traces.
+
+5https://www.nanbeige.com/portal
+
+6We ablate the components of SSR in Appendix G.
+
+7
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+Table 3. Main results across core benchmarks. Best results are in bold, and second-best are underlined. SSR and SSR-D consistently
+outperform suppression-based methods, with SSR-D achieving the largest gains. Suppression methods show marginal improvement on
+ArenaHard but degrade multi-turn performance. (Arena: ArenaHard, EQ: EQ-Bench 3, IF: IFEval, MC: MultiChallenge)
+
+Method Qwen3-8B-Think Qwen3-32B-Think Qwen3-4B-Think-2507 NBG4-3B-Base
+Arena EQ IF MC Arena EQ IF MC Arena EQ IF MC Arena EQ IF MC
+
+NEU 50.8 76.4 80.0 38.2 68.2 85.5 83.4 43.8 41.7 79.3 76.7 38.9 32.4 79.6 74.3 34.5
+SUP 51.5 77.5 81.2 35.5 68.8 85.6 84.5 41.5 42.3 79.2 78.5 36.6 32.9 81.5 76.5 33.4
+AUG-SUP 52.8 78.3 81.5 33.0 69.1 86.4 83.2 41.3 43.5 79.0 80.1 34.5 33.2 82.8 77.2 33.0
+SSR 56.3 82.6 82.9 39.4 70.1 87.7 84.8 44.6 46.1 81.9 81.6 40.2 34.6 84.4 77.6 35.8
+SSR-D 59.5 86.1 83.7 41.2 72.0 89.6 85.1 45.0 50.8 83.1 83.8 42.0 37.2 86.5 78.2 37.1
+
+Table 4. Out-of-distribution performance on GPQA-Diamond and
+AIME 2025. Bold and underlined values denote the best and
+second-best results among trained methods (excluding w/o Train).
+
+trajectory reconstruction (Shridhar et al., 2023; Li et al.,
+2025b; Wang et al., 2025a). However, these methods expose
+the target answer during trace generation, inducing anchoring
+effects that compromise reasoning quality. We address
+this through structural decoupling, isolating derivation logic
+from answer-specific content.
+
+Method Qwen3-8B-Think Qwen3-32B-Think
+GPQA-D AIME GPQA-D AIME
+w/o Train 58.1 70.0 64.1 73.3
+NEU 49.5 33.3 60.6 56.7
+SUP 51.0 35.0 60.1 52.5
+AUG-SUP 51.2 33.3 61.1 49.2
+SSR 53.2 40.0 62.7 56.7
+SSR-D 56.6 44.2 65.2 59.2
+
+Post-hoc Rationalizations in Chain-of-Thought. LLMs
+are not always thoughtful and faithful. When models decide
+the response before start thinking, their post-hoc rationalizations
+may be influenced by unstated biases (Turpin et al.,
+2023; Lyu et al., 2023) or contain deceptive shortcuts (Li
+et al., 2024; Yee et al., 2024). While current mitigation
+methods focus on verification or process rewards (Lightman
+et al., 2024; Wang et al., 2025c; Feng et al., 2025), we frame
+the problem through an anchoring lens: answer visibility anchors
+generation down as justification rather than derivation.
+We propose a metric hierarchy (Alex, Aent, Aattn) to quantify
+this phenomenon and achieve rationalization mitigation by
+construction through structural skeleton.
+
+5.3. Out-of-Distribution Generalization
+
+Table 4 reveals that standard ARG training severely degrades
+OOD performance. On AIME 2025, NEU-trained
+Qwen3-8B collapses to less than half its untrained baseline,
+as the training data lack mathematical content comparable
+to competition-level problems. Suppression methods provide
+no recovery, while AUG-SUP even worsens AIME for
+Qwen3-32B by 7.5%.
+
+Structural Approaches in Reasoning. Prior work has established
+the importance of reasoning structure in LLM
+chain-of-thought (Li et al., 2025a; Wang et al., 2025b).
+Structured reasoning has been obtained via non-linear exploration
+(Yao et al., 2023; Besta et al., 2024), stage decomposition
+(Wang et al., 2023; Zhou et al., 2023a; Wen et al.,
+2025), and meta-reasoning (Wang et al., 2024; Zhang et al.,
+2025). Our SSR leverages structure to redirect generation
+away from anchoring cues. Crucially, we enforce skeletons
+to remain answer-independent, distinguishing our approach
+from efficiency-driven methods such as Ning et al. (2024).
+
+While all methods suffer from this domain gap, SSR
+and SSR-D substantially outperform suppression baselines
+through anchoring mitigation. For Qwen3-8B, SSR-D recovers
+approximately 30% of the AIME gap to the untrained
+baseline, while Qwen3-32B with SSR-D exceeds its untrained
+GPQA-Diamond score. We attribute this advantage
+to structural decoupling: the model acquires transferable
+derivation patterns rather than content-specific shortcuts.
+Training data coverage determines the ceiling of OOD performance;
+anchoring mitigation determines how much of
+that ceiling is preserved.
+
+7. Conclusion
+
+6. Related Work
+
+In this work, we formalized post-hoc rationalization in the
+setting of Reverse Chain-of-Thought Generation (RCG),
+where visible pre-committed responses drive models toward
+rationalization rather than derivation. Our analysis
+revealed that standard semantic suppression paradoxically
+exacerbates this issue via an ironic process, where the load
+of monitoring forbidden answers increases latent informaReverse
+Chain-of-Thought Generation. While Chainof-Thought
+(CoT) enables systematic reasoning (Wei et al.,
+2022; Kojima et al., 2022; DeepSeek-AI, 2025; Feng et al.,
+2026), supervised data often lacks intermediate traces. Existing
+solutions employ iterative self-improvement (Zelikman
+et al., 2022), reinforcement learning (Shao et al., 2024), or
+
+8
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+tion leakage. We introduced Structural Skeleton-guided
+Reasoning (SSR), a paradigm that shifts from negative constraints
+to positive structural decoupling. By generating
+an answer-invariant functional skeleton, SSR provides a
+content-neutral attentional target that naturally breaks the
+cycle of ironic monitoring. Experiments confirm that SSR
+reduces overall rationalization, while its applications in
+prompting and distillation universally improve downstream
+task performance and restore out-of-distribution robustness.
+These results suggest that faithful reasoning may not be
+achieved by suppressing the undesirable, but by scaffolding
+the reasoning process to render shortcuts unnecessary.
+
+Bhambri, S., Biswas, U., and Kambhampati, S. Do cognitively
+interpretable reasoning traces improve LLM performance?
+In NeurIPS 2025 Workshop on Bridging
+Language, Agent, and World Models for Reasoning and
+Planning, 2025.
+
+Cetin, E., Zhao, T., and Tang, Y. Reinforcement learning
+
+teachers of test time scaling. CoRR, abs/2506.08388,
+2025. doi: 10.48550/ARXIV.2506.08388.
+
+Chiang, W., Zheng, L., Sheng, Y., Angelopoulos, A. N., Li,
+T., Li, D., Zhu, B., Zhang, H., Jordan, M. I., Gonzalez,
+J. E., and Stoica, I. Chatbot arena: An open platform
+for evaluating llms by human preference. In Forty-first
+International Conference on Machine Learning, ICML
+2024, Vienna, Austria, July 21-27, 2024. OpenReview.net,
+2024.
+
+References
+
+Agarwal, C., Tanneru, S. H., and Lakkaraju, H. Faithfulness
+vs. plausibility: On the (un)reliability of explanations
+from large language models. CoRR, abs/2402.04614,
+2024. doi: 10.48550/ARXIV.2402.04614.
+
+Chu, Z., Chen, J., Chen, Q., Yu, W., He, T., Wang, H.,
+Peng, W., Liu, M., Qin, B., and Liu, T. Navigate through
+enigmatic labyrinth A survey of chain of thought reasoning:
+Advances, frontiers and future. In Ku, L., Martins,
+A., and Srikumar, V. (eds.), Proceedings of the
+62nd Annual Meeting of the Association for Computational
+Linguistics (Volume 1: Long Papers), ACL 2024,
+Bangkok, Thailand, August 11-16, 2024, pp. 1173–1203.
+Association for Computational Linguistics, 2024. doi:
+10.18653/V1/2024.ACL-LONG.65.
+
+Arcuschin, I., Janiak, J., Krzyzanowski, R., Rajamanoharan,
+S., Nanda, N., and Conmy, A. Chain-of-thought
+reasoning in the wild is not always faithful. CoRR,
+abs/2503.08679, 2025. doi: 10.48550/ARXIV.2503.
+08679.
+
+Bao, G., Zhang, H., Wang, C., Yang, L., and Zhang, Y.
+How likely do llms with cot mimic human reasoning? In
+Rambow, O., Wanner, L., Apidianaki, M., Al-Khalifa, H.,
+Eugenio, B. D., and Schockaert, S. (eds.), Proceedings
+of the 31st International Conference on Computational
+Linguistics, COLING 2025, Abu Dhabi, UAE, January 19-
+24, 2025, pp. 7831–7850. Association for Computational
+Linguistics, 2025.
+
+Chua, J., Rees, E., Batra, H., Bowman, S. R., Michael, J.,
+Perez, E., and Turpin, M. Bias-augmented consistency
+training reduces biased reasoning in chain-of-thought.
+CoRR, abs/2403.05518, 2024. doi: 10.48550/ARXIV.
+2403.05518.
+
+Cobbe, K., Kosaraju, V., Bavarian, M., Chen, M., Jun, H.,
+Kaiser, L., Plappert, M., Tworek, J., Hilton, J., Nakano,
+R., Hesse, C., and Schulman, J. Training verifiers to solve
+math word problems. CoRR, abs/2110.14168, 2021.
+
+Besta, M., Blach, N., Kubicek, A., Gerstenberger, R., Podstawski,
+M., Gianinazzi, L., Gajda, J., Lehmann, T.,
+Niewiadomski, H., Nyczyk, P., and Hoefler, T. Graph of
+thoughts: Solving elaborate problems with large language
+models. In Wooldridge, M. J., Dy, J. G., and Natarajan,
+S. (eds.), Thirty-Eighth AAAI Conference on Artificial
+Intelligence, AAAI 2024, Thirty-Sixth Conference on Innovative
+Applications of Artificial Intelligence, IAAI 2024,
+Fourteenth Symposium on Educational Advances in Artificial
+Intelligence, EAAI 2014, February 20-27, 2024,
+Vancouver, Canada, pp. 17682–17690. AAAI Press, 2024.
+doi: 10.1609/AAAI.V38I16.29720.
+
+Cox, K. Post-hoc reasoning in chain of thought,
+Jan 2025. URL https://www.lesswrong.com/
+posts/ScyXz74hughga2ncZ.
+
+David, J. Temporal predictors of outcome in reasoning
+
+language models. CoRR, abs/2511.14773, 2025. doi:
+10.48550/ARXIV.2511.14773.
+
+DeepSeek-AI. Deepseek-r1: Incentivizing reasoning capability
+in llms via reinforcement learning. CoRR,
+abs/2501.12948, 2025. doi: 10.48550/ARXIV.2501.
+12948.
+
+Bhagavatula, C., Bras, R. L., Malaviya, C., Sakaguchi, K.,
+Holtzman, A., Rashkin, H., Downey, D., Yih, W., and
+Choi, Y. Abductive commonsense reasoning. In 8th
+International Conference on Learning Representations,
+ICLR 2020, Addis Ababa, Ethiopia, April 26-30, 2020.
+OpenReview.net, 2020.
+
+Deshpande, K., Sirdeshmukh, V., Mols, J. B., Jin, L.,
+
+Hernandez-Cardona, E., Lee, D., Kritz, J., Primack, W. E.,
+Yue, S., and Xing, C. Multichallenge: A realistic multiturn
+conversation evaluation benchmark challenging to
+
+9
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+frontier llms. In Che, W., Nabende, J., Shutova, E., and
+Pilehvar, M. T. (eds.), Findings of the Association for
+Computational Linguistics, ACL 2025, Vienna, Austria,
+July 27 - August 1, 2025, pp. 18632–18702. Association
+for Computational Linguistics, 2025.
+
+Lewis-Lim, S., Tan, X., Zhao, Z., and Aletras, N. Analysing
+chain of thought dynamics: Active guidance or unfaithful
+post-hoc rationalisation? CoRR, abs/2508.19827, 2025.
+doi: 10.48550/ARXIV.2508.19827.
+
+Li, B., Zhou, B., Wang, F., Fu, X., Roth, D., and Chen, M.
+Deceptive semantic shortcuts on reasoning chains: How
+far can models go without hallucination? In Duh, K.,
+Gómez-Adorno, H., and Bethard, S. (eds.), Proceedings
+of the 2024 Conference of the North American Chapter
+of the Association for Computational Linguistics: Human
+Language Technologies (Volume 1: Long Papers),
+NAACL 2024, Mexico City, Mexico, June 16-21, 2024, pp.
+7675–7688. Association for Computational Linguistics,
+2024. doi: 10.18653/V1/2024.NAACL-LONG.424.
+
+Feng, R., An, Z., Wen, Y., Le, R., Jia, Y., Yang, C., Chen, Z.,
+
+Chen, L., Gao, S., Shang, S., et al. Cosineverifier: Toolaugmented
+answer verification for computation-oriented
+scientific questions. arXiv preprint arXiv:2512.01224,
+2025.
+
+Feng, R., Wen, Y., Zhou, S., Shi, K., Wang, Y., Le, R.,
+
+An, Z., Chen, Z., Yang, C., Peng, G., Jia, Y., Wang, D.,
+Zhang, T., Chen, L., Song, Y., Gao, S., and Shang, S.
+Pace: Prefix-protected and difficulty-aware compression
+for efficient reasoning. 2026.
+
+Li, D., Cao, S., Griggs, T., Liu, S., Mo, X., Tang, E.,
+Hegde, S., Hakhamaneshi, K., Patil, S. G., Zaharia,
+M., Gonzalez, J. E., and Stoica, I. Language models
+can easily learn to reason from demonstrations. In
+Christodoulopoulos, C., Chakraborty, T., Rose, C., and
+Peng, V. (eds.), Findings of the Association for Computational
+Linguistics: EMNLP 2025, pp. 15979–15997,
+Suzhou, China, November 2025a. Association for Computational
+Linguistics. ISBN 979-8-89176-335-7. doi:
+10.18653/v1/2025.findings-emnlp.866.
+
+Gwak, M., Son, G., and Kim, J. Revisiting the uniform
+
+information density hypothesis in LLM reasoning traces.
+CoRR, abs/2510.06953, 2025. doi: 10.48550/ARXIV.
+2510.06953.
+
+Hendrycks, D., Burns, C., Kadavath, S., Arora, A., Basart,
+
+S., Tang, E., Song, D., and Steinhardt, J. Measuring mathematical
+problem solving with the MATH dataset. In Vanschoren,
+J. and Yeung, S. (eds.), Proceedings of the Neural
+Information Processing Systems Track on Datasets
+and Benchmarks 1, NeurIPS Datasets and Benchmarks
+2021, December 2021, virtual, 2021.
+
+Li, M., Qi, J., Wu, Y., Zhao, M., Ma, L., Li, Y., Wang,
+X., Zhang, Y., Leung, H., and King, I. From evidence
+to trajectory: Abductive reasoning path synthesis for
+training retrieval-augmented generation agents. CoRR,
+abs/2509.23071, 2025b. doi: 10.48550/ARXIV.2509.
+23071.
+
+Hu, J., Wu, X., Wang, W., Xianyu, Zhang, D., and Cao, Y.
+Openrlhf: An easy-to-use, scalable and high-performance
+RLHF framework. CoRR, abs/2405.11143, 2024. doi:
+10.48550/ARXIV.2405.11143.
+
+Li, T., Chiang, W., Frick, E., Dunlap, L., Wu, T., Zhu, B.,
+Gonzalez, J. E., and Stoica, I. From crowdsourced data to
+high-quality benchmarks: Arena-hard and benchbuilder
+pipeline. In Forty-second International Conference on
+Machine Learning, ICML 2025, Vancouver, BC, Canada,
+July 13-19, 2025. OpenReview.net, 2025c.
+
+Jin, X., Qi, L., Wang, H., and Pan, L. The Mirage of Explainability:
+A Survey on Chain-of-Thought Faithfulness
+in Large Language Models. Submitted to ARR, for commitment
+to ACL 2026 (January 2026 cycle), Jan 2026.
+Last modified: 07 Jan 2026. License: CC BY 4.0.
+
+Kojima, T., Gu, S. S., Reid, M., Matsuo, Y., and Iwasawa,
+Y. Large language models are zero-shot reasoners. In
+Koyejo, S., Mohamed, S., Agarwal, A., Belgrave, D.,
+Cho, K., and Oh, A. (eds.), Advances in Neural Information
+Processing Systems 35: Annual Conference on
+Neural Information Processing Systems 2022, NeurIPS
+2022, New Orleans, LA, USA, November 28 - December
+9, 2022, 2022.
+
+Lightman, H., Kosaraju, V., Burda, Y., Edwards, H., Baker,
+B., Lee, T., Leike, J., Schulman, J., Sutskever, I., and
+Cobbe, K. Let’s verify step by step. In The Twelfth International
+Conference on Learning Representations, ICLR
+2024, Vienna, Austria, May 7-11, 2024. OpenReview.net,
+2024.
+
+Lyu, Q., Havaldar, S., Stein, A., Zhang, L., Rao, D., Wong,
+
+Levy, R. and Jaeger, T. F. Speakers optimize information
+
+E., Apidianaki, M., and Callison-Burch, C. Faithful chainof-thought
+reasoning. In Park, J. C., Arase, Y., Hu, B.,
+Lu, W., Wijaya, D., Purwarianti, A., and Krisnadhi, A. A.
+(eds.), Proceedings of the 13th International Joint Conference
+on Natural Language Processing and the 3rd
+Conference of the Asia-Pacific Chapter of the Association
+for Computational Linguistics, IJCNLP 2023 -Volume
+
+density through syntactic reduction. In Schölkopf, B.,
+Platt, J. C., and Hofmann, T. (eds.), Advances in Neural
+Information Processing Systems 19, Proceedings of the
+Twentieth Annual Conference on Neural Information Processing
+Systems, Vancouver, British Columbia, Canada,
+December 4-7, 2006, pp. 849–856. MIT Press, 2006.
+
+10
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+1: Long Papers, Nusa Dua, Bali, November 1 - 4, 2023,
+pp. 305–329. Association for Computational Linguistics,
+2023. doi: 10.18653/V1/2023.IJCNLP-MAIN.20.
+
+USA, November 12-16, 2024, pp. 18820–18836. Association
+for Computational Linguistics, 2024. doi:
+10.18653/V1/2024.EMNLP-MAIN.1047.
+
+Turpin, M., Michael, J., Perez, E., and Bowman, S. R. Language
+models don’t always say what they think: Unfaithful
+explanations in chain-of-thought prompting. In Oh,
+A., Naumann, T., Globerson, A., Saenko, K., Hardt, M.,
+and Levine, S. (eds.), Advances in Neural Information
+Processing Systems 36: Annual Conference on Neural Information
+Processing Systems 2023, NeurIPS 2023, New
+Orleans, LA, USA, December 10 - 16, 2023, 2023.
+
+Meister, C., Pimentel, T., Haller, P., Jäger, L. A., Cotterell,
+
+R., and Levy, R. Revisiting the uniform information density
+hypothesis. In Moens, M., Huang, X., Specia, L.,
+and Yih, S. W. (eds.), Proceedings of the 2021 Conference
+on Empirical Methods in Natural Language Processing,
+EMNLP 2021, Virtual Event / Punta Cana, Dominican
+Republic, 7-11 November, 2021, pp. 963–980.
+Association for Computational Linguistics, 2021. doi:
+10.18653/V1/2021.EMNLP-MAIN.74.
+
+Wang, H., Que, H., Xu, Q., Liu, M., Zhou, W., Feng, J.,
+Zhong, W., Ye, W., Yang, T., Huang, W., Zhang, G., and
+Lin, F. Reverse-engineered reasoning for open-ended
+generation. CoRR, abs/2509.06160, 2025a. doi: 10.
+48550/ARXIV.2509.06160.
+
+Ning, X., Lin, Z., Zhou, Z., Wang, Z., Yang, H., and Wang,
+
+Y. Skeleton-of-thought: Prompting llms for efficient parallel
+generation. In The Twelfth International Conference
+on Learning Representations, ICLR 2024, Vienna, Austria,
+May 7-11, 2024. OpenReview.net, 2024.
+
+Wang, H., Xu, Q., Liu, C., Wu, J., Lin, F., and Chen, W.
+Emergent hierarchical reasoning in llms through reinforcement
+learning. CoRR, abs/2509.03646, 2025b. doi:
+10.48550/ARXIV.2509.03646.
+
+Paech, S. J. Eq-bench: An emotional intelligence benchmark
+for large language models. CoRR, abs/2312.06281,
+2023. doi: 10.48550/ARXIV.2312.06281.
+
+Wang, L., Xu, W., Lan, Y., Hu, Z., Lan, Y., Lee, R. K., and
+
+Rein, D., Hou, B. L., Stickland, A. C., Petty, J., Pang, R. Y.,
+Dirani, J., Michael, J., and Bowman, S. R. GPQA: A
+graduate-level google-proof q&a benchmark. CoRR,
+abs/2311.12022, 2023. doi: 10.48550/ARXIV.2311.
+12022.
+
+Lim, E. Plan-and-solve prompting: Improving zero-shot
+chain-of-thought reasoning by large language models. In
+Rogers, A., Boyd-Graber, J. L., and Okazaki, N. (eds.),
+Proceedings of the 61st Annual Meeting of the Association
+for Computational Linguistics (Volume 1: Long
+Papers), ACL 2023, Toronto, Canada, July 9-14, 2023,
+pp. 2609–2634. Association for Computational Linguistics,
+2023. doi: 10.18653/V1/2023.ACL-LONG.147.
+
+Shao, Z., Wang, P., Zhu, Q., Xu, R., Song, J., Zhang, M.,
+Li, Y. K., Wu, Y., and Guo, D. Deepseekmath: Pushing
+the limits of mathematical reasoning in open language
+models. CoRR, abs/2402.03300, 2024. doi: 10.48550/
+ARXIV.2402.03300.
+
+Wang, S., Zhao, E., and Ren, X. Stepwise informativeness
+search for improving LLM reasoning. In
+Christodoulopoulos, C., Chakraborty, T., Rose, C., and
+Peng, V. (eds.), Proceedings of the 2025 Conference on
+Empirical Methods in Natural Language Processing, pp.
+25280–25298, Suzhou, China, November 2025c. Association
+for Computational Linguistics. ISBN 979-8-89176-
+332-6. doi: 10.18653/v1/2025.emnlp-main.1285.
+
+Shridhar, K., Stolfo, A., and Sachan, M. Distilling reasoning
+
+capabilities into smaller language models. In Rogers, A.,
+Boyd-Graber, J. L., and Okazaki, N. (eds.), Findings
+of the Association for Computational Linguistics: ACL
+2023, Toronto, Canada, July 9-14, 2023, pp. 7059–7073.
+Association for Computational Linguistics, 2023. doi:
+10.18653/V1/2023.FINDINGS-ACL.441.
+
+Wang, Y., Zhang, Z., Zhang, P., Yang, B., and Wang, R.
+Meta-reasoning: Semantics-symbol deconstruction for
+large language models. In Ku, L., Martins, A., and
+Srikumar, V. (eds.), Findings of the Association for Computational
+Linguistics, ACL 2024, Bangkok, Thailand
+and virtual meeting, August 11-16, 2024, pp. 622–643.
+Association for Computational Linguistics, 2024. doi:
+10.18653/V1/2024.FINDINGS-ACL.34.
+
+Sui, Y., He, Y., Cao, T., Han, S., and Hooi, B. Meta-reasoner:
+
+Dynamic guidance for optimized inference-time reasoning
+in large language models. CoRR, abs/2502.19918,
+2025. doi: 10.48550/ARXIV.2502.19918.
+
+Tsipidi, E., Nowak, F., Cotterell, R., Wilcox, E., Giulianelli,
+M., and Warstadt, A. Surprise! uniform information
+density isn’t the whole story: Predicting surprisal
+contours in long-form discourse. In Al-Onaizan,
+Y., Bansal, M., and Chen, Y. (eds.), Proceedings of
+the 2024 Conference on Empirical Methods in Natural
+Language Processing, EMNLP 2024, Miami, FL,
+
+Wegner, D. M. Ironic processes of mental control. Psychological
+review, 101(1):34, 1994.
+
+Wei, J., Wang, X., Schuurmans, D., Bosma, M., Ichter, B.,
+
+Xia, F., Chi, E. H., Le, Q. V., and Zhou, D. Chain-ofthought
+prompting elicits reasoning in large language
+
+11
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+models. In Koyejo, S., Mohamed, S., Agarwal, A., Belgrave,
+D., Cho, K., and Oh, A. (eds.), Advances in Neural
+Information Processing Systems 35: Annual Conference
+on Neural Information Processing Systems 2022,
+NeurIPS 2022, New Orleans, LA, USA, November 28 -
+December 9, 2022, 2022.
+
+Zhou, D., Schärli, N., Hou, L., Wei, J., Scales, N., Wang,
+X., Schuurmans, D., Cui, C., Bousquet, O., Le, Q. V.,
+and Chi, E. H. Least-to-most prompting enables complex
+reasoning in large language models. In The Eleventh International
+Conference on Learning Representations, ICLR
+2023, Kigali, Rwanda, May 1-5, 2023. OpenReview.net,
+2023a.
+
+Wen, Y., Feng, R., Guo, F., Wang, Y., Le, R., Song, Y., Gao,
+S., and Shang, S. Lock on target! precision unlearning
+via directional control. In Findings of the Association
+for Computational Linguistics: EMNLP 2025, pp. 18782–
+18794, 2025.
+
+Zhou, J., Lu, T., Mishra, S., Brahma, S., Basu, S., Luan, Y.,
+Zhou, D., and Hou, L. Instruction-following evaluation
+for large language models. CoRR, abs/2311.07911, 2023b.
+doi: 10.48550/ARXIV.2311.07911.
+
+Xu, Z., Sanghi, U., and Kankanhalli, M. S. Bullying
+the machine: How personas increase LLM vulnerability.
+CoRR, abs/2505.12692, 2025. doi: 10.48550/ARXIV.
+2505.12692.
+
+Yang, A., Li, A., Yang, B., Zhang, B., Hui, B., Zheng, B.,
+Yu, B., Gao, C., Huang, C., Lv, C., et al. Qwen3 technical
+report. arXiv preprint arXiv:2505.09388, 2025a.
+
+Yang, C., Peng, G., Zhu, J., Le, R., Feng, R., Zhang, T.,
+Ruan, W., Liu, X., Cheng, X., Xu, X., et al. Nanbeige4-3b
+technical report: Exploring the frontier of small language
+models. arXiv preprint arXiv:2512.06266, 2025b.
+
+Yao, S., Yu, D., Zhao, J., Shafran, I., Griffiths, T., Cao, Y.,
+and Narasimhan, K. Tree of thoughts: Deliberate problem
+solving with large language models. In Oh, A., Naumann,
+T., Globerson, A., Saenko, K., Hardt, M., and Levine,
+S. (eds.), Advances in Neural Information Processing
+Systems 36: Annual Conference on Neural Information
+Processing Systems 2023, NeurIPS 2023, New Orleans,
+LA, USA, December 10 - 16, 2023, 2023.
+
+Yee, E., Li, A., Tang, C., Jung, Y. H., Paturi, R., and Bergen,
+L. Faithful and unfaithful error recovery in chain of
+thought. In First Conference on Language Modeling,
+2024.
+
+Zelikman, E., Wu, Y., Mu, J., and Goodman, N. D. Star:
+Bootstrapping reasoning with reasoning. In Koyejo, S.,
+Mohamed, S., Agarwal, A., Belgrave, D., Cho, K., and
+Oh, A. (eds.), Advances in Neural Information Processing
+Systems 35: Annual Conference on Neural Information
+Processing Systems 2022, NeurIPS 2022, New Orleans,
+LA, USA, November 28 - December 9, 2022, 2022.
+
+Zhang, Y. and Math-AI, T. American invitational mathematics
+examination (aime) 2025, 2025.
+
+Zhang, Z., Wang, Y., and Yao, Q. Searching meta reasoning
+skeleton to guide LLM reasoning. CoRR, abs/2510.04116,
+2025. doi: 10.48550/ARXIV.2510.04116.
+
+12
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+A. Details of Anchoring Metrics
+
+A.1. Entropic Anchoring: Theoretical Foundations
+
+A.1.1. CONNECTION TO HUMAN COGNITIVE PROCESSING
+
+A natural path toward understanding the reasoning capabilities of LLMs is to probe their relationship with human cognitive
+processing. We ground our entropic anchoring metric in the psycholinguistic hypothesis of Uniform Information Density
+(UID), which proposes that speakers distribute information as evenly as possible to balance clarity and efficiency (Levy &
+Jaeger, 2006; Meister et al., 2021).
+
+The UID hypothesis conceptualizes language as a signal transmitted through a noisy channel with limited capacity (Meister
+et al., 2021; Tsipidi et al., 2024). Under this framework, speakers aim to convey information efficiently without overwhelming
+the listener’s processing resources. When information density becomes uneven, communication deteriorates. This principle
+has been extensively validated in human language production and comprehension.
+
+A.1.2. FROM HUMAN COMMUNICATION TO LLM REASONING
+
+Gwak et al. (2025) recently revisited the UID hypothesis in the context of LLM reasoning, asking whether step-level
+uniformity reflects reasoning quality. Their key insight is that while human communication benefits from global uniformity
+to avoid overwhelming listeners (Bhambri et al., 2025), effective LLM reasoning exhibits a fundamentally different pattern:
+high local uniformity but low global uniformity. Following Gwak et al. (2025), we use entropy of the predictive distribution
+as a proxy for information density.
+
+B. Iterative Self-Refinement for High-quality Answer Construction
+
+We construct our experiment dataset using a self-improvement pipeline to simulate the situations that the high-quality
+responses are accessible but the intermediate reasoning traces are lacking.
+
+Data source. We sample user queries from the LMArena human preference corpus (140k conversations) hosted at
+https://huggingface.co/datasets/lmarena-ai/arena-human-preference-140k and introduced
+in prior work on the text arena (Chiang et al., 2024).
+
+Overview. For each sampled query, we use Qwen3-Max (Yang et al., 2025a) to construct a high-quality reference answer
+via a multi-stage, iterative refinement pipeline. The procedure alternates between (i) generating diverse candidate responses,
+(ii) self-evaluating candidates along key quality dimensions, and (iii) aggregating the strongest components into improved
+candidates, repeating this process for multiple refinement loops.
+
+Pipeline stages. Let N denote the number of independent rollouts produced per query, K the number of candidate slots
+maintained after aggregation, M the number of evaluated candidates sampled for synthesizing each slot, and T the number
+of refinement loops.
+
+1. Candidate generation. We prompt Qwen3-Max to produce N independent response rollouts for the same query to
+encourage diversity in reasoning paths and content coverage.
+
+2. Candidate evaluation. The model then self-evaluates each rollout, assigning a scalar score based on accuracy, coherence,
+and completeness. These scores are used for quality reference during the aggregation step.
+
+3. Candidate aggregation. We construct a new set of K candidates. For each slot, we randomly sample M evaluated
+candidates and synthesize an improved response by combining their highest-scoring components (e.g., correct facts,
+clearer explanations, or more complete coverage).
+
+4. Improvement loop. The newly synthesized K candidates are fed back into the evaluation and aggregation stages. We
+repeat this improvement cycle for T loops, yielding a final, polished reference answer at convergence.
+
+Algorithmic description. Algorithm 1 summarizes the refinement procedure used to produce the definitive reference
+answer per query.
+
+13
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+Algorithm 1 Iterative self-refinement for reference answer construction
+Require: Query x; model M (Qwen3-Max); rollouts N; slots K; sample size M; loops T
+1: C ← {M(x)}
+N
+i=1 {Generate N independent candidates}
+2: for t = 1, . . . , T do
+
+3: S ← {SCORE(c) | c ∈ C} {Self-evaluate on accuracy/coherence/completeness}
+4: C
+′ ← ∅
+5: for j = 1, . . . , K do
+
+6: Sample {cj,1, . . . , cj,M} from C (optionally biased by S)
+7: Sj ← {SCORE(cj,m)}M
+m=1 {Use only scores of sampled candidates}
+8: c
+′
+j ← SYNTHESIZE({cj,1, . . . , cj,M}, Sj )
+9: C
+′ ← C′ ∪ {c
+′
+j
+}
+10: end for
+11: C ← C′
+{Update candidates for next loop}
+12: end for
+
+13: return arg maxc∈C SCORE(c) {Final reference answer}
+
+Rationale. Our construction yields reference responses that reflect the outcome of substantial deliberation and iterative
+error-correction, while keeping intermediate reasoning implicit. As a result, the final answer provides a strong target without
+exposing step-by-step traces that could be trivially copied. This design matches realistic deployment conditions, where
+systems are typically evaluated on inputs and final outputs rather than on access to the full internal decision process. It also
+creates a controlled setting in which a model must justify or explain an already-produced outcome using only the surface
+form of the response, which is exactly where post-hoc rationalization is most likely to arise and most difficult to detect.
+
+C. Theoretical Analysis of SSR
+
+We provide a formal information-theoretic framework for Structural Skeleton-guided Reasoning (SSR). We derive bounds on
+information leakage through the skeleton (Section C.1), formalize the attention reallocation mechanism (Section C.2), and
+establish sufficient conditions under which SSR is guaranteed to reduce anchoring across all three levels of our measurement
+hierarchy.
+
+C.1. Skeleton Capacity and Functional Invariance
+
+Let a structural skeleton
+
+S = ⟨(fi
+, ci)⟩
+n
+i=1
+
+consist of functional tags fi ∈ F and content summaries ci
+. We first define the property requisite for limiting answerdependent
+information transmission through the summary components.
+
+Definition C.1 (ϵ-Functional Invariance). A content summary generator ci
+is ϵ-functionally invariant if, for all queries Q,
+tags fi
+, and pre-committed responses A,
+
+DKL
+Pθ(ci
+| Q, fi
+, A) ∥ Pθ(ci
+| Q, fi)
+
+≤ ϵ.
+
+This definition ensures that conditioning on the pre-committed response A provides at most ϵ nats of information about ci
+beyond what is specified by the query and functional tag. When ϵ is small, the skeleton remains largely answer-invariant,
+preventing the anchoring effect from propagating through the structural scaffold. We now bound the total capacity of the
+skeleton to transmit response information.
+
+Proposition C.2 (Skeleton Capacity Bound). For an n-step skeleton with discrete functional tags fi ∈ F, if all content
+summaries are ϵ-functionally invariant, the mutual information between the pre-committed response A and the skeleton S is
+bounded by:
+
+I(A; S | Q) ≤ n
+
+log |F| + ϵ
+
+.
+
+14
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+Proof. By the chain rule for mutual information, I(A; S | Q) decomposes into structural and content terms:
+
+
+A; {fi}
+n
+i=1 | Q
+
++
+Xn
+i=1
+I
+
+A; ci
+
+I(A; S | Q) = I
+
+| Q, {f}1:n, {c}1:i−1
+
+
+.
+
+The first term is bounded by the entropy
+
+I
+
+A; {fi}
+n
+i=1 | Q
+
+≤ H
+
+{fi}
+n
+i=1
+
+≤ n log |F|.
+
+For the second term, the data processing inequality implies
+
+I
+
+A; ci
+
+
+≤ I(A; ci
+
+| Q, {f}1:n, {c}1:i−1
+
+| Q, fi).
+
+By the variational characterization of mutual information and Definition C.1,
+
+I(A; ci
+
+| Q, fi) ≤ ϵ.
+
+Summing over n steps yields the result.
+
+C.2. Connection to the Anchoring Measurement Hierarchy
+
+The skeleton capacity bound directly relates to our three-level anchoring framework:
+
+Probabilistic Anchoring Reduction. Recall that probabilistic anchoring Aprob measures the bit gain rate—the average
+reduction in uncertainty per response token provided by the reasoning trace (Equation 6 in the main text). Under SSR’s
+two-phase generation, the reasoning trace R is generated conditioned on the skeleton S:
+
+R ∼ P(R | S, Q, A).
+
+By the data processing inequality, information about A in R is mediated through S:
+
+I(A; R | Q) ≤ I(A; S | Q) + I(A; R | Q, S).
+
+When the skeleton satisfies ϵ-functional invariance with small ϵ, the first term is bounded by Proposition C.2. The second
+term I(A; R | Q, S) represents residual anchoring during reasoning generation; this is minimized when the model attends
+primarily to structural guidance rather than the pre-committed response. Thus, SSR provides an upper bound on probabilistic
+anchoring that scales with skeleton length rather than response complexity.
+
+Entropic Anchoring Reduction. The structural skeleton enforces a predetermined reasoning topology through functional
+tags (e.g., [PLAN] → [BRCH] → [EVAL]). This topology introduces controlled variance in information density across
+reasoning steps—exploration tags like [BRCH] and [RFLX] create natural entropy peaks, while [EVAL] and [SUMM]
+produce consolidation valleys. This structured variation reduces global uniformity Gunif by design, counteracting the
+flattening effect of post-hoc rationalization. Simultaneously, the skeleton’s step-wise guidance ensures smooth local
+transitions, reducing local non-uniformity Lnon-unif. Together, these effects lower entropic anchoring Aent.
+
+Lexical Anchoring Reduction. Content summaries satisfying functional invariance describe what operation to perform
+rather than what result to obtain (e.g., “calculate the ratio” rather than “calculate 0.5”). This abstraction naturally prevents
+direct lexical overlap between the skeleton and the pre-committed response. Since the reasoning trace is generated from this
+answer-invariant scaffold, lexical anchoring Alex is reduced without requiring explicit suppression instructions that trigger
+ironic monitoring.
+
+C.3. Avoiding Ironic Process Amplification
+
+A key theoretical advantage of SSR over semantic suppression is its avoidance of the ironic process paradox (Section 4.4).
+We formalize this distinction:
+
+15
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+Table 5. Functional Tag Definitions.
+
+Tag Full Name Description
+
+PLAN Planning and Understanding Comprehending input, defining goals/constraints, outlining
+a high-level plan.
+RETR Retrieval Searching for needed information from external or internal
+knowledge.
+INFR Inference and Deduction Logical reasoning, calculation, transformation, or generating
+intermediate conclusions.
+EVAL Evaluation and Verification Checking correctness, consistency, or sufficiency of prior
+results.
+SUMM Summary and Refinement Integrating intermediate results, refining expression, producing
+final answers.
+BTRK Backtrack When evaluation fails, returning to earlier decisions to
+revise strategy.
+RFLX Reflection Reviewing the reasoning to derive insights or generate
+new plans/backtracks.
+BRCH Branch Considering multiple possible reasoning paths and selecting
+one.
+
+Definition C.3 (Monitoring Load). Let M(A, R) denote the computational resources allocated to evaluating whether
+reasoning trace R violates constraints related to response A. Under semantic suppression, the constraint “do not reveal A”
+requires:
+
+MSUP(A, R) = X
+|R|
+t=1
+⊮
+token
+rt requires A-exclusion check
+
+.
+
+This monitoring load scales with trace length and maintains persistent activation of A-related representations.
+Proposition C.4 (SSR Monitoring Bypass). Under SSR, the positive structural target S replaces negative exclusion
+monitoring:
+
+MSSR(A, R) ≈ 0, MSSR(S, R) = X
+|R|
+t=1
+⊮
+token
+rt requires S-alignment check
+
+.
+
+Since S is answer-invariant by construction, monitoring for structural alignment does not require maintaining A-specific
+representations, breaking the cycle whereby suppression inadvertently deepens anchoring.
+
+This theoretical framework explains the empirical observation (Table 1) that suppression reduces Alex while increasing
+Aent and Aprob: lexical exclusion succeeds superficially, but the monitoring process amplifies latent dependence. SSR
+circumvents this by providing structural guidance that renders answer monitoring unnecessary.
+
+C.4. SSR Implementation Details
+
+The definitions of functional tags are given in Table 5. When designing the functional tag set, we draw insight from
+meta-reasoning paradigms (Zhang et al., 2025; Sui et al., 2025) to describe comprehensive and concise collection of
+reasoning capabilities.
+
+Content Summary Guidelines. Skeletons should:
+
+• Describe what operation to perform, not what result to obtain.
+
+• Be brief (≤ 20 tokens).
+
+• Content invariance constraint: Skeleton sentences must describe the step’s intent at an abstract level and must not reveal
+specific outputs, intermediate results, concrete values, or final answer content (e.g., “calculate the ratio” rather than
+“calculate 0.5”).
+
+16
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+Table 6. Anchoring metrics by generation method (Qwen3-8B).
+
+Method Alex ↓ Aent ↓ Aprob ↓
+NEU 46.3 52.5 48.5
+SUP 43.1 50.8 54.1
+AUG-SUP 38.3 51.4 53.7
+SSR 29.7 45.4 45.2
+∆ (AUG-SUP vs. NEU) −17.3% −2.1% +10.7%
+∆ (SSR vs. NEU) −35.9% −13.5% −6.8%
+
+Table 7. Distribution of reasoning traces across behavioral zones (Qwen3-8B).
+
+Method Reason ↑ Encode ↓ Cloze ↓ Copy ↓
+NEU 24.9% 8.2% 35.7% 31.1%
+SUP 27.1% 20.0% 25.7% 27.1%
+AUG-SUP 28.4% 17.3% 21.0% 33.3%
+SSR 46.4% 9.8% 20.7% 23.2%
+
+• Granularity Constraint: Avoid composite actions in a single step. Each skeleton line should express one primary intent
+(e.g., “identify constraints” separately from “choose approach”). If a step contains multiple verbs describing different
+operations, split it into multiple steps.
+
+D. Detailed Analysis Results
+
+Beyond Qwen3-4B-Thinking-2507, we also test the observations in Section 4.3 on Qwen3-8B. Their analysis results and
+main conclusions (Table 6 and Table 7) are consistent.
+
+E. Evaluation Tasks Details
+
+E.1. In-domain open-ended reasoning benchmarks
+ArenaHard-v2.0 (Human Preference)
+
+An automatic evaluation tool for instruction-tuned LLMs designed to simulate the “Chatbot Arena” environment. It
+boasts the highest correlation and separability to human-preference benchmarks (LMArena) among popular open-ended
+benchmarks. It assesses the model’s ability to handle complex, open-ended inquiries using automatic judges (e.g.,
+GPT-4, Gemini) as approximators for human preference.
+
+Statistics: The V2.0 dataset contains 500 fresh, challenging real-world user queries covering topics like software
+engineering and mathematics, alongside 250 creative writing queries sourced from Chatbot Arena.
+Source: https://github.com/lmarena/arena-hard-auto
+
+EQ-Bench 3 (Emotional Intelligence)
+
+A multi-turn benchmark assessing active emotional intelligence skills, including empathy, social dexterity, psychological
+insight, and analytical depth. Unlike knowledge-based tests, it places models in role-play scenarios (e.g., conflict
+mediation, relationship drama) or analysis tasks to test their ability to reason about human emotions.
+Statistics: Evaluation utilizes two primary methods: Rubric Scoring, where a judge model (default: Claude Sonnet 3.7)
+assigns a multi-criteria score (0–100), and Pairwise ELO Analysis, which ranks models via head-to-head comparisons.
+Source: https://github.com/EQ-bench/eqbench3
+
+IFEval (Instruction Following)
+
+IFEval evaluates instruction-following using programmatically verifiable constraints (e.g., required keywords, length
+constraints, formatting rules), enabling reproducible automatic checking.
+Statistics: Contains 541 prompts across 25 distinct instruction types.
+
+Source: https://github.com/google-research/google-research/tree/master/
+instruction_following_eval
+
+MultiChallenge (Multi-turn conversations)
+
+17
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+Table 8. Training Hyperparameters for Qwen3-8B
+
+Hyperparameter Value
+Base Model Qwen3-8B
+Max Sequence Length 32,768
+Global Batch Size 256
+Micro Batch Size 1
+Learning Rate 4 × 10−5
+LR Warmup Ratio 0.01
+Weight Decay (L2) 0.01
+Max Epochs 4
+Optimizer Strategy ZeRO Stage 3
+Precision BF16
+Ring Attention Size 4
+Ring Head Stride 4
+Gradient Checkpointing Enabled
+Sample Packing Enabled
+Dataset Size 100,000
+
+A benchmark designed to evaluate multi-turn instruction-following capabilities. It tests whether models can maintain
+constraints, recall information, and edit responses over the course of a long conversation, covering four specific
+categories: Inference Memory, Instruction Retention, Reliable Version Editing, and Self-Coherence.
+Statistics: The dataset consists of 273 test conversations with an average of 5 turns and 1231.7 words per conversation.
+The breakdown is as follows:
+• Inference Memory: 113 conversations
+• Instruction Retention: 69 conversations
+• Reliable Version Editing: 41 conversations
+• Self-Coherence: 50 conversations
+
+Source: https://github.com/ekwinox117/multi-challenge
+
+E.2. Out-of-domain (OOD) reasoning benchmarks
+GPQA-D (Science)
+
+A graduate-level, multiple-choice QA benchmark written by domain experts in biology, chemistry, and physics. We use
+the “Diamond” subset, designed to be “Google-proof” and challenging even for experts.
+Statistics: 198 questions utilized for OOD scientific evaluation.
+Source: https://huggingface.co/datasets/Idavidrein/gpqa
+
+AIME 2025 (Mathematics)
+
+Tests Olympiad-style mathematical reasoning using problems from the 2025 American Invitational Mathematics
+Examination (AIME I & II).
+
+Statistics: 30 problems requiring exact-match integer answers.
+Source: https://huggingface.co/datasets/math-ai/aime25
+
+F. Training Details
+
+F.1. Training Hyperparameters
+
+We fine-tune the series of Qwen3 and NBG4 models using OpenRLHF (Hu et al., 2024), and the hyperparameters are
+presented in Table 8.
+
+F.2. SSR-D: Details of Teacher Training and Student Distillation
+
+SSR-D fine-tunes the target model using high-quality skeleton-reasoning pairs derived from a teacher model. The process
+involves two critical objectives:
+
+18
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+Table 9. Detailed component ablation on Qwen3-8B.
+
+Configuration ArenaHard GPQA-D
+SSR-D 59.5 56.6
+− two-phase generation 52.2 51.6
+− Functional tags 55.8 54.2
+− Content skeletons 53.4 52.8
+NEU Baseline 50.8 49.5
+
+∗
+from reference reasoning traces R∗ by segmenting steps and summarizing
+their intent without revealing results. The model is trained to generate these abstract plans via:
+
+1. Skeleton Generation: We extract skeletons S
+
+LS = − log pθ(S
+∗
+| Q, A)
+
+2. Reasoning Reconstruction: We train the model to reconstruct the full reasoning trace given the skeleton:
+
+LR = − log pθ(R
+∗
+| Q, A, S∗
+)
+
+The combined objective:
+
+L = LS + LR
+robustly aligns the model’s internal attention mechanisms with the structural guidance, overcoming the fragility of zero-shot
+prompting.
+
+We generate 200k SSR training traces by applying the skeleton generation procedure to reasoning chains produced by
+Qwen3-Max. During this procedure, Qwen3-235B-Instruct-2507 segments reasoning traces into logical steps, assigns
+functional tags from our restricted vocabulary, and generates content skeletons satisfying functional invariance. A simple
+prompt for skeleton generation (SS_GEN_PROMPT) is provided in Appendix H.
+
+After obtaining the high-quality SSR training traces, we fine-tune teacher models to generate SSR-format reverse CoT.
+Training is implemented by OpenRLHF. Then, the fine-tuned teacher models generate SSR-D reasoning traces for student
+models to learn.
+
+G. Ablation Studies
+
+We conduct systematic ablations to quantify the contribution of each SSR component and understand scaling behavior.
+
+G.1. Component Ablation
+
+We ablate the main components of SSR in Table 9.
+
+Two-phase Generation. Removing the two-phase protocol (skeleton → reasoning) and instead generating skeletons
+interleaved with reasoning produces the largest degradation (−7.0 ArenaHard). This confirms that explicit separation of
+structural planning from reasoning execution is essential; the skeleton must be complete before reasoning begins to provide
+effective guidance and satisfy the functional invariance property (Definition C.1).
+
+Functional Tags vs. Content Skeletons. Both components contribute substantially, but content skeletons have a larger
+impact on task performance (−5.8 ArenaHard when removed vs. −3.4 for tags). This suggests complementary roles:
+tags provide coarse structural scaffolding that constrains reasoning topology, while content skeletons provide fine-grained
+guidance that improves reasoning quality.
+
+G.2. Teacher Model Scaling
+
+We examine how teacher model quality affects SSR training outcomes for distilled SSR (SSR-D).
+Teacher quality scales smoothly with model size (Table 10). Moving from Qwen3-32B to NBG-3.5-Pro teachers improves
+ArenaHard by 1.0–1.8%.
+
+19
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+Table 10. Teacher model scaling effects on student performance (Student: Qwen3-8B).
+
+Teacher ArenaHard GPQA-D AIME ’25
+
+Qwen3-32B 57.7 54.8 42.3
+NBG-3.5-Pro 59.5 56.6 44.2
+
+H. Prompt Templates
+
+For the suppression baselines (NEU, SUP, AUG-SUP), we adapt the abductive reasoning prompt from Cetin et al. (2025) by
+incorporating semantic suppression constraints (highlighted in bold type). This ensures the model retains the capability to
+generate relatively high-quality reasoning traces.
+
+NEU_PROMPT
+
+Your role as an assistant involves providing precise and accurate solutions before
+providing detailed explanations with your full work showing your systematic thinking
+process leading to each solution. Your explanations should show how you engaged
+in a comprehensive cycle of analysis, summarizing, exploration, reassessment,
+reflection, backtracing, and iteration to develop well-considered thinking
+
+process. Please structure your response into two main sections: Solution and
+Explanation. In the Solution section, present your well-thought solution that
+accurately answers the question. The solution should remain a logical, accurate,
+concise expression style and detail necessary step needed to reach the conclusion,
+formatted as follows: <|begin_of_solution|> {final formatted, precise, and clear
+solution} <|end_of_solution|>. In the Explanation section, comprehensively detail
+your reasoning process from the question to your solutions using the specified
+format: <|begin_of_explanation|> {explanation with steps separated with ’\n\n’}
+<|end_of_explanation|> Each step should show logical connections and detailed
+
+considerations leading to your solutions such as analyzing questions, summarizing
+relevant findings, brainstorming new ideas, verifying the accuracy of the current
+steps, refining any errors, and revisiting previous steps.
+
+SUP_PROMPT
+
+Your role as an assistant involves providing precise and accurate solutions before
+providing detailed explanations with your full work showing your systematic thinking
+process leading to each solution. Your explanations should show how you engaged in a
+comprehensive cycle of analysis, summarizing, exploration, reassessment, reflection,
+backtracing, and iteration to develop well-considered thinking process. Please
+structure your response into two main sections: Solution and Explanation. In
+the Solution section, present your well-thought solution that accurately answers
+the question. The solution should remain a logical, accurate, concise expression
+style and detail necessary step needed to reach the conclusion, formatted as
+follows: <|begin_of_solution|> {final formatted, precise, and clear solution}
+<|end_of_solution|>. In the Explanation section, comprehensively detail your
+
+reasoning process using the specified format: <|begin_of_explanation|> {explanation
+with steps separated with ’\n\n’} <|end_of_explanation|> Each step should show
+detailed considerations leading to your solutions such as analisying questions,
+summarizing relevant findings, brainstorming new ideas, verifying the accuracy of
+the current steps, refining any errors, and revisiting previous steps. **DO NOT**
+explicitly output or hint at any information of Solution section in the Explanation
+section. **DO NOT** explicitly output or hint at any information of Solution section
+in the Explanation section. **DO NOT** explicitly output or hint at any information
+of Solution section in the Explanation section.
+
+20
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+AUGSUP_PROMPT
+
+Your role as an assistant involves providing precise and accurate solutions before
+providing detailed explanations with your full work showing your systematic thinking
+process leading to each solution. Your explanations should show how you engaged in a
+comprehensive cycle of analysis, summarizing, exploration, reassessment, reflection,
+backtracing, and iteration to develop well-considered thinking process. Please
+structure your response into two main sections: Solution and Explanation. In
+the Solution section, present your well-thought solution that accurately answers
+the question. The solution should remain a logical, accurate, concise expression
+style and detail necessary step needed to reach the conclusion, formatted as
+follows: <|begin_of_solution|> {final formatted, precise, and clear solution}
+<|end_of_solution|>. In the Explanation section, comprehensively detail your
+reasoning process using the specified format: <|begin_of_explanation|> {explanation
+with steps separated with ’\n\n’} <|end_of_explanation|> Each step should show
+detailed considerations leading to your solutions such as analisying questions,
+summarizing relevant findings, brainstorming new ideas, verifying the accuracy of
+the current steps, refining any errors, and revisiting previous steps. **DO NOT**
+explicitly output any information of Solution section in the Explanation section.
+**DO NOT** explicitly output any information of Solution section in the Explanation
+section. **DO NOT** explicitly output any information of Solution section in the
+Explanation section. **PROHIBITION**: When outputting your Explanation, you are
+strictly forbidden from displaying ANY discernible signs that you have peeked at the
+Solution. **DO NOT** explicitly output any information of Solution section in the
+Explanation section. Should ANY form of Solution leakage occur, you will be severely
+punished by the Almighty Ruler.
+
+SSR_PROMPT
+
+You are an expert AI assistant tasked with reconstructing the hidden reasoning
+process for a given final assistant turn in a dialogue.
+
+You must output the complete reasoning process in two sequential, strictly formatted
+blocks: <summary> and <reason>.
+
+### Step Tag Definitions
+
+Tag Full Name Description
+
+PLAN Planning Comprehending input, defining
+
+goals/constraints, outlining a high-level plan.
+RETR Retrieval Searching for needed information from external
+or internal knowledge.
+INFR Inference Logical reasoning, calculation, transformation,
+or generating intermediate conclusions.
+EVAL Evaluation Checking correctness, consistency, or
+sufficiency of prior results.
+SUMM Summary Integrating intermediate results, refining
+expression, producing final answers.
+
+BTRK Backtrack When evaluation fails, returning to earlier
+decisions to revise strategy.
+RFLX Reflection Reviewing the reasoning to derive insights or
+generate new plans/backtracks.
+BRCH Branch Considering multiple possible reasoning paths
+and selecting one.
+
+### Output Format and Constraint Rules
+I. The <summary> Block
+
+1. Strict Line Format: Each line must follow exactly: n. [STEP TAG]
+<single-sentence summary under 20 words, matching input language>
+
+• Constraint: Use exactly one space after the dot (.) and one space after the
+
+21
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+
+(Continued)
+
+[STEP TAG].
+
+• Constraint: Only one summary sentence per line; no extra commentary.
+
+2. Example Line: 1. [PLAN] Analyze the user’s request and define the goal.
+3. Content Invariance Constraint: Skeleton sentences must describe the step’s
+intent at an abstract level and must not reveal specific outputs, intermediate
+results, concrete values, or final answer content (e.g., “calculate the ratio” rather
+than “calculate 0.5”).
+II. The <reason> Block
+
+1. Structure: The reasoning text must correspond directly to each step listed in
+the <summary> block, maintaining the exact same order.
+2. Formatting: Write continuous, coherent reasoning text or paragraphs.
+3. Constraint: DO NOT explicitly number the steps or use the step labels (e.g., 1.,
+PLAN, [PLAN]) within this block.
+
+4. Constraint: DO NOT output the final assistant answer in this response.
+III. Overall Output Constraint
+
+* DO NOT output anything outside the required <summary> and <reason> blocks.
+
+### Final Output Structure
+<summary>
+1. [STEP TAG] <summary text>
+2. [STEP TAG] <summary text>
+...
+</summary>
+<reason>
+
+(detailed reasoning text corresponding to each step in the same order, without
+numbering/labels)
+</reason>
+
+SS_GEN_PROMPT
+
+You are an expert CoT (Chain-of-Thought) Structural Skeleton Generator. Your task
+is to analyze the provided INPUT text, segment it into logical reasoning steps, and
+generate a concise, step-by-step skeleton for each segment.
+Your skeletons must be strictly faithful to the INPUT: every step must correspond to
+reasoning that actually appears in the INPUT, and you must not add, delete, or change
+any information.
+STEP TAG DEFINITIONS:
+
+1. PLAN (Planning and Understanding): Comprehending the input, defining goals and
+constraints, and outlining the high-level solution path or problem decomposition.
+
+2. RETR (Retrieval): Actively searching for necessary information from external
+knowledge sources or internal historical working memory.
+
+3. INFR (Inference and Deduction): Executing logical reasoning, calculation,
+transformation, or association to derive new intermediate conclusions from known
+information.
+
+4. EVAL (Evaluation and Verification): Verifying if the result from the previous
+step is correct, meets constraints, and is sufficient for the next step.
+
+5. SUMM (Summary and Refinement): Compiling all intermediate results, refining the
+expression, and generating the final answer or output.
+
+6. BTRK (Backtrack): When EVAL fails, returning to a previous decision point to
+modify the strategy or choice.
+
+7. RFLX (Reflection): Reviewing the existing reasoning process to summarize lessons
+learned and potentially generate new PLAN or BTRK instructions.
+
+22
+Measuring and Mitigating Post-hoc Rationalization in Reverse Chain-of-Thought Generation
+(Continued)
+
+8. BRCH (Branch): Explicitly noting multiple possible paths and choosing one for
+exploration.
+Instruction:
+
+1. Analyze the INPUT text and logically segment it into coherent, self-contained
+reasoning steps corresponding to the STEP TAG DEFINITIONS.
+2. For each segment, choose the most appropriate [STEP TAG] (always using the fixed
+English abbreviation).
+
+3. Create a single-sentence skeleton that concisely captures the core logic or
+function performed in that segment.
+
+4. The skeleton’s language must match the language of the INPUT CoT text.
+5. The skeleton must be under 20 words (excluding the [STEP TAG] token).
+6. The output must follow this strict format: n. [STEP TAG] <Concise skeleton
+subheading> where n is the sequential step number starting from 1.
+7. Use exactly one space after the dot (n.), then the [STEP TAG], then one space,
+then the skeleton text.
+
+8. Strictly output only the formatted skeleton lines, with exactly one line break
+between each line. Do not include any titles, preambles, or explanatory text.
+9. Every summarized step must correspond to actual reasoning or operations explicitly
+present in the INPUT; do not invent new steps or hidden reasoning.
+10. Do not introduce any new facts, assumptions, or conclusions that are not present
+in the INPUT. Do not remove major reasoning steps that exist in the INPUT.
+11. Do not correct, reinterpret, or alter the factual content of the INPUT; if the
+INPUT contains uncertainty or errors, the summaries must faithfully reflect them
+as they are.
+
+12. Preserve the original logical order of the INPUT: the step numbering must follow
+the progression of reasoning in the INPUT.
+Output in language: {lang}.
+INPUT: {input_text}
+
+23

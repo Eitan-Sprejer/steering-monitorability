@@ -1,0 +1,1511 @@
+Synergizing Reinforcement Learning and Genetic
+
+Algorithms for Neural Combinatorial Optimization
+
+Shengda Gu1,2 Kai Li1,2∗ Junliang Xing4 Yifan Zhang1,3 Jian Cheng1,3
+1C
+2DL, Institute of Automation, Chinese Academy of Sciences
+
+2School of Artificial Intelligence, University of Chinese Academy of Sciences
+3School of Advanced Interdisciplinary Sciences, University of Chinese Academy of Sciences
+4Department of Computer Science and Technology, Tsinghua University
+
+arXiv:2506.09404v1 [cs.LG] 11 Jun 2025
+
+Abstract
+
+Combinatorial optimization problems are notoriously challenging due to their
+discrete structure and exponentially large solution space. Recent advances in
+deep reinforcement learning (DRL) have enabled the learning heuristics directly
+from data. However, DRL methods often suffer from limited exploration and
+susceptibility to local optima. On the other hand, evolutionary algorithms such as
+Genetic Algorithms (GAs) exhibit strong global exploration capabilities but are
+typically sample inefficient and computationally intensive. In this work, we propose
+the Evolutionary Augmentation Mechanism (EAM), a general and plug-and-play
+framework that synergizes the learning efficiency of DRL with the global search
+power of GAs. EAM operates by generating solutions from a learned policy and
+refining them through domain-specific genetic operations such as crossover and
+mutation. These evolved solutions are then selectively reinjected into the policy
+training loop, thereby enhancing exploration and accelerating convergence. We
+further provide a theoretical analysis that establishes an upper bound on the KL
+
+divergence between the evolved solution distribution and the policy distribution,
+ensuring stable and effective policy updates. EAM is model-agnostic and can be
+
+seamlessly integrated with state-of-the-art DRL solvers such as the Attention Model,
+POMO, and SymNCO. Extensive results on benchmark problems—including
+TSP, CVRP, PCTSP, and OP—demonstrate that EAM significantly improves both
+solution quality and training efficiency over competitive baselines.
+
+1 Introduction
+
+Combinatorial Optimization Problems (COPs) are fundamental decision-making and optimization
+
+tasks in discrete spaces, with wide-ranging applications in domains such as logistics scheduling [49,
+36], chip design [14, 38], and financial investment [32, 15]. Due to their NP-hard nature, finding
+optimal solutions is often computationally expensive, posing significant challenges for real-time
+applications. As a result, efficiently obtaining high-quality approximate solutions has become a central
+goal in both academic research and engineering practice. Traditional heuristic approaches [20, 43, 31]
+typically rely on substantial expert knowledge, making them inflexible and difficult to generalize
+across different problems. These limitations have led to increasing interest in automated, data-driven
+solution paradigms that aim to reduce manual design effort and improve scalability.
+
+In recent years, DRL has emerged as a promising framework for Neural Combinatorial Optimization
+(NCO), enabling policies to learn solution construction strategies in an end-to-end manner. DRLNCO
+methods can be broadly categorized into Learning-to-Improve (L2I) [2, 11, 48, 9, 33, 25] and
+Learning-to-Construct (L2C) [47, 6, 19, 22, 26, 28, 29, 41, 45] approaches. Among them, L2C
+
+∗Corresponding author.
+Figure 1: An overview of the proposed Evolutionary Augmentation Mechanism (EAM). Policysampled
+solutions are used to initialize the population of the Genetic Algorithm. The evolved
+solutions are then merged with the original samples and jointly used to train the policy network,
+forming a closed-loop learning and evolutionary framework.
+
+methods have been extensively studied due to strong empirical performance. However, L2C methods
+suffer from notable limitations: their autoregressive generation mechanism restricts the ability to alter
+or refine previously constructed partial solutions, often leading to suboptimal solutions. Additionally,
+the sparse reward structure typical of many COPs severely hampers efficient policy training.
+
+To address these challenges—particularly the limited exploration capacity of standard policy learning—it
+is essential to introduce new learning mechanisms. Evolutionary Algorithms, especially
+Genetic Algorithms (GAs), are also used for solving COPs [42, 34, 3, 43]. GAs offer strong global
+exploration capabilities via population-based search and genetic operators such as crossover and
+mutation. However, their lack of gradient-based guidance often results in sample inefficiency and
+
+high computational overhead when used in isolation. This contrast reveals the potential for a complementary
+integration: instead of replacing RL, GA can act as an auxiliary component to improve
+exploration and enhance sample quality within a unified framework.
+
+Motivated by these observations, we introduce the Evolutionary Augmentation Mechanism (EAM),
+a hybrid framework that integrates RL with GA to jointly improve training efficiency and solution
+quality (Fig. 1). EAM first generates an initial solution set by sampling from the RL policy and
+then applies GA to iteratively evolve them, yielding solutions that are structurally diverse and of
+higher quality. These evolved solutions are subsequently combined with policy-generated samples to
+update the policy. This closed-loop process—wherein the policy accelerates GA and evolved outputs
+progressively refine the RL policy—fosters mutual reinforcement. Specifically, the policy provides
+well-structured initial solutions that serve as strong baselines for GA, improving its efficiency. GA,
+in contrast, yields local structural optimizations that are often beyond the reach of the autoregressive
+policy, thereby enriching the training data with diverse and exploratory feedback samples.
+
+While incorporating GA enhances sample quality, it may introduce distributional biases to on-policy
+learning, potentially compromising gradient estimation. To quantify this effect, we theoretically
+model the distributional divergence between evolved solutions and policy samples, using the KL
+divergence to analyze its impact on policy gradient estimation. This theoretical foundation underpins
+the stability analysis of EAM. Building upon this insight, we propose a task-aware evolutionary
+hyperparameter selection strategy, which adapts selection, crossover, and mutation rates based on
+structural characteristics of specific COPs. By balancing perturbation intensity and distributional
+alignment, this strategy enhances learning stability and ensures robust generalization across tasks.
+
+We conduct extensive evaluations of EAM on four representative COPs: the Traveling Salesman
+
+Problem (TSP), Capacitated Vehicle Routing Problem (CVRP), Prize-Collecting TSP (PCTSP) [5],
+and Orienteering Problem (OP) [17]. Experimental results demonstrate that EAM consistently
+improves the performance of various DRL-NCO solvers across diverse task structures and scales.
+EAM enhances solution quality while also facilitating faster policy convergence. When integrated
+
+2
+into solvers such as AM, POMO, and SymNCO, EAM achieves faster convergence on CVRP tasks
+of varying scales, demonstrating its practicality as a model-agnostic policy enhancement module.
+
+2 Preliminaries
+
+Solutions to COPs such as TSP, CVRP, PCTSP, and OP can be naturally represented as sequences of
+node visits. Formally, we define a solution (trajectory) τ = [τ1, τ2, . . . , τn], where each τi denotes
+the index of a node visited at step i. The structure of τ varies depending on the specific problem: in
+TSP, all nodes must be visited exactly once; in CVRP, the solution must visit each customer exactly
+once, and ensure that the total demand between depot returns does not exceed vehicle capacity;
+in PCTSP [5] and OP [17], only a subset of nodes is visited. In PCTSP, the goal is to collect at
+least a minimum required prize while minimizing the travel cost, whereas in OP, the objective is to
+maximize the collected prize under a travel budget constraint. The reward function R(τ ) is defined
+in accordance with the optimization objective, where higher rewards correspond to better solutions,
+such as shorter total distances or higher collected prizes.
+
+3 Method
+
+EAM consists of two tightly integrated components: (1) a solution generator that constructs feasible
+solutions via RL and (2) an evolutionary module that refines these solutions using task-specific genetic
+operators. We next describe the two main components of our framework and present the theoretical
+foundation for setting the evolutionary hyperparameters within the augmentation mechanism.
+
+3.1 Solution Generators
+
+Under the L2C paradigm, solving COPs is commonly modeled as a sequential decision-making process
+[44], where a parameterized policy incrementally constructs a feasible solution. Given an input instance
+s, the solution distribution is defined in an autoregressive form: p(τ |s) = QT
+t=1 p(τt|τ 1:t−1, s).
+We adopt a Transformer-based encoder-decoder architecture consistent with AM [28] and POMO [29].
+
+While this modeling strategy provides strong expressiveness and flexibility, it also imposes structural
+limitations: the autoregressive mechanism restricts the ability to revise early decisions. After a node
+is selected, it is permanently incorporated into the constructed solution. Consequently, the model
+cannot revise earlier decisions even when subsequent information reveals them to be suboptimal.
+This irrevocability leads to an accumulation of early-stage errors that degrade overall solution quality.
+Moreover, sparse rewards, which are only revealed upon completion of a full solution, make it difficult
+for the model to assign credit to individual actions, thereby hindering effective policy learning.
+
+3.2 Evolutionary Module
+
+To address the structural limitations of autoregressive policies, an evolutionary module based on GAs
+is introduced. This module provides a gradient-free optimization framework capable of generating
+improved solutions. Specifically, GAs iteratively evolve a population composed of candidate solutions,
+each regarded as an individual. At each generation, a subset of parent population is selected according
+to fitness values, with higher-quality solutions assigned proportionally greater fitness. After selection,
+crossover operators combine parts of two parent solutions to generate offspring that inherit structural
+traits from both; mutation operators, in contrast, introduce small, localized changes to individual
+solutions. Based on these properties of GAs, the evolutionary module confers two key advantages:
+(1) genetic operators perturb entire solutions holistically rather than assembling them incrementally,
+thereby circumventing the detrimental influence of suboptimal partial trajectories; (2) by operating at
+the solution level, these operators preserve structural integrity and remain intrinsically resilient to
+issues arising from delayed or sparse rewards.
+
+Despite these advantages, GAs exhibit notable limitations: (1) they lack explicit gradient-based
+learning signals, relying instead on heuristic selection and elimination to improve population fitness;
+(2) the evolved population is instance-specific and requires reinitialization for each new problem
+instance. In contrast, autoregressive policies, with their strong generalization across instances and
+efficient gradient-based adaptation, can accelerate and stabilize the search dynamics of GAs.
+
+3
+These properties motivate a hybrid design that integrates evolutionary exploration with gradient-based
+policy optimization. In the following section, we describe integration of two components.
+
+3.3 Evolutionary Augmentation Mechanism
+
+To harness the complementarity between autoregressive policies and global evolutionary search, we
+propose the Evolutionary Augmentation Mechanism (EAM), a closed-loop framework integrating
+evolution and policy learning. At each training iteration, with a predefined probability, a batch of
+trajectories Pθ is sampled from the L2C-based policy network and used as the initial population for
+the GA, which evolves over K generations to produce P
+(K)
+. The combined set Pθ ∪ P
+(K)
+is then
+used to update the policy via RL.
+
+EAM creates a synergistic mechanism that integrates evolution-guided policy learning with policyacclerated
+evolutionary search. 1) From the RL perspective, GA-driven perturbations in EAM
+act as exogenous structural augmentation, exposing the policy to high-quality samples that deviate
+from its autoregressive patterns. These augmentations provide strong learning signals that guide
+the policy beyond its current solution pattern. Moreover, since GAs optimize complete trajectories
+directly, EAM inherently mitigates the sparsity of reward signals—particularly beneficial during
+early RL training stages. 2) From the GA perspective, EAM initializes its population from the
+policy-generated trajectories, avoiding inefficiency of random initialization. As training progresses,
+the genetic algorithm becomes increasingly effective at discovering globally better solutions, as the
+policy network provides higher-quality initial populations to guide evolutionary search.
+To ensure that evolved trajectories are both feasible and efficient, we choose and design genetic
+operators under two key criteria: (1) they must satisfy the structural constraints of the problem (e.g.,
+tour completeness in TSP, capacity limits in CVRP), and (2) they must be computationally lightweight
+to support frequent execution during training. Specifically:
+
+• Selection Operator. To ensure efficient computation and maintain optimization effectiveness,
+we adopt an elitist selection strategy [13] in which crossover and mutation are applied only to a
+selected subset of top-performing individuals. This design minimizes the number of costly fitness
+evaluations while directing the search toward high-quality regions of the solution space.
+• Crossover Operator. We employ Order Crossover (OX) [12] for all problems studied in this work,
+due to its natural compatibility with node sequence representations. OX preserves a contiguous
+subsequence from one parent and fills the remainder according to the relative order in the second
+parent, ensuring structural feasibility. Compared to alternatives like Partially Mapped Crossover
+(PMX) [16], which requires auxiliary mapping structures, OX provides better runtime efficiency
+and finer-grained control over perturbation locality.
+
+• Mutation Operator. We use task-specific mutation operators. In TSP, CVRP, and PCTSP, we
+apply the classical 2OPT [10] edge exchange to remove edge crossings and shorten tour length with
+linear complexity. For OP, we design a heuristic node substitution strategy that replaces low-reward
+nodes with high-value candidates under a route length budget. These designs reflect our principle
+of maintaining feasibility while introducing meaningful variations that guide policy learning.
+
+3.4 Theoretical Foundations and Practical Implementation
+
+EAM is designed as a general-purpose, lightweight, and plug-and-play enhancement module intended
+to improve learning efficiency and solution quality. It can be seamlessly integrated into mainstream
+L2C frameworks without necessitating any modifications to the original model architecture or
+optimization objectives. This seamless integration demands strong compatibility from EAM. However,
+by introducing evolutionary perturbations during policy training, EAM violates the core assumptions
+underpinning the REINFORCE algorithm, which is commonly used in the L2C methods. Specifically,
+standard REINFORCE [46] assumes that all training trajectories are sampled from the current policy
+distribution pθ, ensuring unbiased gradient estimates (i.e. Eτ∼pθ
+∇θ
+log p(τ )R(τ )
+
+= ∇θJ(τ )).
+However, EAM applies genetic perturbations (crossover, mutation) to trajectories sampled from pθ
+(i.e. population distribution at the 0-th generation p(τ 0) = pθ), yielding an population distribution
+at the K-th generation p(τ K) ̸= pθ and introducing bias: Eτ∼p(τ K)
+∇θ
+log p(τ )R(τ )
+
+̸= ∇θJ(τ ).
+To quantify the effect of such distributional shifts, we model the gradient bias using the KL divergence
+between p(τ K) and pθ (i.e., p(τ 0)). The following theorem provides an upper bound:
+
+4
+Theorem 1 (Policy Gradient Difference Upper Bound). Let p(τ K) be the distribution after K
+generations of evolution with crossover rate α, mutation rate β, and selection rate ρ. Then:
+
+
+
+
+Eτ K∼p(τ K)
+∇J(τ
+K)
+
+∇J(τ
+0)
+
+
+
+
+2
+≤
+p
+2DKL(p(τ K)∥p(τ 0)), (1)
+
+− Eτ 0∼p(τ 0)
+
+DKL(p(τ K)∥p(τ 0)) ≤
+
+ρK
+
+!
+, (2)
+
+αEp(fcross)
+
+log max p(rcross|fcross)
+min p(rcross|fcross)
+
+
+
+
+
+log max p(rmutate|fmutate)
+min p(rmutate|fmutate)
+
++ βEp(fmutate)
+
+where fmutate and fcross denote the preserved fragments during mutation and crossover, respectively,
+while rmutate and rcross denote the filled-in segments generated to complete the solutions. Please refer
+to Appendix A for the proof.
+
+This result highlights the need to constrain perturbation strength to maintain policy stability. Guided by
+this, we adopt a task-aware evolutionary hyperparameter selection strategy based on KL divergence:
+
+• TSP, CVRP, and PCTSP. Due to their high sensitivity to node sequences, even small perturbations
+may cause significant KL shifts. To mitigate such instability, we apply moderate and reasonably
+balanced selection and mutation rates to stabilize the trajectory distribution.
+
+• OP. As OP requires selecting a subset of nodes under a path length constraint, it is inherently
+more difficult to solve than the other COPs studied in this work. Combined with its sparse reward
+structure, this makes the policy more prone to getting stuck in local optima. We increase heuristic
+mutation strength to escape such stagnation and reduce crossover frequency to maintain stability.
+• General Scheduling. As Theorem 1 suggests, as the policy becomes more deterministic, the
+ratios max p(rcross|fcross)
+min p(rcross|fcross)
+and max p(rmutate|fmutate)
+min p(rmutate|fmutate)
+gradually increase, leading to a larger KL divergence
+between evolutionary samples and the policy distribution. Therefore, we apply a simulated
+annealing schedule to progressively decay genetic operation probabilities and gradually fade out
+perturbations in the later stages of training to ensure stability.
+
+This KL-guided adaptation improves sample quality and exploration while preserving training stability
+across diverse COPs. Full task-aware settings are provided in Appendix C.
+
+4 Experiments
+
+4.1 Experimental Settings
+
+Tasks. We evaluate EAM on four representative COPs: TSP, CVRP, PCTSP, and OP (see Section 2).
+EAM is integrated into AM [28], POMO [29], and Sym-NCO [26] for TSP and CVRP, and into AM
+alone for PCTSP and OP, due to model compatibility and hardware constraints. TSP and CVRP with
+N = 50 and 100 are used to evaluate cross-model and cross-scale generalization. PCTSP and OP
+test EAM’s performance on tasks with partial routing and complex constraints.
+
+Baselines. We compare against both traditional solvers and DRL-based methods. For TSP, we
+consider Concorde [4], LKH-3 [20], AM, POMO, and Sym-NCO; for CVRP, we use HGS [43],
+LKH-3, AM, POMO, and Sym-NCO; for PCTSP, we benchmark against ILS [31] and AM; and for
+OP, we compare with Compass [27] and AM.
+
+Metrics. We evaluate average performance and total inference time cost on 10k test instances.
+For neural solvers, we report results under three decoding strategies: greedy, multi-start, and data
+augmentation, to reflect trade-offs between quality and latency. The multi-start decoding strategy
+generates multiple trajectories on the same COP instance, improving performance compared to greedy
+decoding but incurring additional inference overhead. The data augmentation decoding strategy
+enhances COP instances by generating multiple symmetric variants, further boosting performance
+at the cost of even higher inference overhead. To highlight differences in practical deployment
+suitability, traditional solvers run on CPU, neural methods on GPU.
+
+For more details on experimental settings, please refer to Appendix B.
+
+5
+Table 1: Performance on TSP and CVRP. Bold represents the best performances in each task.
+‘-’ indicates that the solver does not support the problem. ‘s’ indicates multi-start sampling, ‘8×’
+indicates data augmentation for 8 times. The number of multi-start initial points set equal to the
+number of nodes in the problem instance. We use LHK3’s performance on CVRP from [41].
+Method TSP50 TSP100 CVRP50 CVRP100
+
+Cost ↓ Gap ↓ Time ↓ Cost ↓ Gap ↓ Time ↓ Cost ↓ Gap ↓ Time ↓ Cost ↓ Gap ↓ Time ↓
+Concorde 5.690 – 13.3m 7.761 – 40.8m – –
+HGS – – 10.366 – 2.1h 15.586 – 3.6h
+LKH3 5.690 0.00% 2.0m 7.761 0.00% 18.9m 10.367 0.01% 1h 15.667 0.52% 2h
+AM (greedy. ) 5.794 1.82% 2s 8.123 4.67% 5s 10.949 5.63% 2s 16.580 6.38% 5s
+EAM-AM (greedy. ) 5.780 1.57% 2s 8.071 4.00% 5s 10.893 5.08% 2s 16.555 6.22% 5s
+POMO (s.) 5.702 0.21% 9s 7.800 0.50% 19s 10.555 1.82% 12s 15.894 1.98% 28s
+EAM-POMO (s.) 5.702 0.20% 10s 7.796 0.45% 19s 10.500 1.29% 13s 15.859 1.75% 29s
+SymNCO (s. ) 5.698 0.14% 10s 7.793 0.42% 19s 10.495 1.24% 13s 15.839 1.63% 29s
+EAM-SymNCO (s. ) 5.698 0.14% 10s 7.777 0.21% 19s 10.481 1.11% 13s 15.826 1.54% 29s
+POMO (s. 8×) 5.697 0.11% 15s 7.775 0.18% 64s 10.463 0.94% 47s 15.760 1.12% 306s
+EAM-POMO (s. 8×) 5.693 0.05% 15s 7.772 0.14% 63s 10.422 0.54% 47s 15.733 0.95% 306s
+SymNCO (s. 8×) 5.698 0.13% 15s 7.775 0.18% 63s 10.438 0.69% 48s 15.818 1.49% 306s
+EAM-SymNCO (s. 8×) 5.692 0.04% 16s 7.774 0.17% 64s 10.427 0.59% 48s 15.806 1.42% 306s
+
+4.2 Experimental Results
+
+4.3 TSP and CVRP
+
+Table 1 shows that EAM consistently enhances solution quality across models, instance sizes, and
+decoding strategies. On CVRP50, EAM-POMO reduces the optimality gap from 0.94% to 0.54%,
+while on TSP100, EAM-POMO achieves a 0.14% gap compared to 0.50% from the original POMO.
+EAM-SymNCO further achieves the best overall performance on TSP50 with a 0.04% gap. These
+improvements are obtained without any additional inference time. Moreover, as shown in Figure 2,
+EAM significantly accelerates convergence during training on most tasks, indicating its effectiveness
+not only in final performance but also in training efficiency.
+
+0 50 100 150 200
+Epoch
+8.2
+8.4
+8.6
+8.8
+9.0
+Cost
+TSP 100
+AM
+EAM-AM
+
+TSP 100
+
+TSP 100
+
+POMO
+EAM-POMO
+
+SYMNCO
+EAM-SYMNCO
+
+7.85
+7.90
+7.95
+8.00
+8.05
+Cost
+
+8.1
+
+8.0
+
+Cost
+
+7.9
+
+0 50 100 150 200
+Epoch
+
+0 50 100 150 200
+Epoch
+
+CVRP 100
+
+CVRP 100
+
+CVRP 100
+
+16.0
+16.1
+16.2
+16.3
+16.4
+16.5
+Cost
+
+15.9
+16.0
+16.1
+16.2
+16.3
+Cost
+
+AM
+EAM-AM
+
+POMO
+EAM-POMO
+
+SYMNCO
+EAM-SYMNCO
+
+0 25 50 75 100
+Epoch
+17.0
+17.5
+18.0
+18.5
+19.0
+19.5
+Cost
+
+0 25 50 75 100
+Epoch
+
+0 25 50 75 100
+Epoch
+
+Figure 2: Training curves of AM, POMO, and Sym-NCO with and without EAM on TSP-100
+and CVRP-100. EAM consistently accelerates convergence across different backbones and problem
+settings, highlighting its ability to improve training efficiency in addition to final solution quality.
+
+4.3.1 PCTSP and OP
+
+As shown in Table 2, EAM also exhibits consistent performance gains on PCTSP and OP. For
+example, on OP, EAM-AM improves the objective from 31.54 to 31.85, narrowing the gap from
+4.97% to 4.03%. These improvements highlight EAM’s ability to enhance the exploratory capacity
+
+6
+of the policy in scenarios characterized by partial routing and complex objective functions, further
+validating its generality and adaptability as a policy enhencement module across diverse COPs.
+
+Table 2: Performance on PCTSP and OP. Notations are the same with Table 1. We use ILS and
+Compass’s performance from [26].
+
+Method PCTSP100 OP
+
+Cost ↓ Gap ↓ Time ↓ Obj ↑ Gap ↓ Time ↓
+ILS C++ 5.98 – 12h –
+Compass – 33.19 – 15m
+AM (greedy.) 6.21 3.92% 2s 31.54 4.97% 2s
+EAM-AM (greedy.) 6.20 3.61% 2s 31.85 4.03% 2s
+
+4.3.2 Ablation Study
+
+We conduct a comprehensive ablation study to evaluate the contribution of key designs in EAM.
+The experiments are organized along two dimensions: 1) evolutionary hyperparameter configuration
+and 2) annealed evolution frequencies. For each aspect, we systematically alter specific design
+components to evaluate their influence on solution quality and training dynamics.
+
+OP 100
+
+0 200k 400k
+Step
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Loss
+TSP 100
+POMO
+EAM-POMO
+
+OP 100
+AM
+EAM w/o Annu
+EAM w/ Annu
+
+31.5
+
+30
+
+31.0
+
+28
+
+Obj
+
+Obj
+
+30.5
+
+26
+
+AM
+EAM High Cross
+EAM High Mutate
+
+24
+
+50k 75k 100k 125k 150k
+Steps
+30.0
+
+0 25k 50k 75k 100k
+Steps
+
+Figure 3: Training curves of various
+hyperparameters.
+
+Figure 4: Training curves of
+whether to use annealing.
+
+Figure 5: Training curves of absolute
+loss on TSP 100.
+
+Evolutionary Hyperparameter Configuration. We examine the impact of different crossover and
+mutation rate configurations in EAM on OP (Fig. 3). Specifically, we compare two settings: (1) high
+mutation rate with low crossover rate, and (2) low mutation rate with high crossover rate. Empirical
+results show that the first setting leads to faster convergence and superior final solution quality. This
+configuration aligns better with the OP objective, where the absolute node order is largely irrelevant
+and aggressive node replacement helps uncover high-reward substructures more effectively.
+Additionally, this configuration results in a smaller KL divergence upper bound (see Appendix C),
+implying reduced bias when incorporating evolved trajectories into policy updates. This observation
+supports the theoretical rationale for modeling KL divergence and highlights the importance of
+task-aware perturbation strength in maintaining training stability.
+
+Annealed Evolution Frequency. We compare constant and annealed evolution frequencies (Fig. 4).
+Disabling annealing leads to slower improvement and significant instability, indicating that the utility
+of evolutionary perturbations gradually shifts toward negative effects as training progresses. These
+results validate the annealing schedule and align with the theoretical insight in Section 3.4.
+
+5 Discussion
+
+5.1 Solution Visualization
+
+To examine how EAM guides the policy network toward generating higher-quality solutions during
+inference, we select representative instances on TSP-100 to compare the solution trajectories produced
+by POMO and EAM-POMO (Fig. 6). Both models exhibit highly similar structures, indicating that
+EAM does not fundamentally alter the overall behavior of the policy.
+
+7
+(a) (b)
+
+Figure 6: Solutions generated by POMO and EAM-POMO on representative TSP-100 instances.
+Both models produce globally similar tours, but EAM-POMO exhibits finer local refinements—especially
+in dense regions—demonstrating the structural optimization effect of EAM.
+
+However, due to the encoder-decoder architecture commonly adopted in L2C methods, node embeddings
+are typically computed in a static manner before trajectory construction.As a result, spatially
+adjacent nodes often receive similar embeddings, making it difficult for the policy network to effectively
+distinguish between them in high-density regions. This limitation can lead to suboptimal
+node selection and inaccurate ordering in solution. In contrast, genetic algorithms iteratively refine
+solutions through crossover and mutation, enabling fine-grained adjustments to the tour structure
+and compensating for the policy network’s limited capacity to capture subtle local variations. The
+red-boxed region in Figure 6 illustrates that the observed performance difference is mainly driven by
+the discrepancy in inference quality between EAM-POMO and POMO.
+
+5.2 Training Stability Analysis
+
+To empirically validate the KL-based theoretical analysis proposed in this work, we further analyze
+the training dynamics on TSP-100 by tracking the absolute value of the policy gradient loss with and
+without EAM (Fig. 5). Under REINFORCE with a normalized advantage, the loss magnitude serves
+as a proxy for the log-probability assigned by the policy to sampled trajectories: lower log-probability
+leads to higher absolute value of the loss.
+
+Empirical results show that EAM consistently induces higher loss values, indicating that evolved
+samples lie in low-probability regions of the policy distribution. At the beginning of training, however,
+the loss values under EAM and the baseline are nearly identical. This empirical observation consistent
+with the theoretical prediction in Theorem 1, which states that when the trajectories approximately
+follow a uniform distribution, max p(rcross|fcross)
+min p(rcross|fcross) ≈ 1 and max p(rmutate|fmutate)
+min p(rmutate|fmutate) ≈ 1, indicating DKL ≈ 0.
+As training progresses, the loss increase under EAM remains bounded, indicating that the policy
+is progressively absorbing the structural information encoded in the evolutionary samples. This
+observation aligns with Theorem 1, confirming that EAM introduces controlled distributional bias
+and supports stable policy updates.
+
+Together with the earlier structural visualization, these results demonstrate the consistency between
+EAM’s theoretical foundations and its empirical behavior, reinforcing its effectiveness as a reliable
+enhancement for NCO.
+
+6 Related Works
+
+6.1 Learning-to-Construct Methods for COPs
+
+L2C methods solving COPs by autoregressively constructing solutions via sequence models. Early
+works include the Pointer Network [44], REINFORCE-based training [6]. Kool et al. [28] proposed
+
+the Attention Model (AM), which leveraged the Transformer architecture to enhance the expressiveness
+of policy networks, and has since become a widely adopted baseline. Building upon AM,
+Kwon et al. [29] exploited the inherent symmetry of problems such as TSP and CVRP by employing
+a multi-start sampling strategy, resulting in further performance gains. Kim et al. [26] extends
+symmetry principle by utilizing data augmentation and modifying the loss formulation to harness
+
+8
+the problem’s inherent invariance more effectively. Subsequent research extending L2C methods
+can be broadly categorized into two lines of work. The first line of work emphasizes increasing the
+structural diversity and optimality of solutions [19, 21, 41], while the other line of work centers on
+
+the explicit modeling of structural priors and problem symmetries to speed up convergence [45, 40].
+
+Although the aforementioned methods have achieved substantial performance gains in combinatorial
+optimization, they typically operate by conditioning on incrementally constructed partial solutions and
+lack explicit global search mechanisms, rendering them susceptible to local optima. In contrast, our
+EAM introduces an evolutionary augmentation mechanism that enables global trajectory exploration
+beyond the capabilities of standard autoregressive models.
+
+6.2 Hybrid RL and Heuristic Methods for COPs
+
+The introduction of the ERL framework [24], marked a turning point that catalyzed the development
+
+of a broad class of hybrid optimization methods combining evolutionary algorithms with RL [39].
+In the context of combinatorial optimization, the integration of heuristic algorithms and RL has
+manifested in several distinct algorithmic paradigms. One line of work leverages RL agents to inject
+solution diversity into the evolutionary population, facilitating more effective exploration across
+structurally constrained combinatorial landscapes [37]. Another line of work focuses on learning
+adaptive mutation and crossover operators using RL, replacing manually designed heuristics with
+learned local search behaviors [23, 30]. A third line of work incorporates heuristic algorithms during
+inference to refine initial solutions sampled from policy networks, thereby enhancing the quality of
+final solutions at inference [18].
+
+Among the various paradigms that combine heuristic algorithms with RL for solving COPs, RLHO [8]
+bears the closest architectural resemblance to our approach. In RLHO, a policy network is first
+employed to sample feasible solutions, which are then refined using simulated annealing. The
+improvement in solution quality achieved by the heuristic algorithm is treated as a reward and fed
+back to the policy network for training. Although this method also establishes a coupled training
+framework between RL and heuristics, its primary focus lies in training the policy to generate
+solutions that are amenable to heuristic improvement, thereby adopting a heuristic-centered paradigm
+with RL playing a supporting role.
+
+In contrast, the EAM proposed in this work adopts a RL–centered framework with heuristic optimization
+serving as an auxiliary enhancement. Specifically, we apply a genetic algorithm to locally evolve
+policy-generated solution trajectories, thereby improving both their structural diversity and solution
+quality. These evolved trajectories are then directly integrated into the policy gradient optimization
+process. This approach maintains the high inference efficiency of RL while substantially enhancing
+exploration capability and accelerating training convergence.
+
+7 Conclusion and Future Work
+
+We propose EAM, a general framework that unifies the strengths of RL and GAs. EAM operates by
+injecting evolved samples generated by GA into the RL policy learning loop, thereby encouraging
+
+exploration and mitigating the limitations of sparse rewards and suboptimal trajectory construction.
+Theoretical analyses based on KL divergence provide guarantees on training stability, while empirical
+studies across diverse combinatorial optimization tasks—including TSP, CVRP, PCTSP, and
+OP—demonstrate consistent gains in both solution quality and training efficiency. Our results confirm
+EAM’s effectiveness as a lightweight, model-agnostic, and plug-and-play enhancement that can be
+readily integrated into existing DRL-NCO pipelines.
+
+Limitations and Future Work. While EAM demonstrates consistent improvements across multiple
+COPs, there are several limitations worth noting. First, our current evaluation focuses primarily
+on representative routing problems. Although these benchmarks are widely used and sufficiently
+diverse in structure, they do not fully capture the breadth of real-world COPs (e.g., Job Shop
+Scheduling, Knapsack, and Graph Coloring Problems). Extending EAM to a broader class of COPs
+
+with different structural constraints remains an important and worthwhile direction for future research.
+Furthermore, evaluating EAM under stochastic problem settings—such as constraints are subject to
+uncertainty [7]—could provide deeper insights into its robustness and generalization capabilities.
+
+9
+Second, the problem instances studied in this paper are of moderate scale (typically up to 100 nodes).
+While this is consistent with prior DRL-based approaches, scaling to significantly larger instances
+remains an open challenge. We note, however, that many divide-and-conquer schemes [50, 35]
+have been successfully applied to large-scale COPs by breaking them into smaller subproblems.
+EAM can be naturally embedded within such decomposition-based solvers to improve the quality
+of subproblem solutions and thereby enhance overall performance. We consider this a particularly
+compelling avenue for future exploration.
+
+References
+
+[1] Information theory: a tutorial introduction. 2015.
+
+[2] Sungsoo Ahn, Younggyo Seo, and Jinwoo Shin. Learning what to defer for maximum independent
+sets. In International conference on machine learning, pages 134–144. PMLR,
+2020.
+
+[3] Esra’a Alkafaween, Ahmad Hassanat, Ehab Essa, and Samir Elmougy. An efficiency boost for
+genetic algorithms: Initializing the ga with the iterative approximate method for optimizing the
+traveling salesman problem—experimental insights. Applied Sciences, 14(8):3151, 2024.
+
+[4] David L Applegate. The traveling salesman problem: a computational study, volume 17.
+Princeton university press, 2006.
+
+[5] Egon Balas. The prize collecting traveling salesman problem. Networks, 19(6):621–636, 1989.
+
+[6] Irwan Bello, Hieu Pham, Quoc V Le, Mohammad Norouzi, and Samy Bengio. Neural combinatorial
+optimization with reinforcement learning. arXiv preprint arXiv:1611.09940, 2016.
+
+[7] Federico Berto, Chuanbo Hua, Nayeli Gast Zepeda, André Hottung, Niels Wouda, Leon Lan,
+Junyoung Park, Kevin Tierney, and Jinkyoo Park. Routefinder: Towards foundation models for
+vehicle routing problems. arXiv preprint arXiv:2406.15007, 2024.
+
+[8] Qingpeng Cai, Will Hang, Azalia Mirhoseini, George Tucker, Jingtao Wang, and Wei Wei.
+Reinforcement learning driven heuristic optimization. arXiv preprint arXiv:1906.06639, 2019.
+
+[9] Xinyun Chen and Yuandong Tian. Learning to perform local rewriting for combinatorial
+optimization. Advances in neural information processing systems, 32, 2019.
+
+[10] Georges A Croes. A method for solving traveling-salesman problems. Operations research, 6
+(6):791–812, 1958.
+
+[11] Paulo R d O Costa, Jason Rhuggenaath, Yingqian Zhang, and Alp Akcay. Learning 2-opt
+heuristics for the traveling salesman problem via deep reinforcement learning. In Asian
+conference on machine learning, pages 465–480. PMLR, 2020.
+
+[12] L Davis. Handbook of genetic algorithms. 1991.
+
+[13] Kenneth Alan De Jong. An analysis of the behavior of a class of genetic adaptive systems.
+University of Michigan, 1975.
+
+[14] Kyriakos M Deliparaschos and Spyros G Tzafestas. Design paradigms of intelligent control
+systems on a chip. arXiv preprint arXiv:1811.08426, 2018.
+
+[15] Masoud Fekri and Babak Barazandeh. Designing an optimal portfolio for iran’s stock market
+with genetic algorithm using neural network prediction of risk and return stocks. arXiv preprint
+arXiv:1903.06632, 2019.
+
+[16] David E Goldberg and Robert Lingle Jr. Alleleslociand the traveling salesman problem. In
+Proceedings of the 1st International Conference on Genetic Algorithms, pages 154–159, 1985.
+
+[17] Bruce L Golden, Larry Levy, and Rakesh Vohra. The orienteering problem. Naval Research
+Logistics (NRL), 34(3):307–318, 1987.
+
+10
+[18] Ido Greenberg, Piotr Sielski, Hugo Linsenmaier, Rajesh Gandham, Shie Mannor, Alex Fender,
+Gal Chechik, and Eli Meirom. Accelerating vehicle routing via ai-initialized genetic algorithms.
+arXiv preprint arXiv:2504.06126, 2025.
+
+[19] Nathan Grinsztajn, Daniel Furelos-Blanco, Shikha Surana, Clément Bonnet, and Tom Barrett.
+Winner takes it all: Training performant rl populations for combinatorial optimization. Advances
+in Neural Information Processing Systems, 36:48485–48509, 2023.
+
+[20] Keld Helsgaun. An extension of the lin-kernighan-helsgaun tsp solver for constrained traveling
+salesman and vehicle routing problems. Roskilde: Roskilde University, 12:966–980, 2017.
+
+[21] André Hottung, Yeong-Dae Kwon, and Kevin Tierney. Efficient active search for combinatorial
+optimization problems. arXiv preprint arXiv:2106.05126, 2021.
+
+[22] André Hottung, Mridul Mahajan, and Kevin Tierney. Polynet: Learning diverse solution
+strategies for neural combinatorial optimization. arXiv preprint arXiv:2402.14048, 2024.
+
+[23] Zhenzhen Hu and Wenyin Gong. Constrained evolutionary optimization based on reinforcement
+learning using the objective function and constraints. Knowledge-Based Systems, 237:107731,
+2022.
+
+[24] Shauharda Khadka and Kagan Tumer. Evolution-guided policy gradient in reinforcement
+learning. Advances in Neural Information Processing Systems, 31, 2018.
+
+[25] Minsu Kim, Jinkyoo Park, et al. Learning collaborative policies to solve np-hard routing
+problems. Advances in Neural Information Processing Systems, 34:10418–10430, 2021.
+
+[26] Minsu Kim, Junyoung Park, and Jinkyoo Park. Sym-nco: Leveraging symmetricity for neural
+combinatorial optimization. Advances in Neural Information Processing Systems, 35:1936–
+1949, 2022.
+
+[27] Gorka Kobeaga, María Merino, and Jose A Lozano. An efficient evolutionary algorithm for the
+orienteering problem. Computers & Operations Research, 90:42–59, 2018.
+
+[28] Wouter Kool, Herke Van Hoof, and Max Welling. Attention, learn to solve routing problems!
+arXiv preprint arXiv:1803.08475, 2018.
+
+[29] Yeong-Dae Kwon, Jinho Choo, Byoungjip Kim, Iljoo Yoon, Youngjune Gwon, and Seungjai
+Min. Pomo: Policy optimization with multiple optima for reinforcement learning. Advances in
+Neural Information Processing Systems, 33:21188–21198, 2020.
+
+[30] Haoqiang Liu, Zefang Zong, Yong Li, and Depeng Jin. Neurocrossover: An intelligent genetic
+locus selection scheme for genetic algorithm using reinforcement learning. Applied Soft
+Computing, 146:110680, 2023.
+
+[31] Helena Ramalhinho Lourenço, Olivier C Martin, and Thomas Stützle. Iterated local search:
+Framework and applications. In Handbook of metaheuristics, pages 129–168. Springer, 2018.
+
+[32] Thu Quang Luu. Application of artificial intelligence-genetic algorithms to select stock portfolios
+in the asian markets. International Journal of Advanced Computer Science and Applications,
+13(12), 2022.
+
+[33] Yining Ma, Jingwen Li, Zhiguang Cao, Wen Song, Le Zhang, Zhenghua Chen, and Jing
+Tang. Learning to iteratively solve routing problems with dual-aspect collaborative transformer.
+Advances in Neural Information Processing Systems, 34:11096–11107, 2021.
+
+[34] Sasan Mahmoudinazlou and Changhyun Kwon. A hybrid genetic algorithm for the min–max
+multiple traveling salesman problem. Computers & Operations Research, 162:106455, 2024.
+
+[35] Xuanhao Pan, Yan Jin, Yuandong Ding, Mingxiao Feng, Li Zhao, Lei Song, and Jiang Bian.
+H-tsp: Hierarchically solving the large-scale traveling salesman problem. In Proceedings of the
+AAAI Conference on Artificial Intelligence, volume 37, pages 9345–9353, 2023.
+
+11
+[36] Wang Ping. Application of genetic algorithm in logistics management and distribution. In
+International Conference on Multi-modal Information Analytics, pages 1041–1046. Springer,
+2022.
+
+[37] Majdi I Radaideh and Koroush Shirvan. Rule-based reinforcement learning methodology
+to inform evolutionary algorithms for constrained optimization of engineering applications.
+Knowledge-Based Systems, 217:106836, 2021.
+
+[38] Xinye Sha. Time series stock price forecasting based on genetic algorithm (ga)-long short-term
+memory network (lstm) optimization. arXiv preprint arXiv:2405.03151, 2024.
+
+[39] Olivier Sigaud. Combining evolution and deep reinforcement learning for policy search: A
+survey. ACM Transactions on Evolutionary Learning, 3(3):1–20, 2023.
+
+[40] Jiwoo Son, Minsu Kim, Sanghyeok Choi, Hyeonah Kim, and Jinkyoo Park. Equity-transformer:
+Solving np-hard min-max routing problems as sequential generation with equity context. In
+Proceedings of the AAAI Conference on Artificial Intelligence, volume 38, pages 20265–20273,
+2024.
+
+[41] Rui Sun, Zhi Zheng, and Zhenkun Wang. Learning encodings for constructive neural combinatorial
+optimization needs to regret. In Proceedings of the AAAI Conference on Artificial
+Intelligence, volume 38, pages 20803–20811, 2024.
+
+[42] Martin Uray, Stefan Wintersteller, and Stefan Huber. Csrx: A novel crossover operator for a
+genetic algorithm applied to the traveling salesperson problem. In International Data Science
+Conference, pages 21–27. Springer, 2023.
+
+[43] Thibaut Vidal. Hybrid genetic search for the cvrp: Open-source implementation and swap*
+neighborhood. Computers & Operations Research, 140:105643, 2022.
+
+[44] Oriol Vinyals, Meire Fortunato, and Navdeep Jaitly. Pointer networks. Advances in neural
+information processing systems, 28, 2015.
+
+[45] Chaoyang Wang, Pengzhi Cheng, Jingze Li, and Weiwei Sun. Leader reward for pomo-based
+neural combinatorial optimization. arXiv preprint arXiv:2405.13947, 2024.
+
+[46] Ronald J Williams. Simple statistical gradient-following algorithms for connectionist reinforcement
+learning. Machine learning, 8:229–256, 1992.
+
+[47] Xuan Wu, Di Wang, Lijie Wen, Yubin Xiao, Chunguo Wu, Yuesong Wu, Chaoyu Yu, Douglas L
+Maskell, and You Zhou. Neural combinatorial optimization algorithms for solving vehicle
+routing problems: A comprehensive survey with perspectives. arXiv preprint arXiv:2406.00415,
+2024.
+
+[48] Yaoxin Wu, Wen Song, Zhiguang Cao, Jie Zhang, and Andrew Lim. Learning improvement
+heuristics for solving routing problems. IEEE transactions on neural networks and learning
+systems, 33(9):5057–5069, 2021.
+
+[49] Jinxin Xu, Haixin Wu, Yu Cheng, Liyang Wang, Xin Yang, Xintong Fu, and Yuelong Su.
+Optimization of worker scheduling at logistics depots using genetic algorithms and simulated
+annealing. arXiv preprint arXiv:2405.11729, 2024.
+
+[50] Zhi Zheng, Changliang Zhou, Tong Xialiang, Mingxuan Yuan, and Zhenkun Wang. Udc:
+A unified neural divide-and-conquer framework for large-scale combinatorial optimization
+problems. arXiv preprint arXiv:2407.00312, 2024.
+
+12
+A Proof of Theorem 1
+
+Remark. We use a unified sequence encoding for all problems. Let V = {0, 1, . . . , n} be the
+
+set of node indices, where 0 denotes the depot or a special “dummy symbol” when a position in
+
+the sequence is unused. For a fixed length L ≥ n we encode every candidate tour as a sequence
+τ = [τ1, . . . , τL] ∈ V L:
+
+• Complete-path problems (TSP, CVRP). Each node 1, . . . , n appears exactly once in τ , the
+
+depot 0 may appear multiple times (CVRP). No dummies are present.
+
+• Partial-path problems (PCTSP, OP). The same alphabet V is used, but positions that are not
+
+visited in the tour are filled with the dummy symbol 0. Consequently 0 may occur multiple times.
+
+Because 0 ∈ V is treated as an ordinary symbol in both settings, we obtain
+
+L for all generation distributions pk, irrespective of whether the
+
+(i) a common support X = V
+
+underlying problem is complete or partial;
+
+(ii) strictly positive one-step kernels Pk(τ, ·), since each genetic operator assigns non-zero probability
+
+to every symbol in every position, including repetitions of 0 when they serve as dummies.
+
+Hence Lemmas 2–5 and Theorems 4–8 apply verbatim to both complete tours (TSP, CVRP) and
+
+partial tours (PCTSP, OP).
+
+Facts (standard). Log–Sum, KL-Convexity, Chain Rule, Data–Processing, Pinsker [1].
+
+Lemma 2 (Expectation–Total Variation Bound). Let P, Q be probability measures on (X , F) and
+f : X → R
+d be bounded with ∥f∥2,∞ := supx ∥f(x)∥2 < ∞. Then
+
+
+
+EQ[f] − EP [f]
+
+
+2
+
+≤ 2 DTV(P, Q) ∥f∥2,∞.
+
+Lemma 3 (Terminal KL bound via step-wise KL to the initial distribution). Let X0→X1→. . .→XT
+
+be a Markov chain on a common (measurable) support, and assume all marginal densities are strictly
+
+positive. Denote the marginals by pt := p(Xt) and the one–step kernels by
+
+Pt(x, ·) := p
+
+Xt = · | Xt−1 = x
+
+, t = 1, . . . , T.
+
+Then
+
+Ept−1
+h
+DKL
+Pt(Xt−1, ·) ∥ p0
+
+i
+.
+
+DKL
+pT ∥ p0
+
+≤ T max
+1≤t≤T
+
+Proof. Step 1: Construct an independent reference process. Define
+
+T
+
+Y
+
+q(X0:T ) := p0(X0)
+
+p0(Xt),
+
+t=1
+
+so that each Xt under q is an i.i.d. draw from p0 and q(XT ) = p0 by construction.
+
+Step 2: Chain rule for KL divergence. Because p is Markov, p(Xt | X0:t−1) = Pt(Xt−1, ·).
+
+Applying the chain rule,
+
+T
+
+Ept−1
+h
+DKL
+Pt(Xt−1, ·) ∥ p0
+
+i
+.
+
+p(X0:T ) ∥ q(X0:T )
+
+=
+X
+
+DKL
+
+t=1
+
+Step 3: Data–processing inequality. For the measurable map f(X0:T ) = XT ,
+
+DKL
+pT ∥ p0
+
+= DKL
+p◦f
+−1
+∥ q◦f
+−1
+
+≤ DKL
+
+p(X0:T ) ∥ q(X0:T )
+
+.
+
+Step 4: Combine the bounds. Putting the previous two displays together,
+
+T
+
+Ept−1
+h
+DKL
+Pt(Xt−1, ·) ∥ p0
+
+i
+.
+
+DKL
+pT ∥ p0
+
+≤
+X
+
+t=1
+
+Let ct := Ept−1
+DKLPt(Xt−1,
+·) ∥ p0
+
+ and cmax := max1≤t≤T ct. Then PT
+t=1 ct ≤ T cmax,
+
+yielding the claimed inequality.
+
+13
+Theorem 4 (KL bound across K GA generations). Under the elitism update rule
+
+p(τ k | τ k−1) = ρ poff(τ k | τ k−1) + (1 − ρ) pk−1, 0 ≤ ρ ≤ 1,
+
+we define pk as the probability distribution of the k-th generation solutions, which is equivalent to
+
+the probability distribution p(τ k) for any trajectory τ k sampled from this generation. The following
+
+holds:
+
+Eτ k−1∼pk−1
+h
+DKL
+p
+off(τ k | τ k−1) ∥ pk−1
+
+i
+.
+
+DKL(pK∥p0) ≤ ρ K max
+1≤k≤K
+
+Proof. Step 1: Convexity of KL divergence.
+
+DKL
+p(τ k | τ k−1) ∥ pk−1
+
+≤ ρ DKL
+p
+off(τ k | τ k−1) ∥ pk−1
+
+.
+
+Step 2: Apply Lemma 3. Viewing τ 0 →. . .→τ K as a Markov chain with the above kernel and
+
+substituting the bound from Step 1,
+
+Eτ k−1∼pk−1
+h
+DKL
+p
+off(τ k | τ k−1) ∥ pk−1
+
+i
+.
+
+DKL(pK∥p0) ≤ ρ K max
+k
+
+Corollary 4.1 (KL between offspring and parents). Let the offspring distribution be the convex
+
+mixture
+
+off(τ k | τ k−1) = α qcross(τ k) + β qmutate(τ k) + γ qelite(τ k), α + β + γ = 1.
+
+p
+
+elite = pk−1, then
+
+If the elite component copies parents verbatim, q
+
+DKL
+p
+off(τ k | τ k−1) ∥ pk−1
+
+≤ α DKL
+q
+cross ∥ pk−1
+
++ β DKL
+q
+mutate ∥ pk−1
+
+.
+
+Proof. By convexity of KL divergence, we have
+
+DKL
+p
+off ∥ pk−1
+
+≤ α DKL(q
+
+cross ∥ pk−1) + β DKL(q
+
+mutate ∥ pk−1) + γ DKL(q
+
+elite ∥ pk−1).
+
+elite = pk−1, the last term vanishes, yielding the stated bound.
+
+Since q
+
+Lemma 5 (Crossover as a measurable transformation). Let f be a fixed retained fragment selected
+
+by the OX crossover operator. Then the transformation from a parental fragment r to the offspring
+
+fragment induced by OX defines a deterministic and support-preserving mapping gf such that
+
+q(r | f) = p(g
+−1
+f
+(r) | f).
+
+In particular, this mapping gf can be viewed as a measurable transformation over the conditional
+fragment space Rf .
+
+Proof. Our crossover operator selects fixed parent individuals for pairing rather than randomly.
+
+Without loss of generality, we focus on parent p2 and offspring o1.
+
+Given f = p1[s : e], the OX operator deterministically fills the remaining positions of o1 using
+
+nodes from p2, preserving their relative order. That is, the perturbed fragment r of the offspring o1
+
+is constructed by removing the nodes in f from p2 and placing the remaining nodes into the empty
+
+positions of o1 in a fixed cyclic order.
+
+This process defines a transformation from the parental fragment segment(p2, r) to the offspring
+
+fragment segment(o1, r), conditional on f. As the transformation preserves the relative order of
+
+elements in r, it is deterministic and support-preserving.
+
+Therefore, for a fixed retained fragment f, the OX operator can be viewed as inducing a measurable
+
+transformation gf over the space of fragments r, such that
+
+segment(o1, r) = gf (segment(p2, r)),
+
+and correspondingly, the induced distribution over offspring fragments satisfies
+
+q(r | f) = p(g
+−1
+f
+(r) | f).
+
+The same reasoning applies symmetrically to o2 and p1.
+
+14
+Theorem 6 (KL bound for the crossover and mutation operators). Let each trajectory τ be decomposed
+as [f, r], where f is the retained fragment and r the fragment perturbed via genetic operators
+(e.g., filled from a partner parent in crossover, or modified in mutation). If the genetic operator leaves
+f unchanged and only permutes or perturbs r, then
+
+DKL
+q(τ ) ∥ p(τ )
+
+≤ Ef∼p
+h
+logmax p(r | f)
+min p(r | f)
+i
+.
+
+Proof. Step 1: Split by fragments. Since τ = [f, r] is a unique decomposition,
+
+q(f, r) log q(f, r)
+p(f, r)
+.
+
+DKL(q∥p) = X
+f,r
+
+Step 2: Marginal equality on f. By construction, the operator (crossover or mutation) preserves f,
+hence q(f) = p(f), so
+
+q(r | f) log q(r | f)
+p(r | f)
+i
+.
+
+hX
+r
+
+DKL(q∥p) = Ef∼p
+
+Step 3: Bounded perturbation on r. Whether q(r | f) arises via permutation (crossover) or local
+modification (mutation), it satisfies:
+
+•
+P
+r
+q(r | f) = 1
+
+• q(r | f) and p(r | f) share support
+
+• q(r | f) is a rearrangement of p(r | f)
+
+Thus, define a measure-preserving transformation gf so that q(r | f) = p(g
+−1
+f
+(r) | f). Then:
+
+q(r | f) log q(r | f)
+p(r | f)
+=
+X
+r
+
+p(r | f) log p(r | f)
+p(gf (r) | f)
+
+≤ log Mf
+mf
+,
+
+X
+r
+
+where Mf = max p(r | f) and mf = min p(r | f).
+
+Step 4: Take expectation over f. Substitute this bound into Step 2:
+
+DKL(q∥p) ≤ Ef∼p
+
+log Mf
+mf
+
+,
+
+completing the proof.
+
+Corollary 6.1 (Convex mixture of deterministic transforms). If, given the retained fragment f, a
+genetic operator acts as a convex combination of finitely many support-preserving deterministic maps
+gf,j (e.g. node-replacement mutation), i.e. q(r | f) = P
+j wjp(g
+−1
+f,j (r) | f), then the bound in
+Theorem 6 still holds.
+
+Proof. KL is convex in its first argument, so DKL(
+
+P
+j wj qj∥p) ≤
+P
+j wjDKL(qj∥p) ≤
+log(Mf /mf ). Take expectation over f.
+
+Theorem 7 (Overall KL bound). Summing up aforementioned Thorems, we have:
+
+DKL(p(τ K)∥p(τ 0)) ≤
+
+ρK
+αEp(fcross)
+
+!
+
+log max p(rcross|fcross)
+min p(rcross|fcross)
+
++ βEp(fmutate)
+
+log max p(rmutate|fmutate)
+min p(rmutate|fmutate)
+
+Theorem 8 (Policy Gradient Difference Upper Bound). If every trajectory gradient is L2-clipped
+to 1, i.e. If ∥∇J(τ )∥2 ≤ 1 almost surely, then
+
+[∇J(τ 0)]
+
+
+
+2
+≤
+q
+2 DKL
+pK∥p0
+
+.
+
+
+
+Eτ K∼pK [∇J(τ K)] − Eτ 0∼p0
+
+15
+Proof. Step 1: Expectation–TV inequality. Apply lemma 2 with f = ∇J, P = p0, Q = pK and
+∥f∥2,∞ ≤ 1 (In our implementation, we apply L2 gradient clipping) gives
+
+
+
+[f]
+
+
+
+2
+
+EpK [f] − Ep0
+
+≤ 2 DTV(pK∥p0).
+
+Step 2: Convert TV to KL. Pinsker’s inequality yields DTV(pK∥p0) ≤
+q
+1
+2 DKL(pK∥p0). Substituting
+into Step 1 produces the claimed bound.
+
+B Detailed Experiment Settings
+
+This section presents the complete experimental setup used throughout the paper, including baseline
+hyperparameters, inference strategies, and hardware resources.
+
+B.1 Baseline Hyperparameters
+
+Table 3: Hyperparameters used for AM-based models [28] across COP tasks. Learning rate,
+encoder layers, embedding dimension, attention heads and feedforward dimension are consistent
+across all tasks. PCTSP and OP additionally share training schedule parameters (epochs, epoch size,
+total steps). Settings are shared unless specified as A / B for 50-node / 100-node instances.
+
+Hyperparameter TSP50/100 CVRP50/100 PCTSP100 OP100
+Learning Rate 1e-4
+Encoder Layers 6
+Embedding Dimension 128
+Attention Heads 8
+Feedforward Dimension 512
+
+Batch Size 64 512
+Epochs 1,000 / 1,500 500 / 700 100
+Epoch Size (instances) 160,000 160,000 1,280,000
+Total Steps 3.75M 1.75M 250K
+
+Table 4: Hyperparameters used for POMO [29] across different COP tasks. Settings are shared
+unless specified as A / B for 50-node / 100-node instances.
+
+Hyperparameter TSP50/100 CVRP50/100
+Learning Rate 1e-4
+Weight Decay 1e-6
+Encoder Layers 6
+Embedding Dimension 128
+Attention Heads 8
+Feedforward Dimension 512
+Batch Size 64
+
+Epochs 1,000 / 1,500 500 / 700
+Epoch Size (instances) 160,000
+Total Steps 3.75M 1.75M
+
+16
+Table 5: Hyperparameters used for Sym-NCO [26] on TSP and CVRP tasks. Settings are shared
+unless noted as A / B for 50-node / 100-node instances.
+
+Hyperparameter TSP50/100 CVRP50/100
+Learning Rate 1e-4
+Weight Decay 1e-6
+Encoder Layers 6
+Embedding Dimension 128
+Attention Heads 8
+Feedforward Dimension 512
+Batch Size 64
+Epochs 1,000 / 1,500 500 / 700
+Epoch Size (instances) 160,000
+Total Steps 3.75M 1.75M
+α (weight for Linv) 0.1 0.2
+β (weight for Lss) 1.0 1.0
+N (solutions per problem) 50 / 100 50 / 100
+L (rotation count per instance) 2 2
+
+Table 3, Table 4 and Table 5 lists the training hyperparameters used for baseline models on various
+combinatorial optimization problems. Parameters include learning rate, number of layers, embedding
+dimensions, batch size, number of epochs, and total training steps, with separate settings for different
+instance sizes when applicable.
+
+B.2 Multi-start and Data Augmentation Decoding Strategy
+
+To improve inference quality, we apply a multi-start decoding strategy by running the model from
+each possible initial node and selecting the best trajectory [29]. Additionally, we perform geometric
+data augmentation by rotating each instance by 0
+◦
+, 90◦
+, 180◦
+, and 270◦
+, with and without horizontal
+reflection, resulting in 8 variants [29]. The model decodes each variant independently, and the best
+solution is retained, as shown in Table 1.
+
+B.3 Computing Resources
+
+All experiments and evaluations were conducted on a system equipped with two AMD EPYC 7742
+64-Core Processors CPU (128 physical cores, 256 threads in total) and an NVIDIA RTX 3090 GPU.
+
+C Implementation Details of Proposed Method
+
+This section provides detailed information on the implementation of the proposed Evolution Augmentation
+Mechanism (EAM), including algorithmic structure and hyperparameters configurations.
+
+C.1 Pseudo Code
+
+We provide the pseudo code for the proposed Evolution Augmentation Mechanism (EAM), as
+shown in Algorithm 1. The procedure includes policy initialization, environment sampling, optional
+application of the genetic algorithm based on pre-defined conditions, and subsequent policy updates
+using REINFORCE. The red-highlighted areas represent the core part of EAM and are the major
+differences from the standard RL paradigm, demonstrating how our method extends the current
+DRL-NCO framework’s mainstream training paradigm as a plug-and-play module.
+
+17
+Algorithm 1 Evolution Augmentation Mechanism
+
+Require: Base nerual solver pθ, EA Probs ϵ, EA Epochs κ, num evolution generations K, selection
+rate ρ, crossover rate α, mutation rate β.
+procedure TRAIN(pθ, ϵ, κ, K, ρ, α, β)
+Initialize pθ
+epoch ← 0
+while not converged do
+
+Randomly initialize environment E
+P0 ← pθ(E)
+
+if use genetic algorithm then ▷ Conditioned on ϵ, κ
+PK ← GENETICALGORITHM(P0, K, ρ, α, β)
+APPLYREINFORCE(PK, pθ)
+end if
+
+APPLYREINFORCE(P0, pθ)
+epoch ← epoch + 1
+end while
+return pθ
+end procedure
+procedure TEST(pθ)
+
+Randomly initialize environment E
+P0 ← pθ(E)
+return Cost(P0)
+end procedure
+
+C.2 Task-aware evolutionary hyperparameter selection
+
+Table 6: Task-aware evolutionary hyperparameters for each COP. N is the number of evolution
+generations, ρ is the selection rate, α is the crossover rate, β is the mutation rate, “EA Epochs”
+indicates the number of training epochs using evolution augmentation, and “EA Probs” is the
+probability of applying evolution at each step. Settings are shared unless noted as A / B for 50-node /
+100-node instances.
+
+Parameter TSP50/100 CVRP50/100 PCTSP100 OP100
+K (evolution generations) 5 3 5 2
+ρ (selection rate) 0.2 0.2 0.2 0.4
+α (crossover rate) 0.6 0.6 0.6 0.0
+β (mutation rate) 0.05 0.10 0.05 0.5
+EA Epochs 500 / 700 200 / 300 20 50
+EA Probs 0.01
+
+As shown in Table 6, we adopt task-aware evolutionary hyperparameters tailored to each COP. For
+the OP task, we choose a mutation-dominant configuration (α = 0.0, β = 0.5), based on both
+implementation details and theoretical considerations. Specifically, we conduct an ablation study
+comparing this setting with a crossover-dominant alternative (α = 0.6, β = 0.05), and observe that
+the mutation-dominant configuration leads to faster convergence and more stable training dynamics.
+From an implementation perspective, the mutation operator in OP replaces only a single node per
+operation and must ensure that the resulting tour remains feasible under strict length constraints. This
+design aligns with the OP objective: since the total reward depends primarily on which nodes are
+selected rather than their ordering, mutation is more effective at introducing high-reward nodes with
+minimal disruption to tour structure. In contrast, crossover typically only reorders already-visited
+nodes, offering less opportunity for reward improvement. Compared to crossover, our mutation
+strategy provides a more efficient mechanism for guiding policy learning.
+
+Futhermore, these implementation-level characteristics are suggestive of differences in KL divergence
+between successive policies. As shown in Theorem 1, the divergence depends on the ratio
+log max p(r|f)
+min p(r|f)
+, where f is the retained fragment and r the replaced part of a solution. Mutation
+
+18
+operators in OP only modify a single node, and the replacement must satisfy the strict tour-length
+constraint. This limits the feasible support of p(r | f), reducing the variability of the conditional
+distribution and tightening the KL bound. In contrast, OX crossover replaces longer subpaths, increasing
+the number of feasible completions and hence the max / min ratio. Thus, crossover tends to
+introduce higher structural divergence between generations. Based on these two considerations—the
+implementation-level alignment with task structure and the theoretically tighter KL bound—we favor
+the mutation-dominant configuration over crossover-dominant alternatives.
+
+19

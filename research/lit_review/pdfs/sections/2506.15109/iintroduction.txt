@@ -1,0 +1,103 @@
+I
+Introduction
+
+Molecular dynamics (MD) simulations routinely capture atomic-level fluctuations and dynamic processes in proteins and other biomolecules on timescales ranging from femtoseconds to microseconds.
+However, protein conformational transitions typically occur on micro- to millisecond or even longer timescales, which remain challenging to sample in conventional MD simulations.
+To effectively capture protein dynamics in molecular dynamics simulations, enhanced sampling techniques have been developed to accelerate the sampling of protein conformational landscapes.
+
+Currently, enhanced sampling methods can be broadly categorized into two main types: unbiased and biased approaches.
+Unbiased methods, such as Gaussian accelerated molecular dynamics
+[1]
+ and replica exchange molecular dynamics
+[2]
+, explore conformational space without predefined collective variables (CVs, also referred to as reaction coordinates) that describe the slow conformational transitions of a system.
+Biased methods, such as umbrella sampling
+[3]
+ or metadynamics
+[4]
+, rely on predefined CVs to guide sampling.
+The same applies to weighted ensemble methods
+[5]
+, which do not modify dynamic forces but accelerate sampling along CVs through duplication and merging of unbiased walkers.
+
+However, the selection of suitable CVs is non-trivial and requires prior knowledge of the expected slow processes to be sampled.
+If such information is not available, long unbiased simulation trajectories are often used to extract large amplitude motions or slow dynamics despite incomplete sampling.
+For example, CVs associated with large amplitude motions can be extracted as eigenvectors of a co-variance matrix of fluctuations relative to an average structure
+[6]
+.
+Similarly, time-lagged independent component analysis (TICA) is based on displacement time correlations that identify CVs associated with slow dynamics
+[7,8]
+.
+However, these methods rely on direct observations of rare events in long simulation trajectories and their reproducibility and throughput is limited.
+Recent machine learning approaches provide potential alternatives through direct analysis of high-dimensional simulation trajectories to generate latent space representations that serve as CVs associated with underlying dynamic processes
+[9,10,11,12,13]
+.
+
+Here, we pursue a different strategy.
+Promising CVs that encode conformational transitions can also be obtained from low-frequency vibrations.
+Low-frequency vibrational modes are often estimated using harmonic normal mode analysis, either for simplified structural representations of proteins such as elastic network models
+[14,15,16,17]
+, atomistic protein structures
+[18,19]
+, or structural ensembles
+[20]
+.
+Alternatively, fluctuations around an average structure observed in a dynamic simulation can be used to extract quasi-harmonic normal modes
+[21,22]
+.
+However, the implied harmonic or quasi-harmonic approximations are invalid for low-frequency vibrations, which are: 1) easily excited by thermal collisions; 2) not limited to fluctuations around a single potential energy minimum; 3) distorted by anharmonic effects,
+i.e.
+, the actual form of the potential.
+
+To enable a correct characterization of low-frequency vibrations, we recently introduced FREquency-SElective ANharmonic (FRESEAN) mode analysis, which isolates low-frequency vibrations from MD simulation trajectories without the need for harmonic or quasi-harmonic approximations.
+FRESEAN mode analysis is based on a velocity time correlation approach that isolates degrees of freedom (DoF) contributing to the vibrational density of states (VDoS) at a given frequency.
+The sampling of velocity time correlation functions converges on a picosecond to nanosecond timescale and is highly reproducible in independent trajectories
+[23]
+.
+
+In previous work, we successfully demonstrated enhanced sampling of conformational dynamics using low-frequency anharmonic vibrations as CVs that were identified with FRESEAN mode analysis
+[24]
+.
+The test system in Ref.
+24 has been alanine dipeptide with
+N
+𝑁
+N
+italic_N
+=22 atoms.
+FRESEAN mode analysis involves the calculation of time- and frequency-dependent velocity cross-correlations between all Cartesian DoF of the target molecule.
+For alanine dipeptide with
+3 ⁢
+N
+=
+66 3
+𝑁
+66 3N=66
+3 italic_N = 66
+ Cartesian DoF, this results in
+66 ×
+66 =
+4 ,
+356 66
+66 4
+356 66\times 66=4,356
+66 × 66 = 4 , 356
+ matrix elements for each delay time in the correlation function and/or each sampled frequency.
+Obviously, for larger biomolecular systems, such as proteins and protein complexes with thousands or more atoms, the size of these matrices increases rapidly.
+
+Another concern is the time resolution required to sample the highest-frequency vibrations in the system.
+Even when covalent bonds are constrained, which eliminates fast C-H, N-H, and O-H stretch vibrations,
+atomic velocities need to be sampled at approximately 10 femtosecond intervals to avoid under-sampling.
+Large trajectory files and high file I/O traffic caused by high sampling rates can be mitigated with data streaming approaches that enable the analysis of simulation data on the fly
+[25]
+.
+However, high sampling rates also increase the number of cross-correlation matrices that need to be stored in memory for a given maximum correlation time (typically a few picoseconds).
+
+In this work, we introduce strategies to minimize the computational overhead associated with FRESEAN mode analysis of molecular dynamics simulations of proteins.
+We focus on the lowest-frequency vibrations in the system, which are often most relevant for applications associated with the identification of CVs for enhanced sampling simulations.
+Using hen egg white lysozyme (HEWL) as a test system, we demonstrate that coarse-grained (CG) representations of all-atom simulation trajectories can retain almost all information on low-frequency vibrations.
+The main requirement is that CG beads correspond to centers of mass (CoM) of groups of atoms.
+This approach filters out high-frequency vibrations between atoms contributing to a CG bead, while low-frequency vibrations between beads are preserved.
+Such CG representations of all-atom trajectories greatly reduce the number of DoFs and the resulting size of correlation matrices used in FRESEAN mode analysis.
+At the same time, the absence of high-frequency vibrations allows for the sampling of velocities at larger time intervals, further reducing computational overhead and memory requirements.
+In general, our approach enables high-throughput analysis of anharmonic low-frequency vibrations in proteins and other biomolecules at minimal computational cost.

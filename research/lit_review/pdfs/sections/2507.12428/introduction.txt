@@ -1,0 +1,110 @@
+1 Introduction
+
+A recent trend in the development of large language models (LLMs) is to increase inference-time compute by generating long chains of thought (CoTs) before producing a final response.
+These models, referred to as reasoning language models (RLMs) or large reasoning models, demonstrate substantial improvements on complex reasoning tasks
+(OpenAI,
+2024 )
+.
+Open-source efforts to build RLMs typically fine-tune safety-aligned LLMs
+(Guha et al.,
+2025 ; Guo et al.,
+2025 ; Muennighoff et al.,
+2025 )
+ on task-specific CoT data.
+But this process can compromise models’ safety alignment, leading to a notable increase in harmful outputs in both CoTs and final responses
+(Jiang et al.,
+2025 ; Zhou et al.,
+2025 )
+.
+One solution is additional safety training
+(Guan et al.,
+2024 )
+, while another is monitoring long CoTs to detect early signs of problematic behaviors and intervene
+(Anthropic,
+2024 ; Baker et al.,
+2025 )
+.
+Yet safety monitoring is challenging because CoTs are known to be
+unfaithful
+
+(Turpin et al.,
+2023 )
+; in other words, they do not accurately reflect the model’s internal thinking process, making it an open question of how effectively CoT traces can be used for monitoring.
+
+In this work, we study
+the extent to which the safety alignment of RLMs’ responses can be
+predicted
+ from their CoTs
+.
+Since the final response is generated
+after
+ CoT reasoning, the CoT could, in principle, be used to infer its alignment.
+1 1
+1 In this work, we define alignment narrowly as following model developers’ policy of refusing adversarial inputs
+(Anwar et al.,
+2024 )
+, and we use “safety alignment” and “alignment” interchangeably.
+
+Given a harmful query, the CoT often contains conflicting signals–both acknowledging the illegal nature of the task and planning how to answer it.
+As CoTs can be unfaithful, either signal may lead to a misaligned response that provides harmful instructions or to a refusal, which is the desired outcome.
+In
+Figure
+˜
+1 , the s1.1 model
+(Muennighoff et al.,
+2025 )
+ explores opposing thoughts and ultimately flags the task as illegal in its CoT, yet still produces a harmful response.
+Given this potentially misleading behavior, we investigate the effectiveness of CoT monitoring systems, including strong LLMs, fine-tuned classifiers, and humans, in predict response alignment.
+Further, we ask if activation monitoring, which captures how the model’s internal computation evolves over the reasoning process
+(Baker et al.,
+2025 )
+, can outperform text monitoring.
+
+To formalize this task, we control the RLM to reason with varying thinking budgets
+(Muennighoff et al.,
+2025 )
+ and generate a final response after each CoT sentence.
+This setup allows us to track how response alignment evolves as the CoT progresses.
+Using the collected data, we find that a simple linear probe trained on CoT activations outperforms all text-based monitoring baselines.
+Strong monitors like GPT-4.1-nano are commonly used in CoT monitoring
+(Baker et al.,
+2025 )
+, yet they underperform by an average of 18.9 F1 points.
+The results generalize across model sizes (7B-32B), safety refusal benchmarks
+(Mazeika et al.,
+2024 ; Xie et al.,
+2024 ; Souly et al.,
+2024 )
+, base model families including Llama and Qwen, and thinking lengths from 500 to 4,000 tokens.
+
+We further show that the same linear probe can predict response alignment from early stages of the CoT, before the model completes its reasoning.
+For example, given activations collected after 20 CoT sentences, the probe can predict the alignment of a response generated up to 50 sentences later.
+Error analysis identifies a subset of CoTs that we call
+performative
+: they consistently contradict the final response throughout the reasoning trace and has a prediction accuracy gap of over 60 points between the linear probe and text classifiers.
+Alignment signals can emerge early in the reasoning process, while the corresponding CoT, though seemingly coherent, may be irrelevant to the final outcome.
+
+We summarize our contributions in this paper as follows:
+
+1.
+
+We conduct a systematic comparison of safety monitoring methods for open-source RLMs and show that CoT activations are substantially more predictive than CoT text.
+
+2.
+
+We show that a simple linear probe can predict response alignment from early CoT segments, potentially enabling real-time monitoring and early intervention before reasoning completes.
+
+3.
+
+We demonstrate that CoT texts can be
+unfaithful
+ to final responses, often misleading strong text classifiers, and identify
+performative CoTs
+ as a key failure mode.
+2 2
+2 Our code is available at https://github.com/BatsResearch/cot-monitor.
+
+Figure 1:
+Given a harmful prompt and a complete CoT, the task is to predict whether the final response will be safe or unsafe. In the example above, the model acknowledges the task’s illegality and the need to refuse (
+highlighted green text
+) in its CoT, yet still produces an affirmative answer. Our results show that humans and text-based models such as GPT-4.1 underperform a simple linear probe.

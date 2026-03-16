@@ -1,0 +1,349 @@
+Appendix A
+Qualitative Examples and Implementation Details
+
+We provide qualitative examples, dataset formats, and implementation details that complement the main text.
+
+A.1
+Example Counterfactuals
+
+Table
+3 shows representative single-step counterfactual interventions for each dataset in the spectrum of ambiguity. In all cases, the counterfactual modifies exactly one intermediate reasoning step while preserving the original input structure and prompt format. These interventions are designed to induce a causal change in the expected answer.
+
+Dataset
+
+Original Step (Clean)
+
+Counterfactual Step (Corrupted)
+
+Dyck-
+n
+n
+
+"Seen ’{’, stack depth is 2."
+
+"Seen ’{’, stack depth is
+1 ."
+
+PrOntoQA
+
+"Every wumpus is a zumpus."
+
+"
+No
+ wumpus is a zumpus."
+
+GSM8K
+
+"She has
+15 ×
+2 =
+30 15\times 2=30
+ eggs."
+
+"She has
+15 ×
+2 =
+32 15\times 2=\textbf{32}
+ eggs."
+
+Table 3:
+Representative counterfactual interventions used for NLDD. Corruptions (bolded for clarity here) are designed to break the causal chain while maintaining linguistic coherence.
+
+A.2
+Dataset Example
+
+Table
+4 provides representative examples of inputs and corresponding step-wise reasoning traces for each dataset. All tasks are formatted to expose explicit intermediate reasoning steps, enabling localized counterfactual interventions and step-level mechanistic analysis.
+
+Task
+
+Input / Question
+
+Reasoning Trace (Excerpt)
+
+Dyck-
+n
+n
+
+Input:
+
+[[{
+⟨
+⟩
+\langle\rangle
+}}
+
+Question:
+ What is the next closing bracket?
+
+Seen
+[
+, depth 1
+
+Seen
+{
+, depth 2
+
+Seen
+[
+, depth 3
+
+Seen
+{
+, depth 4
+
+Seen
+<
+, depth 5
+
+Seen
+>
+, depth 4
+
+Seen
+}
+, depth 3
+
+Answer:
+
+]
+
+PrOntoQA
+
+Facts:
+ Sam is a zumpus.
+
+Rules:
+ All zumpus are impus. All impus are rompus. All rompus are gorpus.
+
+Question:
+ Is Sam a wumpus?
+
+Since Sam is a zumpus and all zumpus are impus, Sam is an impus.
+
+Since Sam is an impus and all impus are rompus, Sam is a rompus.
+
+Since Sam is a rompus and all rompus are gorpus, Sam is a gorpus.
+
+Conclusion: Sam is a gorpus, not a wumpus.
+
+Answer:
+ False
+
+GSM8K
+
+Janet’s ducks lay 16 eggs per day. She eats 3, bakes 4, and sells the rest at $2 each.
+
+Question:
+ How much does she make daily at the farmer’s market?
+
+Janet sells
+16 −
+3 −
+4 =
+9 16-3-4=9
+ duck eggs per day.
+
+She makes
+9 ×
+2 =
+18 9\times 2=18
+ dollars.
+
+Answer:
+ $18
+
+Table 4:
+Representative examples from each dataset. All tasks are formatted to expose explicit intermediate reasoning steps, enabling localized counterfactual interventions. Counterfactual variants corrupt a single intermediate step while preserving input structure and surface coherence.
+
+A.3
+Robustness of NLDD Normalization
+
+Architectural Logit Rescaling.
+
+Certain architectures apply transformations to output logits that compress or rescale their dynamic range. For example, Gemma-2 employs a logit soft-capping mechanism that limits extreme logit values, and maintain numerical stability during training. Such transformations affect both the margin numerator in Equation (2) and the normalization constant
+S
+S
+ proportionally. As a result, the standardized margin and resulting NLDD values remain comparable across architectures despite differences in absolute logit scale.
+
+Vocabulary Size and Output Entropy.
+
+Differences in vocabulary size can influence absolute logit entropy and output variability. However, because NLDD normalizes margins by the standard deviation computed over the same vocabulary distribution, relative margin-to-variability ratios remain stable. This ensures that NLDD reflects causal sensitivity rather than artifacts of vocabulary size or output entropy.
+
+Alternative Normalization Schemes.
+
+We considered alternative normalization strategies, including temperature-scaled probabilities and probability-ratio-based confidence measures. While viable in principle, these approaches introduce model-specific tuning parameters or require additional calibration procedures, complicating reproducibility and cross-model comparison. We therefore adopt logit-space normalization via
+S
+S
+ as a simple, architecture-agnostic solution.
+
+Rationale for Global Normalization.
+
+We employed a Global Normalization Strategy (
+S
+S
+) derived from the clean calibration set (Equation
+1 ). This design was chosen to preserve the model’s native confidence calibration across the dataset. A per-input normalization approach (e.g., scaling by
+σ
+i
+\sigma_{i}
+) would mathematically force every reasoning chain to the same unit variance, inadvertently inflating the significance of noise in low-confidence samples. By fixing
+S
+S
+ globally, we ensure that NLDD remains sensitive to the model’s absolute operating precision.
+
+A.4
+Model Selection and Rationale
+
+We evaluate three decoder-only transformer models spanning 6.7B-9B parameters:
+
+DeepSeek-Coder-6.7B-Instruct
+
+(Guo et al.,
+2024 )
+ is optimized
+for source code generation, testing whether specialization for rigid logical
+structures (syntax trees, type systems) improves reasoning faithfulness relative
+to general-purpose models.
+
+Llama-3.1-8B-Instruct
+
+(Dubey et al.,
+2024 )
+ serves as our
+general-purpose baseline, representing standard dense transformer architectures
+without domain specialization or architectural novelties.
+
+Gemma-2-9B-Instruct
+
+(Gemma Team,
+2024 )
+ employs logit soft-capping
+to compress output distributions, providing architectural variance to validate
+that NLDD normalization generalizes across diverse output characteristics.
+
+All evaluated models are instruction-tuned variants (
+Instruct
+ or
+
+IT
+ suffixes), fine-tuned via Supervised Fine-Tuning (SFT) and
+Reinforcement Learning from Human Feedback (RLHF). This ensures models possess
+consistent instruction-following and CoT generation capabilities,
+isolating architectural and pretraining effects on faithfulness from differences
+in stylistic competence.
+
+A.5
+Implementation Details
+
+Table
+5 summarizes the core implementation choices used across all experiments, including inference configuration, counterfactual construction constraints, representation extraction, and diagnostic metrics. These settings are shared across models unless otherwise noted, and are designed to isolate causal dependence on intermediate reasoning steps while minimizing confounds from stochastic decoding, architectural logit rescaling, or surface-level perturbations. All reported results are obtained using these fixed configurations to ensure comparability across tasks and model families.
+
+Component
+
+Specification
+
+Models Evaluated
+
+DeepSeek-Coder-6.7B, Llama-3.1-8B, Gemma-2-9B
+
+Model Source
+
+Hugging Face Transformers (official releases)
+
+Numerical Precision
+
+bfloat16 inference
+
+Decoding Strategy
+
+Greedy decoding (no sampling)
+
+Max Tokens
+
+30 (GSM8K); 10 (Dyck-
+n
+n
+, PrOntoQA)
+
+Logit Access
+
+Final-token logits
+
+Normalization Constant (
+S
+S
+)
+
+Std. dev. of final-token logits on clean calibration set
+
+Counterfactual Generation
+
+Single-step corruption with truncation of subsequent steps
+
+Token Budget Constraint
+
+≤
+2 \leq 2
+ token difference (clean vs. corrupt)
+
+Perplexity Filtering
+
+Perplexity-ratio filtering (task-specific thresholds)
+
+Representation Extraction
+
+Hidden states at step-terminal token positions
+
+Layers Analyzed
+
+Middle transformer layer (
+⌊
+L
+/
+2 ⌋
+\lfloor L/2\rfloor
+)
+
+Trajectory Metric
+
+TAS
+
+Table 5:
+Implementation details used across all experiments.
+
+A.6
+Statistical Methodology
+
+To ensure reproducibility and rigorous comparison, we employed the following statistical procedures for data reporting, uncertainty estimation, and hypothesis testing.
+
+Sample Size and Filtering.
+
+To ensure the NLDD metric reflected genuine causal signals rather than numerical noise, we applied a strict stability filter during aggregation. Samples where the model’s baseline confidence in the correct answer was negligible (
+|
+L
+​
+D
+c
+​
+l
+​
+e
+​
+a
+​
+n
+|
+<
+10 −
+6 |LD_{clean}|<10^{-6}
+) were excluded to prevent floating-point underflow from artificially inflating the standardized scores. This filtration affected a negligible fraction of the dataset. All reported NLDD values are conditioned on the model producing the correct final answer in the clean control setting.
+
+Confidence Intervals and Significance Testing.
+
+To quantify uncertainty in our faithfulness metrics, we employed the Bias-Corrected and Accelerated (BCa) Bootstrap method, which adjusts for both skewness and bias in the estimator distribution. For all reported NLDD and RSA point estimates in summary tables, we computed 95% Confidence Intervals (CIs) using
+B
+=
+10 ,
+000 B=10,000
+ resamples with a fixed random seed (42) to ensure exact reproducibility.

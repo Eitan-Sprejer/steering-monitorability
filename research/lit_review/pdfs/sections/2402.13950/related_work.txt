@@ -1,0 +1,103 @@
+7 Related Work
+
+Measuring Faithfulness CoT.
+
+Jacovi and Goldberg (2020)
+ argued that obtaining
+faithful
+ explanations that accurately reflect a model’s reasoning process is important to understand the reasons behind its answer.
+(Atanasova et al.,
+2023 )
+ proposed a new benchmark to test the faithfulness of natural language explanations.
+Turpin et al. (2023)
+ proposed identifying examples of unfaithful CoT in adversarial settings, showing that CoT reasoning is not always faithful. To determine faithfulness, they provided bias features in the few-shot setting or made edits to the input.
+(Lanham et al.,
+2023 )
+ argued that LLM ignores mistakes when introduced into the CoT, which reveals that the LLM is unfaithful. Finally,
+(Parcalabescu and Frank,
+2024 )
+ introduced CC-SHAP to measure input alignment with predictions for both post-hoc and CoT explanations. Unlike prior work, we employ causal mediation analysis to measure the model’s faithful reasoning over the CoT, and to interpret its relationship with the answer.
+
+Models
+
+OBQA → SQA
+
+QASC → SQA
+
+T5-3B + CoT
+
+67.6
+
+53.2
+
+Frodo
+
+69.4
+
+56.2
+
+Table 7:
+Generalization Performance
+ (accuracy) of methods, trained on a source dataset and directly predicting on a target dataset (denoted as source → target).
+
+Self-Rationalization and CoT Distillation.
+
+Initial work on self-rationalization approaches focused on collected gold human rationales and training a model to learn to generate such rationales
+(Wiegreffe et al.,
+2021 ; Paul and Frank,
+2021 ; Camburu et al.,
+2018 )
+. With the advent of LLMs, recently many works have distilled CoT from LLMs and endowed small LMs with step-by-step reasoning capabilities
+(Fu et al.,
+2023 ; LI et al.,
+2022 ; Shridhar et al.,
+2023 ; Li et al.,
+2023 )
+. Our work involves distilling CoT from LMs to a smaller one, similar to a certain line of work. We differ in using implicit feedback to enhance the correctness of the distilled CoT.
+
+Feedback to Improve Reasoning.
+
+Recently, several papers have proposed to improve or revise the LMs’ generation using feedback
+(Fernandes et al.,
+2023 ; Pan et al.,
+2023 )
+. Broadly, existing methods can be categorized into two kinds: external and intrinsic feedback. In the realm of external feedback, a standard procedure is to train critic models and use them to facilitate and improve the original generation model
+(Peng et al.,
+2023a
+; Akyurek et al.,
+2023 ; Mehrabi et al.,
+2023 ; Paul et al.,
+2024 )
+. Among them,
+Paul et al. (2024)
+ is related to our paper as it evaluates each reasoning step as feedback to produce more reasonable reasoning steps. In contrast to extrinsic feedback, which relies on external sources, there are works which show that internal knowledge of LLMs can be used to give feedback
+(Kim et al.,
+2023 ; Madaan et al.,
+2023 ; Shinn et al.,
+2023 )
+. However,
+Madaan et al. (2023)
+ argued that self-feedback does not improve performance on reasoning tasks. Hence, in this work, we create preference data (counterfactual and factual reasoning steps) to train a specialized model to learn to generate correct reasoning steps with implicit feedback.
+
+Casual Mediation Analysis in NLP.
+
+Causal mediation analysis is an important tool that is used to effectively attribute the causal effect of mediators on an outcome variable
+(Pearl,
+2001 )
+.
+Vig et al. (2020)
+ proposed to use this method to implicate specific neurons and attention heads in mediating gender bias in various pre-trained LMs. Later, this method was used for analyzing different models’ behaviour for different downstream tasks such as Subjective-Verb agreement
+(Finlayson et al.,
+2021 )
+, Fake News Detection
+(Chen et al.,
+2023 )
+, arithmetic reasoning
+(Stolfo et al.,
+2023 )
+, political polarization
+(Tierney and Volfovsky,
+2021 )
+. To the best of our knowledge, our study is the first attempt to use casual mediation analysis to analyze the faithfulness of LLMs in their reasoning capabilities. In this work, we followed
+Pearl (2001)
+ to perform the mediation analysis. The mediation analysis allows us to measure the following: Direct effect: Contribution of X (input) to Y (output). Indirect effect: Contribution of R (reasoning chain) to Y (output). Hence, a high direct effect means the model’s output is primarily influenced by the input, and a high indirect effect means the reasoning chain has more effect on the output.

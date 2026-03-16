@@ -1,0 +1,310 @@
+5 Methods
+
+We fine-tune reasoning models with GRPO across evaluation domains (§
+5.1 ); collect and annotate reasoning traces during training (§
+5.2 ); and estimate model uncertainty to trigger entropy-based interventions (§
+5.3 ).
+
+5.1 Models and Training
+
+Motivated by claims of mid-trace “Aha!” behavior in DeepSeek-R1
+(
+deepseekai2025deepseekr1incentivizingreasoningcapability
+)
+, we adopt Group Relative Policy Optimization (GRPO)
+(
+shao2024deepseekmathpushinglimitsmathematical
+)
+ as our fine-tuning method. GRPO is an RLHF-style algorithm
+(
+ouyang2022training
+)
+ that optimizes chain-of-thought generation by comparing groups of sampled completions and extends PPO
+schulman2017ppo
+ with group-normalized advantages and KL regularization to a frozen reference policy. Full implementation details appear in App.
+A.4
+.
+
+We fine-tune Qwen2.5
+(
+qwen2p5
+)
+ and Llama 3.1
+(
+dubey2024llama3herd
+)
+ models on each domain for up to 1,000 steps. Our primary experiments use Qwen2.5-1.5B trained for 1,000 steps (
+≈
+\approx
+2.5–3 epochs per domain), while larger models (Qwen2.5-7B and Llama 3.1-8B) are evaluated at 500 steps due to compute constraints. To verify that models improve during training, we evaluate at multiple checkpoints and report accuracy at initialization (Step 0) and at the final evaluated checkpoint (Step 950 for the 1.5B runs; Step 500 for 7B/8B). Table
+1 summarizes coverage and accuracy gains.
+
+We use lightweight, task-specific prompts that structure reasoning into a
+<think>
+ block and a concise final answer in
+<answer>
+, with domain-level checks that invite reconsideration (App.
+A.2
+). Informed by established strategies—zero-shot CoT, self-consistency, and reflection routines
+(
+kojima2022large
+;
+wang2023selfconsistency
+;
+madaan2023selfrefine
+;
+shinn2023reflexion
+)
+—these prompts standardize mid-trace events as reasoning shifts (Def.
+3.1 ; Alg.
+1 ), enabling consistent comparison across models, tasks, and checkpoints.
+
+Model
+
+Domain
+
+Step 0
+
+After
+
+Step
+
+𝚫
+\boldsymbol{\Delta}
+
+Qwen2.5-1.5B
+
+Xwords
+
+7.69
+
+10.00
+
+950
+
++2.31
+
+Qwen2.5-1.5B
+
+Math
+
+31.00
+
+35.00
+
+950
+
++4.00
+
+Qwen2.5-1.5B
+
+RHour
+
+0.00
+
+0.01
+
+950
+
++0.01
+
+Qwen2.5-7B
+
+Math
+
+61.60
+
+66.40
+
+500
+
++4.80
+
+Llama 3.1-8B
+
+Math
+
+40.20
+
+48.36
+
+500
+
++8.16
+
+Table 1:
+Model coverage and learning progress.
+
+Accuracy at initialization (Step 0) and at the final training checkpoint, along with the absolute gain (
+Δ
+\Delta
+).
+All results are 1-shot evaluations at temperature
+0 on the fixed test sets described in §
+4 .
+
+5.2 Trace Collection and Annotation
+
+We evaluate each model at a fixed cadence of
+every 50 training steps
+ from initialization (Step 0) to Step 950
+inclusive
+ (i.e., checkpoints
+k
+∈
+{
+0 ,
+50 ,
+…
+,
+950 }
+k\in\{0,50,\ldots,950\}
+), yielding
+20 checkpoints per run
+. At each checkpoint, we generate
+G
+=
+8 G{=}8
+ completions per problem using a fixed decoding policy (temperature
+{
+0 ,
+0.05 ,
+0.3 ,
+0.7 }
+\{0,0.05,0.3,0.7\}
+, top-
+p
+=
+0.95 p{=}0.95
+). Each completion follows the tag-structured output contract in App.
+A.2
+, with private reasoning in
+<think>
+ and a machine-checkable final response in
+<answer>
+; token budgets and stop criteria are domain-specific and held fixed across checkpoints.
+
+Evaluation sets are held fixed across checkpoints:
+500 problems for
+MATH-500
+,
+130 synthetic clues for Xwords, and
+500
+
+6 ×
+6 6{\times}6
+ RHour boards. For our Qwen2.5-1.5B models, because each item is evaluated at all 20 checkpoints across
+T
+=
+4 T{=}4
+ temperatures with
+G
+=
+8 G{=}8
+ samples, each run yields 320,000 Math traces, 83,200 Xwords traces, and 320,000 RHour traces. This longitudinal structure allows us to track how mid-trace behavior evolves during RL fine-tuning. We additionally produce 160,000 Qwen2.5-7B traces and 160,000 Llama3.1-8B traces for
+MATH-500
+ across 10 checkpoints (Step 0 to Step 450 every 50 steps) to investigate behavior across architecture and model size. Details about our training and evaluation setup appear in App.
+A.1
+.
+
+To identify reasoning shifts at scale, we use GPT-4o as an LLM-as-judge. Following evidence that rubric-prompted LLMs approximate human evaluation
+(
+zheng2023mtbench
+;
+liu2023geval
+;
+fu2023gptscore
+)
+, we supply a fixed rubric that scores each trajectory for (i) correctness, (ii) presence of a mid-trace reasoning shift, and (iii) whether the shift improved correctness.
+
+To reduce known sources of judge bias—position, length, and model identity effects
+(
+Wang2024FairEval
+;
+shi2024positionbias
+;
+li-etal-2024-split
+)
+—we randomize sample order, use split–merge aggregation, enforce structured JSON outputs, and ensemble across prompt variants. We also adopt a conservative error-handling policy: we assign
+no shift
+ when the cue prefilter fails or when the judge output is invalid or low-confidence (App.
+B.2
+). Agreement is high: on
+MATH-500
+, GPT-4o achieves
+κ
+≈
+0.726 \kappa\!\approx\!0.726
+ across prompt variants and
+κ
+=
+0.79 \kappa=0.79
+ relative to human majority vote, comparable to expert–expert reliability
+(
+Artstein2008IAA
+)
+. For additional details, see App.
+B.3
+. For qualitative examples, see App.
+D.6
+.
+
+5.3 Uncertainty Measure and Intervention
+
+To relate reasoning shifts to model uncertainty, we measure token-level entropy throughout each response. At generation step
+t
+t
+, with next-token distribution
+𝐩
+t
+\mathbf{p}_{t}
+, we compute Shannon entropy
+H
+t
+=
+−
+∑
+v
+p
+t
+​
+(
+v
+)
+​
+log
+⁡
+p
+t
+​
+(
+v
+)
+H_{t}=-\sum_{v}p_{t}(v)\log p_{t}(v)
+. For each completion, we summarize uncertainty by averaging entropy over the
+<think>
+ and
+<answer>
+ segments (e.g.,
+H
+¯
+think
+\bar{H}_{\text{think}}
+ and
+H
+¯
+ans
+\bar{H}_{\text{ans}}
+), and use these sequence-level scores in downstream analyses.
+
+We also study whether uncertainty can be exploited to improve performance via
+artificially triggered
+ reflection. In a follow-up experiment, we test three semantically similar but lexically distinct reconsideration cues (C1–C3), for example:
+(C3) “Wait, something is not right, we need to reconsider. Let’s think this through step by step.”
+ For each cue, we first obtain the model’s baseline completion (Pass 1), then re-query the model with the same decoding parameters while appending the reconsideration cue (Pass 2). We evaluate gains both overall and under an entropy gate: we split instances into
+high-entropy
+ (top 20% within domain) and
+low-entropy
+ (bottom 80%) buckets based on Pass 1 sequence entropy, and compare Pass 2 accuracy across buckets. Cue-specific results and regressions are reported in App.
+C.4
+.

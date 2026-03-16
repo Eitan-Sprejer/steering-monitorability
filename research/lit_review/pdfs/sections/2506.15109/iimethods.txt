@@ -1,0 +1,1749 @@
+II
+Methods
+
+II.1
+Simulation Protocol
+
+All simulations were performed using the GROMACS 2022.5
+[26]
+ software package.
+In this study, HEWL (PDBID: 1HEL), a globular enzyme with previously studied dynamics (
+[27,28]
+), was selected to compare the results of FRESEAN mode analysis at different levels of coarse-graining.
+With 1960 atoms, HEWL is a protein with intrinsic collective dynamics that is still small enough to perform FRESEAN mode analysis on an all-atom level without the need of specialized hardware.
+
+Notably, we performed all of the simulations in this study with all-atom resolution in explicit solvent.
+We then directly analyzed the all-atom trajectories and compared results to the analysis of CG representations of the same trajectories.
+
+We used the AMBER99SB-ILDN force field
+[29]
+ for the protein in combination with the TIP3P water model
+[30]
+.
+We placed the protein in the center of a periodic 100 Å
+×
+\times
+×
+ 100 Å
+×
+\times
+×
+ 100 Å simulation box with 31,977 water molecules, 90
+Na
++
+superscript
+Na
+\mathrm{Na}^{+}
+roman_Na start_POSTSUPERSCRIPT + end_POSTSUPERSCRIPT
+ and 98
+Cl
+−
+superscript
+Cl
+\mathrm{Cl}^{-}
+roman_Cl start_POSTSUPERSCRIPT - end_POSTSUPERSCRIPT
+ ions (150 mM salt).
+Our simulation protocol consisted of the following steps:
+First, we minimized the energy of the system using the steepest descent algorithm for 1000 steps.
+Then, we equilibrated the system in the isobaric–isothermal (NPT) ensemble at 300 K and 1 bar for 100 ps.
+During equilibration, we used 1 fs integration timesteps, a velocity rescaling thermostat
+[31]
+ with a 1.0 ps time constant, and a stochastic cell rescaling barostat
+[32]
+ with a time constant of 2.0 ps.
+This was followed by production simulations in the NPT ensemble with a 2 fs timestep.
+Unless noted otherwise, results are reported for a single production simulation of 20 ns.
+Only in the context of our statistical analysis, we further analyzed results from five replica simulations of 1 ns, 10 ns, 20 ns length as indicated.
+In production simulations, we used a Nosé-Hoover thermostat
+[33,34]
+ with a 1.0 ps time constant and a Parrinello–Rahman barostat
+[35]
+ with a 2.0 ps time constant.
+All covalent bonds involving hydrogens were constrained using the LINCS
+[36]
+ algorithm.
+Short-ranged electrostatic and Lennard-Jones interactions were treated with a 10 Å real–space cutoff with energy and pressure corrections for dispersion interactions. Long–ranged electrostatic interactions were treated with the Particle Mesh Ewald algorithm
+[37]
+ using a 1.2 Å grid.
+
+II.2
+FRESEAN Mode Analysis
+
+The theory and computational steps associated with FRESEAN mode analysis are described in Ref.
+38 and are briefly summarized here.
+The approach is agnostic to the representation of the system,
+e.g.
+, whether atomic velocities are analyzed or velocities of CG beads.
+As a first step in the analysis, we align the protein coordinates in every frame of the trajectory with an arbitrary reference structure using a combined translation and rotation operation on atomic coordinates that minimizes the root mean squared displacement (RMSD) relative to the reference.
+The same rotation is applied to the protein velocities, which ensures that the following analysis of velocity correlations is performed in a consistent Cartesian frame of reference.
+Notably, this rotation does not remove angular momenta.
+To simplify the notation for mass-weighted velocity correlation functions, we introduce weighted velocities:
+v
+i
+~
+⁢
+(
+t
+)
+=
+m
+i
+⋅
+v
+⁢
+(
+t
+)
+~
+subscript
+v
+𝑖
+𝑡
+⋅
+subscript
+𝑚
+𝑖
+v
+𝑡
+\tilde{\mathrm{v}_{i}}(t)=\sqrt{m_{i}}\cdot\mathrm{v}(t)
+over~ start_ARG roman_v start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT end_ARG ( italic_t ) = square-root start_ARG italic_m start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT end_ARG ⋅ roman_v ( italic_t )
+.
+Here, the index
+i
+𝑖
+i
+italic_i
+ denotes one out of
+3 ⁢
+N
+3 𝑁
+3N
+3 italic_N
+ Cartesian DoFs of the protein and
+m
+i
+subscript
+𝑚
+𝑖
+m_{i}
+italic_m start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT
+ describes the corresponding mass (atom or bead).
+We then define a matrix
+𝐂
+v
+~
+⁢
+(
+τ
+)
+subscript
+𝐂
+~
+v
+𝜏
+\mathbf{C}_{\tilde{\mathrm{v}}}(\tau)
+bold_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG end_POSTSUBSCRIPT ( italic_τ )
+ of velocity time correlation functions between all
+3 ⁢
+N
+3 𝑁
+3N
+3 italic_N
+ DoFs that includes auto (
+i
+=
+j
+𝑖
+𝑗
+i=j
+italic_i = italic_j
+) and cross (
+i
+≠
+j
+𝑖
+𝑗
+i\neq j
+italic_i ≠ italic_j
+) correlations.
+Individual matrix elements
+C
+v
+~
+,
+i
+⁢
+j
+subscript
+𝐶
+~
+v
+𝑖
+𝑗
+C_{\tilde{\mathrm{v}},ij}
+italic_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG , italic_i italic_j end_POSTSUBSCRIPT
+ are defined as:
+
+C
+v
+~
+,
+i
+⁢
+j
+⁢
+(
+τ
+)
+=
+⟨
+v
+~
+i
+⁢
+(
+t
+)
+⁢
+v
+~
+j
+⁢
+(
+t
++
+τ
+)
+⟩
+t
+subscript
+𝐶
+~
+v
+𝑖
+𝑗
+𝜏
+subscript
+delimited-⟨⟩
+subscript
+~
+v
+𝑖
+𝑡
+subscript
+~
+v
+𝑗
+𝑡
+𝜏
+𝑡
+C_{\tilde{\mathrm{v}},ij}(\tau)=\langle\tilde{\mathrm{v}}_{i}(t)\tilde{\mathrm%
+{v}}_{j}(t+\tau)\rangle_{t}
+italic_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG , italic_i italic_j end_POSTSUBSCRIPT ( italic_τ ) = ⟨ over~ start_ARG roman_v end_ARG start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT ( italic_t ) over~ start_ARG roman_v end_ARG start_POSTSUBSCRIPT italic_j end_POSTSUBSCRIPT ( italic_t + italic_τ ) ⟩ start_POSTSUBSCRIPT italic_t end_POSTSUBSCRIPT
+
+(1)
+
+Here,
+⟨
+…
+⟩
+t
+subscript
+delimited-⟨⟩
+…
+𝑡
+\left\langle...\right\rangle_{t}
+⟨ … ⟩ start_POSTSUBSCRIPT italic_t end_POSTSUBSCRIPT
+ denotes ensemble averaging over the simulation time and
+τ
+𝜏
+\tau
+italic_τ
+ is the delay time between two simulation time frames.
+Each time correlation function
+C
+v
+~
+,
+i
+⁢
+j
+⁢
+(
+τ
+)
+subscript
+𝐶
+~
+v
+𝑖
+𝑗
+𝜏
+C_{\tilde{\mathrm{v}},ij}(\tau)
+italic_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG , italic_i italic_j end_POSTSUBSCRIPT ( italic_τ )
+ is calculated with a maximum delay time of
+τ
+max
+=
+subscript
+𝜏
+max
+absent
+\tau_{\mathrm{max}}=
+italic_τ start_POSTSUBSCRIPT roman_max end_POSTSUBSCRIPT =
+ 2 ps in steps ranging of 8 to 40 fs (see section
+II.4
+).
+
+After constructing
+𝐂
+v
+~
+⁢
+(
+τ
+)
+subscript
+𝐂
+~
+v
+𝜏
+\mathbf{C}_{\tilde{\mathrm{v}}}(\tau)
+bold_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG end_POSTSUBSCRIPT ( italic_τ )
+, each element is Fourier transformed to obtain a frequency-dependent velocity correlation matrix
+𝐂
+v
+~
+⁢
+(
+ω
+)
+subscript
+𝐂
+~
+v
+𝜔
+\mathbf{C}_{\tilde{\mathrm{v}}}(\omega)
+bold_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG end_POSTSUBSCRIPT ( italic_ω )
+:
+
+C
+v
+~
+,
+i
+⁢
+j
+⁢
+(
+ω
+)
+=
+∫
+−
+∞
++
+∞
+exp
+⁢
+(
+i
+⁢
+ω
+⁢
+τ
+)
+⁢
+C
+v
+~
+,
+i
+⁢
+j
+⁢
+(
+τ
+)
+⁢
+𝑑
+τ
+subscript
+𝐶
+~
+v
+𝑖
+𝑗
+𝜔
+superscript
+subscript
+exp
+i
+𝜔
+𝜏
+subscript
+𝐶
+~
+v
+𝑖
+𝑗
+𝜏
+differential-d
+𝜏
+C_{\tilde{\mathrm{v}},ij}(\omega)=\int_{-\infty}^{+\infty}\mathrm{exp}(\mathrm%
+{i}\,\omega\tau)C_{\tilde{\mathrm{v}},ij}(\tau)\,d\tau
+italic_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG , italic_i italic_j end_POSTSUBSCRIPT ( italic_ω ) = ∫ start_POSTSUBSCRIPT - ∞ end_POSTSUBSCRIPT start_POSTSUPERSCRIPT + ∞ end_POSTSUPERSCRIPT roman_exp ( roman_i italic_ω italic_τ ) italic_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG , italic_i italic_j end_POSTSUBSCRIPT ( italic_τ ) italic_d italic_τ
+
+(2)
+
+The sum of diagonal terms of
+𝐂
+v
+~
+⁢
+(
+ω
+)
+subscript
+𝐂
+~
+v
+𝜔
+\mathbf{C}_{\tilde{\mathrm{v}}}(\omega)
+bold_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG end_POSTSUBSCRIPT ( italic_ω )
+ describes the sum of all Fourier transformed time auto-correlation functions and is directly proportional to the vibrational density of states (VDoS)
+[39,40,41]
+.
+
+VDoS
+⁢
+(
+ω
+)
+=
+2 k
+B
+⁢
+T
+⁢
+∑
+i
+C
+v
+~
+,
+i
+⁢
+i
+⁢
+(
+ω
+)
+VDoS
+𝜔
+2 subscript
+𝑘
+B
+𝑇
+subscript
+𝑖
+subscript
+𝐶
+~
+v
+𝑖
+𝑖
+𝜔
+\mathrm{VDoS}(\omega)=\frac{2}{k_{\mathrm{B}}T}\sum_{i}C_{\tilde{\mathrm{v}},%
+ii}(\omega)
+roman_VDoS ( italic_ω ) = divide start_ARG 2 end_ARG start_ARG italic_k start_POSTSUBSCRIPT roman_B end_POSTSUBSCRIPT italic_T end_ARG ∑ start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT italic_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG , italic_i italic_i end_POSTSUBSCRIPT ( italic_ω )
+
+(3)
+
+The VDoS effectively describes the distribution of kinetic energy over vibrational frequencies (including zero frequency).
+In equilibrium, normalization by the average kinetic energy per DoF (
+k
+B
+⁢
+T
+/
+2 subscript
+𝑘
+B
+𝑇
+2 k_{\mathrm{B}}T/2
+italic_k start_POSTSUBSCRIPT roman_B end_POSTSUBSCRIPT italic_T / 2
+) in Eq.
+3 ensures that the integral over all frequencies corresponds to the total number of protein DoFs.
+
+N
+DoF
+=
+1 2
+⁢
+π
+⁢
+∫
+0 +
+∞
+VDoS
+⁢
+(
+ω
+)
+⁢
+𝑑
+ω
+subscript
+𝑁
+DoF
+1 2
+𝜋
+superscript
+subscript
+0 VDoS
+𝜔
+differential-d
+𝜔
+N_{\mathrm{DoF}}=\frac{1}{2\pi}\int_{0}^{+\infty}\mathrm{VDoS}(\omega)\,d\omega
+italic_N start_POSTSUBSCRIPT roman_DoF end_POSTSUBSCRIPT = divide start_ARG 1 end_ARG start_ARG 2 italic_π end_ARG ∫ start_POSTSUBSCRIPT 0 end_POSTSUBSCRIPT start_POSTSUPERSCRIPT + ∞ end_POSTSUPERSCRIPT roman_VDoS ( italic_ω ) italic_d italic_ω
+
+(4)
+
+For an all-atom representation of the protein with
+N
+𝑁
+N
+italic_N
+ atoms and
+N
+H
+subscript
+𝑁
+𝐻
+N_{H}
+italic_N start_POSTSUBSCRIPT italic_H end_POSTSUBSCRIPT
+ constrained covalent bonds involving hydrogen atoms, we obtain
+N
+DoF
+=
+3 ⁢
+N
+−
+N
+H
+subscript
+𝑁
+DoF
+3 𝑁
+subscript
+𝑁
+𝐻
+N_{\mathrm{DoF}}=3N-N_{H}
+italic_N start_POSTSUBSCRIPT roman_DoF end_POSTSUBSCRIPT = 3 italic_N - italic_N start_POSTSUBSCRIPT italic_H end_POSTSUBSCRIPT
+.
+
+The frequency-dependent correlation matrix
+𝐂
+v
+~
+⁢
+(
+ω
+)
+subscript
+𝐂
+~
+v
+𝜔
+\mathbf{C}_{\tilde{\mathrm{v}}}(\omega)
+bold_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG end_POSTSUBSCRIPT ( italic_ω )
+ can be diagonalized at any selected frequency
+ω
+sel
+subscript
+𝜔
+sel
+\omega_{\mathrm{sel}}
+italic_ω start_POSTSUBSCRIPT roman_sel end_POSTSUBSCRIPT
+.
+The sum of diagonal elements (trace) of
+𝐂
+v
+~
+⁢
+(
+ω
+)
+subscript
+𝐂
+~
+v
+𝜔
+\mathbf{C}_{\tilde{\mathrm{v}}}(\omega)
+bold_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG end_POSTSUBSCRIPT ( italic_ω )
+ does not change upon diagonalization, which results in a simple relation between the sum of eigenvalues
+λ
+i
+=
+λ
+i
+⁢
+(
+ω
+sel
+)
+subscript
+𝜆
+𝑖
+subscript
+𝜆
+𝑖
+subscript
+𝜔
+sel
+\lambda_{i}=\lambda_{i}(\omega_{\mathrm{sel}})
+italic_λ start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT = italic_λ start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT ( italic_ω start_POSTSUBSCRIPT roman_sel end_POSTSUBSCRIPT )
+ and the VDoS:
+
+VDoS
+⁢
+(
+ω
+sel
+)
+=
+2 k
+B
+⁢
+T
+⁢
+∑
+i
+λ
+i
+⁢
+(
+ω
+sel
+)
+VDoS
+subscript
+𝜔
+sel
+2 subscript
+𝑘
+B
+𝑇
+subscript
+𝑖
+subscript
+𝜆
+𝑖
+subscript
+𝜔
+sel
+\mathrm{VDoS}(\omega_{\mathrm{sel}})=\frac{2}{k_{\mathrm{B}}T}\sum_{i}\lambda_%
+{i}(\omega_{\mathrm{sel}})
+roman_VDoS ( italic_ω start_POSTSUBSCRIPT roman_sel end_POSTSUBSCRIPT ) = divide start_ARG 2 end_ARG start_ARG italic_k start_POSTSUBSCRIPT roman_B end_POSTSUBSCRIPT italic_T end_ARG ∑ start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT italic_λ start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT ( italic_ω start_POSTSUBSCRIPT roman_sel end_POSTSUBSCRIPT )
+
+(5)
+
+This relation defines the meaning of the eigenvalues
+λ
+i
+subscript
+𝜆
+𝑖
+\lambda_{i}
+italic_λ start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT
+: they are directly proportional to VDoS contributions of mass-weighted velocity fluctuations along their corresponding eigenvector
+𝐪
+i
+subscript
+𝐪
+𝑖
+\mathbf{q}_{i}
+bold_q start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT
+ at frequency
+ω
+sel
+subscript
+𝜔
+sel
+\omega_{\mathrm{sel}}
+italic_ω start_POSTSUBSCRIPT roman_sel end_POSTSUBSCRIPT
+.
+When applied to molecular systems, the vast majority of eigenvalues
+λ
+i
+subscript
+𝜆
+𝑖
+\lambda_{i}
+italic_λ start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT
+ are zero or close to zero for any given frequency.
+The eigenvectors associated with the non-zero eigenvalues at
+ω
+sel
+subscript
+𝜔
+sel
+\omega_{\mathrm{sel}}
+italic_ω start_POSTSUBSCRIPT roman_sel end_POSTSUBSCRIPT
+ provide a complete set of vibrational modes contributing to the VDoS at that frequency
+[38]
+.
+Importantly, this approach does not rely on harmonic or quasi-harmonic approximations and can be applied to the lowest vibrational frequencies including zero frequency.
+At zero frequency, the first six eigenvectors (largest eigenvalues) describe
+rigid-body translations and rotations (diffusion).
+The remaining eigenvectors with non-zero eigenvalues describe low-frequency vibrations that contribute to the zero-frequency VDoS due to damping and/or anharmonicity
+[38]
+.
+The frequency-dependent contributions of any given vibrational mode to the VDoS can be analyzed as described in the next section.
+
+II.3
+VDoS Contributions of Individual Vibrational Modes
+
+To quantify contributions of a single vibrational mode
+𝐪
+i
+subscript
+𝐪
+𝑖
+\mathbf{q}_{i}
+bold_q start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT
+,
+e.g.
+, one of the eigenvectors of
+𝐂
+v
+~
+⁢
+(
+ω
+)
+subscript
+𝐂
+~
+v
+𝜔
+\mathbf{C}_{\tilde{\mathrm{v}}}(\omega)
+bold_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG end_POSTSUBSCRIPT ( italic_ω )
+ at a given frequency
+ω
+sel
+subscript
+𝜔
+sel
+\omega_{\mathrm{sel}}
+italic_ω start_POSTSUBSCRIPT roman_sel end_POSTSUBSCRIPT
+, to the overall VDoS, we first project weighted velocities (
+v
+~
+⁢
+(
+t
+)
+~
+v
+𝑡
+\tilde{\mathrm{v}}(t)
+over~ start_ARG roman_v end_ARG ( italic_t )
+) of all 3N degrees of freedom onto
+𝐪
+i
+subscript
+𝐪
+𝑖
+\mathbf{q}_{i}
+bold_q start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT
+.
+
+q
+˙
+i
+⁢
+(
+t
+)
+=
+∑
+j
+v
+~
+j
+⁢
+(
+t
+)
+⁢
+q
+i
+⁢
+j
+subscript
+˙
+𝑞
+𝑖
+𝑡
+subscript
+𝑗
+subscript
+~
+v
+𝑗
+𝑡
+subscript
+𝑞
+𝑖
+𝑗
+\dot{q}_{i}(t)=\sum_{j}\tilde{\mathrm{v}}_{j}(t)\,q_{ij}
+over˙ start_ARG italic_q end_ARG start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT ( italic_t ) = ∑ start_POSTSUBSCRIPT italic_j end_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG start_POSTSUBSCRIPT italic_j end_POSTSUBSCRIPT ( italic_t ) italic_q start_POSTSUBSCRIPT italic_i italic_j end_POSTSUBSCRIPT
+
+(6)
+
+The projected velocities
+q
+˙
+i
+⁢
+(
+t
+)
+subscript
+˙
+𝑞
+𝑖
+𝑡
+\dot{q}_{i}(t)
+over˙ start_ARG italic_q end_ARG start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT ( italic_t )
+ describe the system’s dynamics along
+𝐪
+i
+subscript
+𝐪
+𝑖
+\mathbf{q}_{i}
+bold_q start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT
+.
+The Fourier transform of the corresponding time auto-correlation function describes contributions of fluctuations along
+𝐪
+i
+subscript
+𝐪
+𝑖
+\mathbf{q}_{i}
+bold_q start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT
+ to the VDoS at all sampled frequencies,
+i.e.
+, the VDoS for the single (collective) DoF corresponding to
+𝐪
+i
+subscript
+𝐪
+𝑖
+\mathbf{q}_{i}
+bold_q start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT
+.
+
+C
+q
+i
+⁢
+(
+τ
+)
+subscript
+𝐶
+subscript
+𝑞
+𝑖
+𝜏
+\displaystyle C_{q_{i}}(\tau)
+italic_C start_POSTSUBSCRIPT italic_q start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT end_POSTSUBSCRIPT ( italic_τ )
+
+=
+\displaystyle=
+=
+
+⟨
+q
+˙
+i
+⁢
+(
+t
+)
+⁢
+q
+˙
+i
+⁢
+(
+t
++
+τ
+)
+⟩
+t
+subscript
+delimited-⟨⟩
+subscript
+˙
+q
+𝑖
+𝑡
+subscript
+˙
+q
+𝑖
+𝑡
+𝜏
+𝑡
+\displaystyle\langle\dot{\mathrm{q}}_{i}(t)\dot{\mathrm{q}}_{i}(t+\tau)\rangle%
+_{t}
+⟨ over˙ start_ARG roman_q end_ARG start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT ( italic_t ) over˙ start_ARG roman_q end_ARG start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT ( italic_t + italic_τ ) ⟩ start_POSTSUBSCRIPT italic_t end_POSTSUBSCRIPT
+
+(7)
+
+VDoS
+𝐪
+i
+⁢
+(
+ω
+)
+subscript
+VDoS
+subscript
+𝐪
+𝑖
+𝜔
+\displaystyle\mathrm{VDoS}_{\mathbf{q}_{i}}(\omega)
+roman_VDoS start_POSTSUBSCRIPT bold_q start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT end_POSTSUBSCRIPT ( italic_ω )
+
+=
+\displaystyle=
+=
+
+2 k
+B
+⁢
+T
+⁢
+∫
+−
+∞
++
+∞
+exp
+⁢
+(
+i
+⁢
+ω
+⁢
+τ
+)
+⁢
+C
+q
+i
+⁢
+(
+τ
+)
+⁢
+𝑑
+τ
+2 subscript
+𝑘
+B
+𝑇
+superscript
+subscript
+exp
+i
+𝜔
+𝜏
+subscript
+𝐶
+subscript
+𝑞
+𝑖
+𝜏
+differential-d
+𝜏
+\displaystyle\frac{2}{k_{\mathrm{B}}T}\int_{-\infty}^{+\infty}\mathrm{exp}(%
+\mathrm{i}\,\omega\tau)C_{q_{i}}(\tau)\,d\tau
+divide start_ARG 2 end_ARG start_ARG italic_k start_POSTSUBSCRIPT roman_B end_POSTSUBSCRIPT italic_T end_ARG ∫ start_POSTSUBSCRIPT - ∞ end_POSTSUBSCRIPT start_POSTSUPERSCRIPT + ∞ end_POSTSUPERSCRIPT roman_exp ( roman_i italic_ω italic_τ ) italic_C start_POSTSUBSCRIPT italic_q start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT end_POSTSUBSCRIPT ( italic_τ ) italic_d italic_τ
+
+(8)
+
+We note that this information is also encoded in
+𝐂
+v
+~
+⁢
+(
+ω
+)
+subscript
+𝐂
+~
+v
+𝜔
+\mathbf{C}_{\tilde{\mathrm{v}}}(\omega)
+bold_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG end_POSTSUBSCRIPT ( italic_ω )
+.
+As a consequence, we can alternatively compute
+VDoS
+𝐪
+i
+⁢
+(
+ω
+)
+subscript
+VDoS
+subscript
+𝐪
+𝑖
+𝜔
+\mathrm{VDoS}_{\mathbf{q}_{i}}(\omega)
+roman_VDoS start_POSTSUBSCRIPT bold_q start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT end_POSTSUBSCRIPT ( italic_ω )
+ directly as:
+
+VDoS
+𝐪
+i
+⁢
+(
+ω
+)
+=
+2 k
+B
+⁢
+T
+⁢
+𝐪
+i
+T
+⁢
+𝐂
+v
+~
+⁢
+(
+ω
+)
+⁢
+𝐪
+i
+subscript
+VDoS
+subscript
+𝐪
+𝑖
+𝜔
+2 subscript
+𝑘
+B
+𝑇
+superscript
+subscript
+𝐪
+𝑖
+𝑇
+subscript
+𝐂
+~
+v
+𝜔
+subscript
+𝐪
+𝑖
+\mathrm{VDoS}_{\mathbf{q}_{i}}(\omega)=\frac{2}{k_{\mathrm{B}}T}\,\mathbf{q}_{%
+i}^{T}\mathbf{C}_{\tilde{\mathrm{v}}}(\omega)\mathbf{q}_{i}
+roman_VDoS start_POSTSUBSCRIPT bold_q start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT end_POSTSUBSCRIPT ( italic_ω ) = divide start_ARG 2 end_ARG start_ARG italic_k start_POSTSUBSCRIPT roman_B end_POSTSUBSCRIPT italic_T end_ARG bold_q start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT start_POSTSUPERSCRIPT italic_T end_POSTSUPERSCRIPT bold_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG end_POSTSUBSCRIPT ( italic_ω ) bold_q start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT
+
+(9)
+
+Notably, if
+𝐪
+i
+subscript
+𝐪
+𝑖
+\mathbf{q}_{i}
+bold_q start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT
+ is the
+i
+𝑖
+i
+italic_i
+’th eigenvector of
+𝐂
+v
+~
+⁢
+(
+ω
+)
+subscript
+𝐂
+~
+v
+𝜔
+\mathbf{C}_{\tilde{\mathrm{v}}}(\omega)
+bold_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG end_POSTSUBSCRIPT ( italic_ω )
+ at frequency
+ω
+sel
+subscript
+𝜔
+sel
+\omega_{\mathrm{sel}}
+italic_ω start_POSTSUBSCRIPT roman_sel end_POSTSUBSCRIPT
+ then
+VDoS
+𝐪
+i
+⁢
+(
+ω
+sel
+)
+=
+2 k
+B
+⁢
+T
+⁢
+λ
+i
+⁢
+(
+ω
+sel
+)
+subscript
+VDoS
+subscript
+𝐪
+𝑖
+subscript
+𝜔
+sel
+2 subscript
+𝑘
+B
+𝑇
+subscript
+𝜆
+𝑖
+subscript
+𝜔
+sel
+\mathrm{VDoS}_{\mathbf{q}_{i}}(\omega_{\mathrm{sel}})=\frac{2}{k_{\mathrm{B}}T%
+}\lambda_{i}(\omega_{\mathrm{sel}})
+roman_VDoS start_POSTSUBSCRIPT bold_q start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT end_POSTSUBSCRIPT ( italic_ω start_POSTSUBSCRIPT roman_sel end_POSTSUBSCRIPT ) = divide start_ARG 2 end_ARG start_ARG italic_k start_POSTSUBSCRIPT roman_B end_POSTSUBSCRIPT italic_T end_ARG italic_λ start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT ( italic_ω start_POSTSUBSCRIPT roman_sel end_POSTSUBSCRIPT )
+.
+
+II.4
+CG Representations of All-Atom Trajectories
+
+We used three distinct CG representations of all-atom HEWL trajectories to evaluate how much information on low-frequency vibrations is preserved upon decreasing the number of DoFs.
+In the first representation (two-bead, see Figure
+1 ), the CoM positions and velocities of backbone and side chain atoms of each amino acid residue are mapped to separate beads (two beads per residue).
+Glycine is an exception to this rule for which the CoM of all residue atoms is mapped to a single bead.
+Atoms for the N- and C-termini are included in the mapping to the backbone beads of the first and last residue, respectively.
+For HEWL, this representation reduces the number of particles from 1960 atoms to 246 beads.
+
+In the second CG representation (one-bead), the CoM of all atoms of a residue is mapped to a single bead (Figure
+1 ), and the third representation uses a single bead corresponding to the
+C
+α
+subscript
+C
+𝛼
+\mathrm{C_{\alpha}}
+roman_C start_POSTSUBSCRIPT italic_α end_POSTSUBSCRIPT
+atom of each amino acid residue.
+Both representations reduce the number of particles further to 129.
+
+Figure 1:
+Coarse-graining schemes A: Mapping of the center-of-mass of backbone and side-chain atoms of tyrosine (left) into separate CG beads (middle) or a single bead (right).
+B: Visualization of all-atom and CG representations of HEWL with 1960 atoms, 246 beads, 129 beads, respectively.
+
+In addition to reducing the number of particles and DoF, we further tested distinct time resolutions for the calculation of the correlation functions.
+A time resolution of
+Δ
+⁢
+t
+=
+Δ
+𝑡
+absent
+\Delta t=
+roman_Δ italic_t =
+8 fs allows sampling frequencies of up to 2085 cm
+-1
+, which, in a simulation with constraints applied to covalent bonds involving hydrogens, includes the fastest vibrations expected in the system.
+With increasing degrees of coarse-graining, especially when using centers-of-mass to define the mapping to CG beads, we further eliminate high-frequency vibrations.
+This allows us to further decrease the time resolution without under-sampling fluctuations, which would otherwise cause aliasing during Fourier analysis.
+Specifically, we tested reduced time resolutions of 20 fs and 40 fs.
+
+II.5
+Computational Costs and Memory Requirements
+
+Both the computational overhead and memory requirements decrease substantially upon reducing the number of particles
+N
+𝑁
+N
+italic_N
+ and the time resolution.
+The construction of
+𝐂
+v
+~
+⁢
+(
+ω
+)
+subscript
+𝐂
+~
+v
+𝜔
+\mathbf{C}_{\tilde{\mathrm{v}}}(\omega)
+bold_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG end_POSTSUBSCRIPT ( italic_ω )
+ requires the calculation of
+𝒪
+⁢
+(
+3 ⁢
+N
+)
+2 𝒪
+superscript
+3 𝑁
+2 \mathcal{O}(3N)^{2}
+caligraphic_O ( 3 italic_N ) start_POSTSUPERSCRIPT 2 end_POSTSUPERSCRIPT
+ time correlation functions and their Fourier transforms.
+In its current implementation
+[42,43]
+, the calculation of the time correlation functions utilizes fast Fourier transforms of full-length time-dependent velocity trajectories (
+t
+sim
+subscript
+𝑡
+sim
+t_{\mathrm{sim}}
+italic_t start_POSTSUBSCRIPT roman_sim end_POSTSUBSCRIPT
+ = total simulation time) and a variation of the convolution theorem:
+
+v
+i
+⁢
+(
+ω
+)
+subscript
+v
+𝑖
+𝜔
+\displaystyle\mathrm{v}_{i}(\omega)
+roman_v start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT ( italic_ω )
+
+=
+\displaystyle=
+=
+
+∫
+0 t
+sim
+exp
+⁢
+(
+i
+⁢
+ω
+⁢
+t
+)
+⁢
+v
+i
+⁢
+(
+t
+)
+⁢
+𝑑
+t
+superscript
+subscript
+0 subscript
+𝑡
+sim
+exp
+i
+𝜔
+𝑡
+subscript
+v
+𝑖
+𝑡
+differential-d
+𝑡
+\displaystyle\int_{0}^{t_{\mathrm{sim}}}\mathrm{exp}(\mathrm{i}\,\omega t)%
+\mathrm{v}_{i}(t)\,dt
+∫ start_POSTSUBSCRIPT 0 end_POSTSUBSCRIPT start_POSTSUPERSCRIPT italic_t start_POSTSUBSCRIPT roman_sim end_POSTSUBSCRIPT end_POSTSUPERSCRIPT roman_exp ( roman_i italic_ω italic_t ) roman_v start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT ( italic_t ) italic_d italic_t
+
+(10)
+
+C
+v
+~
+,
+i
+⁢
+j
+⁢
+(
+ω
+)
+subscript
+𝐶
+~
+v
+𝑖
+𝑗
+𝜔
+\displaystyle C_{\tilde{\mathrm{v}},ij}(\omega)
+italic_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG , italic_i italic_j end_POSTSUBSCRIPT ( italic_ω )
+
+=
+\displaystyle=
+=
+
+v
+i
+⁢
+(
+ω
+)
+⁢
+v
+j
+⁢
+(
+ω
+)
+¯
+subscript
+v
+𝑖
+𝜔
+¯
+subscript
+v
+𝑗
+𝜔
+\displaystyle\mathrm{v}_{i}(\omega)\overline{\mathrm{v}_{j}(\omega)}
+roman_v start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT ( italic_ω ) over¯ start_ARG roman_v start_POSTSUBSCRIPT italic_j end_POSTSUBSCRIPT ( italic_ω ) end_ARG
+
+(11)
+
+Here,
+v
+j
+⁢
+(
+ω
+)
+¯
+¯
+subscript
+v
+𝑗
+𝜔
+\overline{\mathrm{v}_{j}(\omega)}
+over¯ start_ARG roman_v start_POSTSUBSCRIPT italic_j end_POSTSUBSCRIPT ( italic_ω ) end_ARG
+ indicates the complex conjugate.
+The frequency resolution is then adjusted
+a posteriori
+ via a convolution with a square window function in the time domain that is non-zero between
+t
+=
+0 𝑡
+0 t=0
+italic_t = 0
+ and
+τ
+max
+subscript
+𝜏
+max
+\tau_{\mathrm{max}}
+italic_τ start_POSTSUBSCRIPT roman_max end_POSTSUBSCRIPT
+.
+
+While this approach requires storing trajectories of all particle velocities in memory, the dominant memory requirement for large numbers of particles
+N
+𝑁
+N
+italic_N
+ typically results from storing the
+(
+3 ⁢
+N
+)
+2 superscript
+3 𝑁
+2 (3N)^{2}
+( 3 italic_N ) start_POSTSUPERSCRIPT 2 end_POSTSUPERSCRIPT
+ correlation functions.
+Further, simulation trajectories can be easily analyzed in shorther fragments and resulting correlation matrices
+𝐂
+v
+~
+⁢
+(
+ω
+)
+subscript
+𝐂
+~
+v
+𝜔
+\mathbf{C}_{\tilde{\mathrm{v}}}(\omega)
+bold_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG end_POSTSUBSCRIPT ( italic_ω )
+ can be averaged afterwards.
+
+The key advantage of the approach in Eq.
+11 , for large or small numbers of particles alike, is that the computational cost of calculating each correlation function is reduced from
+𝒪
+⁢
+(
+n
+t
+×
+n
+τ
+)
+𝒪
+subscript
+𝑛
+𝑡
+subscript
+𝑛
+𝜏
+\mathcal{O}(n_{t}\times n_{\tau})
+caligraphic_O ( italic_n start_POSTSUBSCRIPT italic_t end_POSTSUBSCRIPT × italic_n start_POSTSUBSCRIPT italic_τ end_POSTSUBSCRIPT )
+ to
+𝒪
+⁢
+(
+n
+t
+⁢
+log
+⁢
+n
+t
+)
+𝒪
+subscript
+𝑛
+𝑡
+log
+subscript
+𝑛
+𝑡
+\mathcal{O}(n_{t}\,\mathrm{log}\,n_{t})
+caligraphic_O ( italic_n start_POSTSUBSCRIPT italic_t end_POSTSUBSCRIPT roman_log italic_n start_POSTSUBSCRIPT italic_t end_POSTSUBSCRIPT )
+ (with time resolution
+Δ
+⁢
+t
+Δ
+𝑡
+\Delta t
+roman_Δ italic_t
+;
+n
+τ
+=
+τ
+max
+/
+Δ
+⁢
+t
+subscript
+𝑛
+𝜏
+subscript
+𝜏
+max
+Δ
+𝑡
+n_{\tau}=\tau_{\mathrm{max}}/\Delta t
+italic_n start_POSTSUBSCRIPT italic_τ end_POSTSUBSCRIPT = italic_τ start_POSTSUBSCRIPT roman_max end_POSTSUBSCRIPT / roman_Δ italic_t
+; and
+n
+t
+=
+t
+sim
+/
+Δ
+⁢
+t
+subscript
+𝑛
+𝑡
+subscript
+𝑡
+sim
+Δ
+𝑡
+n_{t}=t_{\mathrm{sim}}/\Delta t
+italic_n start_POSTSUBSCRIPT italic_t end_POSTSUBSCRIPT = italic_t start_POSTSUBSCRIPT roman_sim end_POSTSUBSCRIPT / roman_Δ italic_t
+).
+
+For large number of particles or if many frequencies are being analyzed, the computational cost of calculating the eigenvalues and eigenvectors of
+𝐂
+v
+~
+⁢
+(
+ω
+)
+subscript
+𝐂
+~
+v
+𝜔
+\mathbf{C}_{\tilde{\mathrm{v}}}(\omega)
+bold_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG end_POSTSUBSCRIPT ( italic_ω )
+ is also worth considering, which scales with
+𝒪
+⁢
+(
+3 ⁢
+N
+)
+3 𝒪
+superscript
+3 𝑁
+3 \mathcal{O}(3N)^{3}
+caligraphic_O ( 3 italic_N ) start_POSTSUPERSCRIPT 3 end_POSTSUPERSCRIPT
+ and thus decreases dramatically upon coarse-graining.
+
+II.6
+Comparing Vibrational Modes in Distinct Representations
+
+FRESEAN mode analysis can be applied to time-dependent trajectories of particle velocities irrespective of whether all-atom or CG representations are used.
+However, the number of DoF dictates the dimensionality of eigenvectors computed from
+𝐂
+v
+~
+⁢
+(
+ω
+)
+subscript
+𝐂
+~
+v
+𝜔
+\mathbf{C}_{\tilde{\mathrm{v}}}(\omega)
+bold_C start_POSTSUBSCRIPT over~ start_ARG roman_v end_ARG end_POSTSUBSCRIPT ( italic_ω )
+ (
+i.e.
+, their number of components).
+If two sets of eigenvectors contain the same number of components (
+e.g.
+, eigenvectors obtained from the same trajectory but for different frequencies, or eigenvectors at the same frequency obtained from distinct trajectories), we can compare them using their (unsigned) dot product.
+Since the eigenvectors are normalized, the dot product can be interpreted as the cosine of the angle between both vectors (or its equivalent in a high-dimensional space).
+
+cos
+⁢
+(
+θ
+i
+⁢
+j
+)
+=
+|
+𝐪
+i
+⋅
+𝐪
+j
+|
+cos
+subscript
+𝜃
+𝑖
+𝑗
+⋅
+subscript
+𝐪
+𝑖
+subscript
+𝐪
+𝑗
+\mathrm{cos}(\theta_{ij})=\left|\mathbf{q}_{i}\cdot\mathbf{q}_{j}\right|
+roman_cos ( italic_θ start_POSTSUBSCRIPT italic_i italic_j end_POSTSUBSCRIPT ) = | bold_q start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT ⋅ bold_q start_POSTSUBSCRIPT italic_j end_POSTSUBSCRIPT |
+
+(12)
+
+When
+cos
+⁢
+(
+θ
+i
+⁢
+j
+)
+=
+1 cos
+subscript
+𝜃
+𝑖
+𝑗
+1 \mathrm{cos}(\theta_{ij})=1
+roman_cos ( italic_θ start_POSTSUBSCRIPT italic_i italic_j end_POSTSUBSCRIPT ) = 1
+, the eigenvectors are identical, while
+cos
+⁢
+(
+θ
+i
+⁢
+j
+)
+=
+0 cos
+subscript
+𝜃
+𝑖
+𝑗
+0 \mathrm{cos}(\theta_{ij})=0
+roman_cos ( italic_θ start_POSTSUBSCRIPT italic_i italic_j end_POSTSUBSCRIPT ) = 0
+ indicates that two vectors are orthogonal and share no information (
+e.g.
+, distinct eigenvectors computed from the same matrix).
+
+However, when comparing results from all-atom and CG representations, we need to compare eigenvectors with distinct dimensionality.
+For this comparison, for which we only consider the two-bead and one-bead representations of residues, we translate all-atom eigenvectors into a CG representation that converts atomic displacements into the corresponding CoM-displacements.
+
+Thus, if
+𝐪
+i
+⁢
+k
+aa
+superscript
+subscript
+𝐪
+𝑖
+𝑘
+aa
+\mathbf{q}_{ik}^{\mathrm{aa}}
+bold_q start_POSTSUBSCRIPT italic_i italic_k end_POSTSUBSCRIPT start_POSTSUPERSCRIPT roman_aa end_POSTSUPERSCRIPT
+ is the
+k
+𝑘
+k
+italic_k
+’th atomic displacement vector of the
+i
+𝑖
+i
+italic_i
+’th all-atom eigenvector
+𝐪
+i
+aa
+superscript
+subscript
+𝐪
+𝑖
+aa
+\mathbf{q}_{i}^{\mathrm{aa}}
+bold_q start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT start_POSTSUPERSCRIPT roman_aa end_POSTSUPERSCRIPT
+, then the displacement vector of the
+j
+𝑗
+j
+italic_j
+’th bead in the corresponding CG representation of that eigenvector is given by:
+
+𝐪
+i
+⁢
+j
+cg
+=
+∑
+k
+∈
+bead
+j
+m
+k
+⁢
+𝐪
+i
+⁢
+k
+aa
+∑
+k
+∈
+bead
+j
+m
+k
+superscript
+subscript
+𝐪
+𝑖
+𝑗
+cg
+subscript
+𝑘
+subscript
+bead
+𝑗
+subscript
+𝑚
+𝑘
+superscript
+subscript
+𝐪
+𝑖
+𝑘
+aa
+subscript
+𝑘
+subscript
+bead
+𝑗
+subscript
+𝑚
+𝑘
+\mathbf{q}_{ij}^{\mathrm{cg}}=\frac{\sum_{k\in\mathrm{bead}_{j}}m_{k}\,\mathbf%
+{q}_{ik}^{\mathrm{aa}}}{\sum_{k\in\mathrm{bead}_{j}}m_{k}}
+bold_q start_POSTSUBSCRIPT italic_i italic_j end_POSTSUBSCRIPT start_POSTSUPERSCRIPT roman_cg end_POSTSUPERSCRIPT = divide start_ARG ∑ start_POSTSUBSCRIPT italic_k ∈ roman_bead start_POSTSUBSCRIPT italic_j end_POSTSUBSCRIPT end_POSTSUBSCRIPT italic_m start_POSTSUBSCRIPT italic_k end_POSTSUBSCRIPT bold_q start_POSTSUBSCRIPT italic_i italic_k end_POSTSUBSCRIPT start_POSTSUPERSCRIPT roman_aa end_POSTSUPERSCRIPT end_ARG start_ARG ∑ start_POSTSUBSCRIPT italic_k ∈ roman_bead start_POSTSUBSCRIPT italic_j end_POSTSUBSCRIPT end_POSTSUBSCRIPT italic_m start_POSTSUBSCRIPT italic_k end_POSTSUBSCRIPT end_ARG
+
+(13)

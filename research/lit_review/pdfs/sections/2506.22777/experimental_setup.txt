@@ -1,0 +1,46 @@
+3 Experimental Setup
+
+For our experiments, we train with VFT and BCT on the two prompt cues, amplify a set of held-out cues with RL, and measure the resulting effective cue influence rate (ECR). Full hyperparameters for all steps given in
+Appendix B
+.
+
+Datasets
+
+We use separate splits of MMLU
+[22]
+ for the VFT/BCT stage (3352 examples) and the reward hacking amplification stage (4210 examples). For VFT/BCT, we use cued prompts for 90% of the dataset and uncued prompts for the remaining 10%. For reward hacking amplification, we use cued prompts and reward cue-aligned wrong answers for 90% of the dataset, and reward correct answers on uncued prompts for the remaining 10%. We do all model selection (e.g., choosing checkpoints and hyperparameters) based on a validation set of 1000 examples. The test set (1000 examples) is used only for final evaluation.
+
+Models
+
+For all experiments, we use Llama 3.1 8B Instruct
+[
+19 , Llama]
+.
+In order to assess whether each model completion contains a verbalization of the prompt cue, we use Claude 3.5 Sonnet
+[
+2 , claude-3-5-sonnet-20240620]
+ as a judge.
+We use Claude 4 Sonnet
+[
+3 , claude-sonnet-4-20250514]
+ to insert verbalization of the prompt cue into previously unfaithful CoTs (see an example of a corrected CoT at
+§E.4
+).
+
+Prompting
+
+To elicit CoTs, we prompt Llama to think step-by-step and then output a final answer letter. For verbalization judging, we prompt Claude 3.5 Sonnet to break down the verbalization analysis by checking if the model mentions the cue, and if the cue factor clearly influences the model’s final decision (see the full prompt in
+§D.1
+).
+For the verbalization edits, we give a description of the cue and prompt the model to make only minimal edits to the baseline reasoning—we start with the baseline reasoning and edit it only to acknowledge overriding due to the cue.
+Making minimal changes helps us avoid confounding the results by using a strong model during this step.
+All CoTs are sampled with temperature 1.0.
+
+Prompt Cues
+
+We use seven prompt cues drawn from previous work
+[14,13,12]
+, listed in
+Table 1
+.
+We do VFT/BCT training with the black square and post hoc cues (chosen at random). For reward hacking amplification, we include all of the cues, including black square and post hoc. We found that including the VFT/BCT cues in reward hacking amplification slightly improved results, so we include them for the main experiments.

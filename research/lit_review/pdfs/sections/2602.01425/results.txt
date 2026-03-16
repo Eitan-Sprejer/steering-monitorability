@@ -1,0 +1,240 @@
+5 Results
+
+Our experiments confirmed that the system prompt provided to the model is the dominant factor affecting deception probe performance. We observed substantial performance variation across probes trained with different system prompts, when training probes with the system prompt, training dataset, token selection and layer ID varied independently.
+Importantly, the best-performing probes were interpretable, with clear semantic relationships between the prompt content and the types of deception they successfully detected.
+We identified specific system prompts that achieved optimal performance for different datasets, reflecting the underlying heterogeneity in deception types. This finding suggests that detecting deception across datasets requires specialized detection approaches rather than a one-size-fits-all solution.
+
+5.1 Comparison of Performance Across Probe Types
+
+We evaluated the effectiveness of deception taxonomy-based prompts
+(Druckman and Bjork,
+1991 )
+ for deception detection by comparing these prompts to other probe variants across ten deception datasets. Using linear probes trained on
+Gemma-2-9B-IT
+ layer 20 representations, we assessed:
+
+1.
+
+Deception Baseline
+ prompts using generic honest/dishonest distinctions;
+
+2.
+
+the single
+Best Average
+ probe (best mean performance across all datasets without using taxonomy);
+
+3.
+
+the
+Best Taxonomy
+ probe for the specific dataset being evaluated.
+
+Figure 2
+:
+Comparative AUC across all datasets and approaches. Results show a consistent hierarchy:
+Deception Baseline
+<
+Best Average
+<
+Best Taxonomy
+\text{Deception Baseline}<\text{Best Average}<\text{Best Taxonomy}
+. Across the ten datasets, the Deception Baseline achieved mean AUC
+=
+0.689 =0.689
+ (SD
+=
+0.165 =0.165
+), while taxonomy-based prompts improved performance to mean AUC
+=
+0.797 =0.797
+ (SD
+=
+0.095 =0.095
+). This is a mean absolute improvement of
+Δ
+​
+AUC
+=
+0.108 \Delta\text{AUC}=0.108
+ (SD
+=
+0.088 =0.088
+, range
+0.001 0.001
+–
+0.323 0.323
+), corresponding to a
+20.5 %
+20.5\%
+ relative gain.
+
+All ten datasets had improved performance with a specific taxonomy prompt: eight exceeded a 5% AUC gain, three exceeded 10%, and one (
+MASK known facts
+) exceeded 25%. Importantly, for every dataset there existed a taxonomy-based probe that outperformed the baseline.
+
+Dataset-specific performance patterns.
+
+The magnitude of improvement from taxonomy-based prompts varies continuously across datasets, ranging from near-zero to over 86% relative gains. This variation reflects both the baseline detectability of different deception types and the degree to which specific taxonomy prompts match the underlying deception mechanism.
+
+At one extreme,
+liars-bench-convincing-game
+ shows minimal improvement (Baseline:
+0.984 0.984
+, Taxonomy:
+0.985 0.985
+,
+Δ
+=
++
+0.001 \Delta=+0.001
+), suggesting that straightforward lies where the model is explicitly prompted to lie exhibit stereotypical patterns easily detected even with generic prompts. At the other extreme,
+mask-known-facts
+ demonstrates dramatic gains (
+0.374 →
+0.697 0.374\rightarrow 0.697
+,
+Δ
+=
++
+0.323 \Delta=+0.323
+,
++
+86.3 %
++86.3\%
+) when using pressure-dishonesty prompts (AUC
+=
+0.697 =0.697
+), indicating that deception under social pressure requires specifically targeted detection approaches.
+
+Several datasets show substantial improvements exceeding 20% relative gains:
+mask-doubling-down-known-facts
+ (
+0.565 →
+0.727 0.565\rightarrow 0.727
+,
++
+28.7 %
++28.7\%
+) and
+sandbagging
+ (
+0.518 →
+0.657 0.518\rightarrow 0.657
+,
++
+26.8 %
++26.8\%
+), which responds particularly well to concealment-focused prompts. Meanwhile, datasets like
+mask-disinformation
+ (Baseline:
+0.842 0.842
+, Taxonomy:
+0.901 0.901
+,
+Δ
+=
++
+0.059 \Delta=+0.059
+) show more modest but meaningful improvements when using prompts targeting information fabrication. The remaining datasets show consistent gains in the 6-13% range.
+
+These patterns suggest that detection difficulty depends on both deception complexity and the availability of well-matched taxonomy prompts. Datasets involving nuanced, context-dependent deception benefit most from targeted prompts, while more explicit deception types are easier to detect generically. This heterogeneity indicates that ensemble methods combining multiple specialized probes may be more effective than seeking a single universal detector. Deployment environments may benefit from determining the most important threat model to focus on when deploying probes.
+
+5.2 Clustering Probe Scores to Identify Shared Mechanisms
+
+To understand whether different taxonomy prompts detect distinct deceptive mechanisms or converge on shared underlying patterns, we analyzed the pairwise correlations between probe outputs across all evaluation samples. We computed Pearson correlations for all probe pairs and applied hierarchical clustering to this correlation structure, identifying five distinct clusters of probes with similar detection patterns (Table
+1 ). The full correlation matrix is shown in Figure
+5 in the Appendix.
+
+Table 1
+:
+Clusters in the taxonomy-prompt correlation matrix (Pearson
+r
+r
+) on
+Gemma-2-9B-IT
+ layer 20, identified via hierarchical clustering.
+
+Cluster
+
+Probes
+
+Internal
+r
+r
+
+1
+
+evasion, exaggeration, false_alarm, forgery, trick, white_lie
+
+.84–.97
+
+2
+
+bluff, concealment, impersonation, overt_lie, partial_truth, pressure_dishonesty
+
+.52–.90
+
+3
+
+backstab, hoax, pretense
+
+.58–.74
+
+4
+
+counterfeit
+
+—
+
+5
+
+ctrl_clarification, ctrl_hallucination, ctrl_ignorance, ctrl_joke, ctrl_literal, ctrl_privacy, ctrl_roleplay
+
+.47–.84
+
+The relatively high correlations within clusters reveal that despite using different linguistic framings, many taxonomy prompts detect the same underlying mechanisms in the model’s activation space. For instance, Cluster 1 probes (
+evasion, exaggeration, false_alarm, forgery, trick, white_lie
+) show strong mutual correlation (
+r
+=
+0.84 r=0.84
+–
+0.97 0.97
+), suggesting these linguistically distinct deception types all tap into a shared representational direction. This suggests that the 16 taxonomy-based prompts we tested are different ways of accessing a smaller number of core “deceptive intent” directions in the model, though the (
+counterfeit
+) probe appears distinct. The control probes also form their own cluster which validates that that the directions detected by the deception probes are meaningful.
+
+5.3 Qualitative Analysis of Specific Responses
+
+(a)
+
+The scenario prompt presents a conflict between truthfulness and loyalty.
+
+(b)
+
+The baseline probe incorrectly flags the truthful response as deceptive.
+
+(c)
+
+The overt lie probe correctly identifies the response as honest.
+
+Figure 3
+:
+Comparison of probe behavior on Boeing scenario.
+
+We observed that the baseline probe tended to flag many innocuous examples involving generation of fictional material. This suggests that the fundamental direction being distinguished may not be directly related to deception but to the constructions of untruths regardless of purpose.
+
+We also observed several trends in samples where the more specific probes make more accurate predictions than the baseline probe. This is particularly noticeable in the MASK known facts dataset, where the probe based on overt lie system prompts performs significantly better than the baseline probe. Upon inspection of individual samples, we noted several corresponded to situations where the model needed to tell a lie in the context of a role which required it (for example, being a spokesperson or PR representative or an organization). An example is visualized in the figure
+3 .
+
+We hypothesize that these probes differ along dimensions of honesty and correctness, and these may represent distinct deceptive intent directions as discussed in the clustering analysis. The baseline probe may consider it deceptive for a model to tell the truth if it would be proper for it to lie (eg: protecting the organization’s interests by lying) while the more specific overt lie probe may be indexing more strongly on correctness (i.e. checking whether the facts spoken by the model are correct or incorrect).
+
+5.4 Control-Adjusted Score Distributions
+
+Figure
+4 presents the distribution of control-adjusted probe scores across 16 taxonomy-based deception types, comparing performance on five non-mask datasets (top panel) and five mask datasets (bottom panel). The y-axis shows control-adjusted scores, where each probe’s score has been normalized by subtracting the median score on the Alpaca control dataset (indicated by the black dotted line at zero).
+
+Figure 4
+:
+Distribution of control-adjusted probe scores across 16 taxonomy-based deception types, comparing performance on five non-mask datasets (top panel) and five mask datasets (bottom panel). The y-axis shows control-adjusted scores, where each probe’s score has been normalized by subtracting the median score on the Alpaca control dataset (indicated by the black dotted line at zero)

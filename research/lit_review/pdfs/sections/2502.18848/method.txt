@@ -1,0 +1,587 @@
+3 Method
+
+Our
+Causal Diagnosticity
+ framework is inspired by the idea of
+diagnosticity
+, which evaluates how well faithfulness metrics distinguish between faithful and unfaithful explanations. In
+3.1 , we summarize diagnosticity as introduced by
+Chan2022ACS
+ for evaluating feature attribution methods. In
+3.2 , we introduce
+Causal Diagnosticity
+, describing how it builds on diagnosticity and extends it to natural language explanations using causal interventions via edited models.
+
+3.1 Diagnosticity
+
+Despite the plethora of faithfulness metrics for natural language explanations
+(
+Jacovi2020TowardsFI
+;
+Lyu2022TowardsFM
+)
+, the community lacks an evaluation framework to compare them. We adopt
+diagnosticity
+
+Chan2022ACS
+, which measures how often a faithfulness metric prefers faithful over unfaithful explanations. For example, if a model correctly answers “No" to the question, “Is Rihanna a researcher?" based on her being a singer, a faithful explanation should reflect this reasoning. An explanation that provides an irrelevant rationale (e.g., albums she has sold) or false information (e.g., the wrong occupation) would be unfaithful.
+
+Following the notation from
+Chan2022ACS
+, let
+u
+u
+ and
+v
+v
+ be explanations (regardless of form, e.g., language, feature attributions, etc.), with
+u
+≻
+v
+u\succ v
+ denoting that
+u
+u
+ is more faithful than
+v
+v
+. A faithfulness metric
+ℱ
+\mathcal{F}
+ ranks the explanations as
+u
+≻
+ℱ
+v
+u\succ_{\mathcal{F}}v
+ if it assigns a higher faithfulness score to
+u
+u
+ than
+v
+v
+. Then, the diagnosticity of the metric
+ℱ
+\mathcal{F}
+ is:
+
+D
+​
+(
+ℱ
+)
+=
+P
+​
+(
+u
+≻
+ℱ
+v
+|
+u
+≻
+v
+)
+D(\mathcal{F})=P(u\succ_{\mathcal{F}}v|u\succ v)
+
+(1)
+
+We approximate this using an empirical estimate of the probability from pairs of faithful and unfaithful explanations. Also, since higher faithfulness scores represent more faithful explanations, we rewrite:
+
+D
+​
+(
+ℱ
+)
+≈
+1 |
+Z
+|
+​
+∑
+(
+u
+i
+,
+v
+i
+)
+∈
+Z
+𝟙 ​
+(
+ℱ
+p
+i
+,
+M
+​
+(
+u
+i
+)
+>
+ℱ
+p
+i
+,
+M
+​
+(
+v
+i
+)
+)
+D(\mathcal{F})\approx\frac{1}{|Z|}\sum_{(u_{i},v_{i})\in Z}\mathbbm{1}(\mathcal{F}_{p_{i},M}\left(u_{i}\right)>\mathcal{F}_{p_{i},M}\left(v_{i}\right))
+
+(2)
+
+where
+Z
+Z
+ contains pairs of faithful
+(
+u
+i
+)
+(u_{i})
+ and unfaithful
+(
+v
+i
+)
+(v_{i})
+ explanations for input-output pairs
+p
+i
+:=
+(
+𝒙
+i
+,
+𝒚
+i
+)
+p_{i}:=({\bm{x}}_{i},{\bm{y}}_{i})
+.
+
+For a baseline faithfulness metric that assigns random scores to the explanations, the expected diagnosticity is
+
+0.5 0.5
+. To capture this behavior and relax the strict inequality, we modify the diagnosticity definition as follows:
+
+D
+​
+(
+ℱ
+)
+≈
+1 |
+Z
+|
+​
+∑
+(
+u
+i
+,
+v
+i
+)
+∈
+Z
+d
+​
+(
+u
+i
+,
+v
+i
+,
+ℱ
+p
+i
+,
+M
+)
+D(\mathcal{F})\approx\frac{1}{|Z|}\sum_{(u_{i},v_{i})\in Z}d(u_{i},v_{i},\mathcal{F}_{p_{i},M})
+
+(3)
+
+with the pairwise function
+d
+​
+(
+⋅
+)
+d(\cdot)
+ defined as
+
+d
+​
+(
+u
+i
+,
+v
+i
+,
+ℱ
+p
+i
+,
+M
+)
+=
+{
+1 if
+​
+ℱ
+p
+i
+,
+M
+​
+(
+u
+i
+)
+>
+ℱ
+p
+i
+,
+M
+​
+(
+v
+i
+)
+0.5 if
+​
+ℱ
+p
+i
+,
+M
+​
+(
+u
+i
+)
+=
+ℱ
+p
+i
+,
+M
+​
+(
+v
+i
+)
+0 if
+​
+ℱ
+p
+i
+,
+M
+​
+(
+u
+i
+)
+<
+ℱ
+p
+i
+,
+M
+​
+(
+v
+i
+)
+d(u_{i},v_{i},\mathcal{F}_{p_{i},M})=\begin{cases}1&\text{if }\mathcal{F}_{p_{i},M}\left(u_{i}\right)>\mathcal{F}_{p_{i},M}\left(v_{i}\right)\\
+0.5&\text{if }\mathcal{F}_{p_{i},M}\left(u_{i}\right)=\mathcal{F}_{p_{i},M}\left(v_{i}\right)\\
+0&\text{if }\mathcal{F}_{p_{i},M}\left(u_{i}\right)<\mathcal{F}_{p_{i},M}\left(v_{i}\right)\end{cases}
+
+(4)
+
+This revised formulation accommodates the scenario where random scoring yields an expected diagnosticity of
+0.5 0.5
+, by assigning a neutral score when the faithfulness scores are equal.
+
+3.2 Causal Diagnosticity
+
+To obtain unfaithful explanations for measuring diagnosticity,
+Chan2022ACS
+ use random feature attribution scores. While random scores can work for structured explanations like feature attributions, this approach is not straightforward for natural language explanations. Random text cannot function as a meaningful explanation and cannot ensure unfaithfulness in a coherent way. To address this, we introduce
+Causal Diagnosticity
+, which generates unfaithful explanations using knowledge editing. Rather than injecting random noise, we modify a model’s internal knowledge. For example, consider the
+capitalOf
+ relation for the question “Is Paris the capital of France?" and a model that correctly associates this to the knowledge
+(
+s
+=
+Paris
+,
+r
+=
+is the capital of
+,
+o
+=
+France
+)
+(s=\text{Paris},r=\text{is the capital of},o=\text{France})
+. By altering the model’s knowledge, we create two variations where the subject
+s
+s
+ is replaced with Berlin or London. Both modified models should answer “No" to the original question but for different reasons: “No, because Berlin is the capital of France." and “No, because London is the capital of France." In particular, each of these two explanations should be unfaithful to the model that generated the other.
+
+Formally, let
+𝒚
+i
+{\bm{y}}_{i}
+ be the prediction for the input
+𝒙
+i
+{\bm{x}}_{i}
+ while
+M
+¯
+{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{M}}
+ and
+M
+~
+{\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}\widetilde{M}}
+ be the altered models.
+M
+¯
+{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{M}}
+ generates the explanation
+𝜺
+¯
+i
+{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{{\bm{\varepsilon}}}_{i}}
+ and
+M
+~
+{\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}\widetilde{M}}
+ generates the explanation
+𝜺
+~
+i
+{\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}\widetilde{{\bm{\varepsilon}}}_{i}}
+. We modify diagnosticity as:
+
+D
+​
+(
+ℱ
+)
+=
+1 |
+Z
+|
+​
+∑
+(
+𝜺
+¯
+i
+,
+𝜺
+~
+i
+)
+∈
+Z
+d
+​
+(
+𝜺
+¯
+i
+,
+𝜺
+~
+i
+,
+ℱ
+p
+i
+,
+M
+¯
+)
+D(\mathcal{F})=\frac{1}{|Z|}\sum_{({\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{{\bm{\varepsilon}}}_{i}},{\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}\widetilde{{\bm{\varepsilon}}}_{i}})\in Z}d({\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{{\bm{\varepsilon}}}_{i}},{\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}\widetilde{{\bm{\varepsilon}}}_{i}},\mathcal{F}_{p_{i},{{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{M}}}})
+
+(5)
+
+where
+
+d
+​
+(
+u
+i
+,
+v
+i
+,
+ℱ
+p
+i
+,
+M
+¯
+)
+=
+{
+1 if
+​
+ℱ
+p
+i
+,
+M
+¯
+​
+(
+𝜺
+¯
+i
+)
+>
+ℱ
+p
+i
+,
+M
+¯
+​
+(
+𝜺
+~
+i
+)
+0.5 if
+​
+ℱ
+p
+i
+,
+M
+¯
+​
+(
+𝜺
+¯
+i
+)
+=
+ℱ
+p
+i
+,
+M
+¯
+​
+(
+𝜺
+~
+i
+)
+0 if
+​
+ℱ
+p
+i
+,
+M
+¯
+​
+(
+𝜺
+¯
+i
+)
+<
+ℱ
+p
+i
+,
+M
+¯
+​
+(
+𝜺
+~
+i
+)
+d(u_{i},v_{i},\mathcal{F}_{p_{i},{{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{M}}}})=\begin{cases}1&\text{if }\mathcal{F}_{p_{i},{{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{M}}}}\left({\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{{\bm{\varepsilon}}}_{i}}\right)>\mathcal{F}_{p_{i},{{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{M}}}}\left({\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}\widetilde{{\bm{\varepsilon}}}_{i}}\right)\\
+0.5&\text{if }\mathcal{F}_{p_{i},{{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{M}}}}\left({\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{{\bm{\varepsilon}}}_{i}}\right)=\mathcal{F}_{p_{i},{{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{M}}}}\left({\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}\widetilde{{\bm{\varepsilon}}}_{i}}\right)\\
+0&\text{if }\mathcal{F}_{p_{i},{{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{M}}}}\left({\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{{\bm{\varepsilon}}}_{i}}\right)<\mathcal{F}_{p_{i},{{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{M}}}}\left({\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}\widetilde{{\bm{\varepsilon}}}_{i}}\right)\end{cases}
+
+(6)
+
+Models
+M
+¯
+{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{M}}
+ and
+M
+~
+{\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}\widetilde{M}}
+ are edited such that
+𝜺
+¯
+i
+{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{{\bm{\varepsilon}}}_{i}}
+ is faithful to
+M
+¯
+{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{M}}
+, while
+𝜺
+~
+i
+{\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}\widetilde{{\bm{\varepsilon}}}_{i}}
+ is unfaithful to
+M
+¯
+{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{M}}
+. They are created by modifying parameters
+𝜽
+{\bm{\theta}}
+ or context
+𝒄
+{\bm{c}}
+, depending on the knowledge editing method. The choice of models is flexible: in most cases, either model can be used in Equation
+5 by swapping
+
+𝜺
+¯
+i
+{\color[rgb]{0.12109375,0.46484375,0.70703125}\definecolor[named]{pgfstrokecolor}{rgb}{0.12109375,0.46484375,0.70703125}\bar{{\bm{\varepsilon}}}_{i}}
+ and
+𝜺
+~
+i
+{\color[rgb]{1,0.49609375,0.0546875}\definecolor[named]{pgfstrokecolor}{rgb}{1,0.49609375,0.0546875}\widetilde{{\bm{\varepsilon}}}_{i}}
+. However, in some tasks, one explanation may be faithful to both models, restricting arbitrary model selection. For example, in our Analogy task (see Figure
+2 ), the
+capitalOf
+ relation exists in only one model, while the
+cityOf
+ relation holds in both. Additionally, the original model
+𝜽
+{\bm{\theta}}
+ can be used as long as it satisfies the faithfulness relations with the explanation pairs. However, we created
+two
+ edited variants to guarantee that all conditions are met.

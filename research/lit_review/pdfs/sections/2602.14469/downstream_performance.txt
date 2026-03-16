@@ -1,0 +1,205 @@
+5 Downstream Performance
+
+We move forward to testify the effectiveness of reverse CoT under different anchoring influence, addressing three questions: (1) Does reduced anchoring effects translate to improved downstream performance? (2) Does rationalization mitigation enables better out-of-distribution generalization? (3) Does distillation strengthen structural alignment beyond prompting?
+
+5.1 Experimental Setup
+
+Methods.
+
+•
+
+We continue to evaluate the strategies defined in
+Section
+˜
+3 :
+NEU
+ (neutral prompting),
+SUP
+ and
+AUG-SUP
+ (semantic suppression baselines),
+SSR
+ (structural skeleton-guided generation).
+
+•
+
+SSR-D
+ (distilled SSR). While SSR can be implemented via prompting, adherence to the structural format is often inconsistent, since models may omit tags or leak results into skeletons. SSR-D addresses this by fine-tuning on teacher-generated high-quality SSR pairs, where teacher is trained on two objectives: skeleton generation
+ℒ
+S
+=
+−
+log
+⁡
+p
+θ
+​
+(
+S
+∗
+∣
+Q
+,
+A
+)
+\mathcal{L}_{S}=-\log p_{\theta}(S^{*}\mid Q,A)
+ and reasoning reconstruction
+ℒ
+R
+=
+−
+log
+⁡
+p
+θ
+​
+(
+R
+∗
+∣
+Q
+,
+A
+,
+S
+∗
+)
+\mathcal{L}_{R}=-\log p_{\theta}(R^{*}\mid Q,A,S^{*})
+. The combined objective
+ℒ
+=
+ℒ
+S
++
+ℒ
+R
+\mathcal{L}=\mathcal{L}_{S}+\mathcal{L}_{R}
+ ensures robust structural alignment. Training details are provided in Appendix
+F
+.
+
+Data.
+
+We sample 100k queries from LMArena
+(Chiang
+ et al.
+,
+2024 )
+ and generate reference answers using Qwen3-Max. Given
+(
+Q
+,
+A
+)
+(Q,A)
+ pairs lacking intermediate reasoning, we generate reverse CoT using Qwen3-235B-Instruct-2507
+(Yang
+ et al.
+,
+2025a
+)
+ under each baseline condition, enabling evaluation at frontier-model scale. For SSR-D, NBG-3.5-Pro
+5 5
+5 https://www.nanbeige.com/portal
+ serves as the generator of the distilled SSR traces.
+
+Models.
+
+We fine-tune Qwen3-8B and Qwen3-32B
+(Yang
+ et al.
+,
+2025a
+)
+ as representative open-weight thinking models, Qwen3-4B-Thinking-2507 for reasoning-specialized evaluation, and NBG4-3B-Base
+(Yang
+ et al.
+,
+2025b
+)
+ to test cross-family transfer.
+
+Benchmarks.
+
+We evaluate across diverse reasoning domains: open-ended reasoning
+ArenaHard-v2.0
+
+(Li
+ et al.
+,
+2025c
+)
+, human-aligned emotional intelligence reasoning
+EQ-Bench 3
+
+(Paech,
+2023 )
+, strict constraint adherence
+IFEval
+
+(Zhou
+ et al.
+,
+2023b
+)
+, and multi-turn instruction-following
+MultiChallenge
+
+(Deshpande
+ et al.
+,
+2025 )
+. For out-of-distribution evaluation, we use
+GPQA-Diamond
+
+(Rein
+ et al.
+,
+2023 )
+ for scientific reasoning and
+AIME 2025
+
+(Zhang and Math-AI,
+2025 )
+ for difficult mathematical reasoning. All evaluation details can be found in Appendix
+E
+.
+
+5.2 Main Results
+
+Table
+3 presents in-distribution results across four benchmarks and model scales.
+
+Reduced anchoring yields consistent performance gains.
+
+SSR-D achieves the highest scores across all benchmarks and model scales, with gains that scale with model capacity. On ArenaHard, improvements over NEU are up to +10 (Qwen3-4B-Thinking), while MultiChallenge shows consistent gains up to +3. This correlation between lower internal anchoring (Table
+1 ) and higher downstream accuracy validates our framework: structured reasoning traces provide stronger training signals than post-hoc rationalizations.
+
+Suppression degrades multi-turn reasoning.
+
+While SUP and AUG-SUP yield marginal single-turn improvements on ArenaHard, they consistently degrade MultiChallenge performance. This asymmetry is most pronounced for Qwen3-8B, where AUG-SUP underperforms NEU by 5% despite appearing less anchored by
+𝒜
+lex
+\mathcal{A}_{\text{lex}}
+ (Figure
+1 ). The pattern confirms that suppression-induced traces lack global coherence for sustained multi-turn reasoning, consistent with elevated
+𝒜
+ent
+\mathcal{A}_{\text{ent}}
+ in Table
+1 .
+
+Distillation amplifies structural alignment.
+
+Comparing SSR and SSR-D reveals that prompting alone captures roughly half the potential benefit (e.g., +5 vs. +9 on ArenaHard for Qwen3-8B). The consistent SSR-D advantage reflects learned internalization of the skeleton pattern, ensuring reliable format adherence and stronger rationalization mitigation. Cross-architecture transfer to NBG4-3B-Base further validates that structural decoupling captures architecture-agnostic reasoning principles.
+6 6
+6 We ablate the components of SSR in Appendix
+G
+.
+
+5.3 Out-of-Distribution Generalization
+
+Table
+4 reveals that standard ARG training severely degrades OOD performance. On AIME 2025, NEU-trained Qwen3-8B collapses to less than half its untrained baseline, as the training data lack mathematical content comparable to competition-level problems. Suppression methods provide no recovery, while AUG-SUP even worsens AIME for Qwen3-32B by 7.5%.
+
+While all methods suffer from this domain gap, SSR and SSR-D substantially outperform suppression baselines through anchoring mitigation. For Qwen3-8B, SSR-D recovers approximately 30% of the AIME gap to the untrained baseline, while Qwen3-32B with SSR-D exceeds its untrained GPQA-Diamond score. We attribute this advantage to structural decoupling: the model acquires transferable derivation patterns rather than content-specific shortcuts. Training data coverage determines the ceiling of OOD performance; anchoring mitigation determines how much of that ceiling is preserved.

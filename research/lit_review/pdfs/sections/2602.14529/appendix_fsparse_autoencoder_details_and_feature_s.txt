@@ -1,0 +1,1233 @@
+Appendix F
+Sparse Autoencoder Details and Feature Selection Criteria
+
+This appendix supplements Section
+5.1 by providing implementation-level details and methodological clarifications for the sparse autoencoding analysis and feature selection procedures used in our study.
+Specifically, we present: (1)
+Sparse Autoencoder Architecture
+ (Appendix
+F.1
+), which details the post-hoc SAE design applied to the frozen bottleneck representations; (2)
+Training Details of the Sparse Autoencoder
+ (Appendix
+F.2
+), which describes the optimization objective, training setup, and hyperparameter configuration; and (3)
+Feature Selection and Behavioral Assignment Rules
+ (Appendix
+F.3
+), which formalizes the staged, ratio-based criteria used to assign sparse latent features to specific behavioral subsets.
+
+F.1
+Sparse Autoencoder Architecture
+
+This appendix subsection describes the complete architecture of the post-hoc Sparse Autoencoder (SAE), including: (I)
+Overall Architecture
+, which outlines the sequential composition of our SAE framework; (II)
+Bottleneck Representation
+, which clarifies the role of the pretrained JointAEClassifier bottleneck in our post-hoc SAE; (III)
+SAE Encoder
+, which details the transformation from the low-dimensional bottleneck representation to a high-dimensional sparse latent space; and (IV)
+SAE Decoder
+, which describes the mirrored decoding process used to reconstruct the bottleneck representation from the sparse latent code.
+
+We employ a post-hoc
+Sparse Autoencoder
+ (SAE) to analyze the internal structure of the bottleneck representations learned by the JointAEClassifier.
+The SAE is applied after the JointAEClassifier has fully converged, with all its parameters frozen, and serves solely as an interpretability module without affecting the original representations or classification behavior.
+
+(I) Overall Architecture.
+
+The post-hoc SAE framework consists of three sequential components:
+
+•
+
+Frozen Bottleneck Encoder
+: the encoder component of the trained JointAEClassifier, which maps an hidden representation
+
+𝐡
+​
+(
+x
+)
+\mathbf{h}(x)
+ to a bottleneck representation
+𝐳
+\mathbf{z}
+,
+
+•
+
+SAE Encoder
+: a sparse encoder that transforms the bottleneck representation
+𝐳
+\mathbf{z}
+ into a high-dimensional sparse latent code
+𝐳
+s
+\mathbf{z}_{\mathrm{s}}
+,
+
+•
+
+SAE Decoder
+: a decoder that reconstructs the bottleneck representation
+𝐳
+\mathbf{z}
+ from the sparse latent code
+𝐳
+s
+\mathbf{z}_{\mathrm{s}}
+, yielding the reconstructed representation
+𝐳
+^
+\hat{\mathbf{z}}
+.
+
+These components are composed as follows:
+
+𝐡
+​
+(
+x
+)
+→
+f
+enc
+AE
+𝐳
+→
+f
+enc
+SAE
+𝐳
+s
+→
+f
+dec
+SAE
+𝐳
+^
+,
+\mathbf{h}(x)\;\xrightarrow{f_{\mathrm{enc}}^{\mathrm{AE}}}\;\mathbf{z}\;\xrightarrow{f_{\mathrm{enc}}^{\mathrm{SAE}}}\;\mathbf{z}_{\mathrm{s}}\;\xrightarrow{f_{\mathrm{dec}}^{\mathrm{SAE}}}\;\hat{\mathbf{z}},
+
+(26)
+
+where
+f
+enc
+AE
+f_{\mathrm{enc}}^{\mathrm{AE}}
+ denotes the encoder of the pretrained JointAEClassifier, and
+
+f
+enc
+SAE
+f_{\mathrm{enc}}^{\mathrm{SAE}}
+ and
+f
+dec
+SAE
+f_{\mathrm{dec}}^{\mathrm{SAE}}
+ denote the encoder and decoder of the sparse autoencoder, respectively.
+The classifier head of the JointAEClassifier is not involved in the SAE computation.
+
+(II) Bottleneck Representation.
+
+The bottleneck representation
+𝐳
+\mathbf{z}
+ is produced by the encoder of the pretrained JointAEClassifier.
+It is a low-dimensional latent code that jointly supports reconstruction and behavioral classification, as described in Sec
+4.1 .
+In the post-hoc SAE framework,
+𝐳
+\mathbf{z}
+ serves as the input to the sparse autoencoder and constitutes the reconstruction target of the SAE.
+
+(III) SAE Encoder.
+
+The sparse autoencoder is implemented as a symmetric feed-forward architecture composed of an encoder and a decoder.
+The encoder
+f
+enc
+SAE
+f_{\mathrm{enc}}^{\mathrm{SAE}}
+ progressively transforms the bottleneck representation
+𝐳
+\mathbf{z}
+ into a high-dimensional sparse latent code
+𝐳
+s
+\mathbf{z}_{\mathrm{s}}
+ through a stack of linear layers with intermediate hidden dimensions:
+
+d
+z
+→
+d
+sae
+,
+enc
+(
+1 )
+→
+⋯
+→
+d
+sae
+,
+enc
+(
+R
+)
+→
+d
+s
+,
+d_{z}\rightarrow d_{\mathrm{sae,enc}}^{(1)}\rightarrow\cdots\rightarrow d_{\mathrm{sae,enc}}^{(R)}\rightarrow d_{\mathrm{s}},
+
+(27)
+
+where
+d
+sae
+,
+enc
+(
+r
+)
+d_{\mathrm{sae,enc}}^{(r)}
+ denotes the dimensionality of the
+r
+r
+-th hidden layer of the SAE encoder, and
+d
+s
+d_{\mathrm{s}}
+ denotes the dimensionality of the sparse latent space.
+Formally, letting
+𝐯
+(
+0 )
+=
+𝐳
+\mathbf{v}^{(0)}=\mathbf{z}
+, the encoder computes for
+r
+=
+1 ,
+…
+,
+R
++
+1 r=1,\ldots,R+1
+:
+
+𝐯
+(
+r
+)
+=
+{
+σ
+​
+(
+𝐖
+sae
+,
+enc
+(
+r
+)
+​
+𝐯
+(
+r
+−
+1 )
++
+𝐛
+sae
+,
+enc
+(
+r
+)
+)
+,
+r
+=
+1 ,
+…
+,
+R
+,
+𝐖
+sae
+,
+enc
+(
+R
++
+1 )
+​
+𝐯
+(
+R
+)
++
+𝐛
+sae
+,
+enc
+(
+R
++
+1 )
+,
+r
+=
+R
++
+1 ,
+\mathbf{v}^{(r)}=\begin{cases}\sigma\!\left(\mathbf{W}_{\mathrm{sae,enc}}^{(r)}\mathbf{v}^{(r-1)}+\mathbf{b}_{\mathrm{sae,enc}}^{(r)}\right),&r=1,\ldots,R,\\[6.0pt]
+\mathbf{W}_{\mathrm{sae,enc}}^{(R+1)}\mathbf{v}^{(R)}+\mathbf{b}_{\mathrm{sae,enc}}^{(R+1)},&r=R+1,\end{cases}
+
+(28)
+
+and the resulting sparse latent representation is given by
+𝐳
+s
+=
+𝐯
+(
+R
++
+1 )
+\mathbf{z}_{\mathrm{s}}=\mathbf{v}^{(R+1)}
+.
+Here,
+σ
+​
+(
+⋅
+)
+\sigma(\cdot)
+ denotes an element-wise nonlinear activation function (ReLU in our implementation),
+and
+𝐖
+sae
+,
+enc
+(
+r
+)
+\mathbf{W}_{\mathrm{sae,enc}}^{(r)}
+ and
+𝐛
+sae
+,
+enc
+(
+r
+)
+\mathbf{b}_{\mathrm{sae,enc}}^{(r)}
+ denote the weight matrix and bias vector
+of the
+r
+r
+-th SAE encoder layer, respectively.
+
+(IV) SAE Decoder.
+
+The decoder
+f
+dec
+SAE
+f_{\mathrm{dec}}^{\mathrm{SAE}}
+ mirrors the encoder architecture by mapping the sparse latent code
+
+𝐳
+s
+\mathbf{z}_{\mathrm{s}}
+ back to the bottleneck space through a sequence of fully connected layers with reversed
+hidden dimensions:
+
+d
+s
+→
+d
+sae
+,
+dec
+(
+R
+)
+→
+⋯
+→
+d
+sae
+,
+dec
+(
+1 )
+→
+d
+z
+,
+d_{\mathrm{s}}\rightarrow d_{\mathrm{sae,dec}}^{(R)}\rightarrow\cdots\rightarrow d_{\mathrm{sae,dec}}^{(1)}\rightarrow d_{z},
+
+(29)
+
+where
+d
+sae
+,
+dec
+(
+r
+)
+d_{\mathrm{sae,dec}}^{(r)}
+ denotes the hidden dimensionality of the decoder layer indexed by
+r
+r
+
+(applied in reversed order from
+R
+R
+ down to
+1 1
+).
+Conceptually, the decoding process is constructed as a mirror inverse of the encoding transformation:
+
+𝐯
+^
+(
+r
+)
+=
+{
+σ
+​
+(
+𝐖
+sae
+,
+dec
+(
+r
+)
+​
+𝐯
+^
+(
+r
+−
+1 )
++
+𝐛
+sae
+,
+dec
+(
+r
+)
+)
+,
+r
+=
+1 ,
+…
+,
+R
+,
+𝐖
+sae
+,
+dec
+(
+R
++
+1 )
+​
+𝐯
+^
+(
+R
+)
++
+𝐛
+sae
+,
+dec
+(
+R
++
+1 )
+,
+r
+=
+R
++
+1 ,
+\hat{\mathbf{v}}^{(r)}=\begin{cases}\sigma\!\left(\mathbf{W}_{\mathrm{sae,dec}}^{(r)}\hat{\mathbf{v}}^{(r-1)}+\mathbf{b}_{\mathrm{sae,dec}}^{(r)}\right),&r=1,\ldots,R,\\[6.0pt]
+\mathbf{W}_{\mathrm{sae,dec}}^{(R+1)}\hat{\mathbf{v}}^{(R)}+\mathbf{b}_{\mathrm{sae,dec}}^{(R+1)},&r=R+1,\end{cases}
+
+(30)
+
+where
+𝐯
+^
+(
+0 )
+=
+𝐳
+s
+\hat{\mathbf{v}}^{(0)}=\mathbf{z}_{\mathrm{s}}
+, and the reconstructed bottleneck representation is given by
+
+𝐳
+^
+=
+𝐯
+^
+(
+R
++
+1 )
+\hat{\mathbf{z}}=\hat{\mathbf{v}}^{(R+1)}
+.
+
+Table 13
+:
+Architectural configuration of the JointAEClassifier and the post-hoc Sparse Autoencoder (SAE).
+
+Component
+
+Configuration
+
+JointAEClassifier input dimension (
+d
+in
+d_{\mathrm{in}}
+)
+
+4096
+
+JointAEClassifier hidden dimension(s)
+
+2048
+
+Bottleneck latent dimension (
+d
+z
+d_{z}
+)
+
+16
+
+SAE input dimension
+
+16
+
+SAE hidden dimension(s)
+
+2048
+
+SAE sparse latent dimension (
+d
+s
+d_{\mathrm{s}}
+)
+
+32768 (
+8 ×
+4096 8\times 4096
+)
+
+Table
+13 summarizes the key architectural dimensions of the JointAEClassifier bottleneck and the post-hoc sparse autoencoder.
+
+F.2
+Training Details of the Sparse Autoencoder
+
+This appendix subsection describes the post-hoc training procedure of the Sparse Autoencoder (SAE), including: (I)
+Training Setup
+, which describes the frozen-bottleneck setting and data flow used during SAE training; (II)
+Objective Function
+, which formalizes the reconstruction and sparsity regularization terms optimized by the SAE; and (III)
+Implementation Details
+, which reports the optimizer configuration, hyperparameter choices, and training protocol.
+
+The SAE is trained in a post-hoc manner on top of a fully converged JointAEClassifier, with all parameters of the latter frozen throughout training.
+
+(I) Training Setup.
+
+Given an input hidden representation
+
+𝐡
+​
+(
+x
+)
+\mathbf{h}(x)
+, the corresponding bottleneck representation
+
+𝐳
+=
+f
+enc
+AE
+​
+(
+𝐡
+​
+(
+x
+)
+)
+\mathbf{z}=f_{\mathrm{enc}}^{\mathrm{AE}}(\mathbf{h}(x))
+
+(31)
+
+is first obtained using the encoder of the pretrained JointAEClassifier.
+This computation is performed without gradient propagation, ensuring that the bottleneck representations remain fixed during SAE training.
+
+The bottleneck representation
+𝐳
+\mathbf{z}
+ is then passed to the sparse autoencoder, which produces a sparse latent code
+𝐳
+s
+\mathbf{z}_{\mathrm{s}}
+ and a reconstructed bottleneck representation
+𝐳
+^
+\hat{\mathbf{z}}
+:
+
+𝐳
+s
+=
+f
+enc
+SAE
+​
+(
+𝐳
+)
+,
+𝐳
+^
+=
+f
+dec
+SAE
+​
+(
+𝐳
+s
+)
+.
+\mathbf{z}_{\mathrm{s}}=f_{\mathrm{enc}}^{\mathrm{SAE}}(\mathbf{z}),\qquad\hat{\mathbf{z}}=f_{\mathrm{dec}}^{\mathrm{SAE}}(\mathbf{z}_{\mathrm{s}}).
+
+(32)
+
+Only the parameters of
+f
+enc
+SAE
+f_{\mathrm{enc}}^{\mathrm{SAE}}
+ and
+f
+dec
+SAE
+f_{\mathrm{dec}}^{\mathrm{SAE}}
+ are optimized during training.
+
+(II) Objective Function.
+
+The sparse autoencoder is trained to reconstruct the original bottleneck representation while encouraging sparsity in the latent code.
+Specifically, the training objective is given by
+
+ℒ
+SAE
+=
+‖
+𝐳
+^
+−
+𝐳
+‖
+2 2
++
+β
+​
+‖
+𝐳
+s
+‖
+1 ,
+\mathcal{L}_{\mathrm{SAE}}=\|\hat{\mathbf{z}}-\mathbf{z}\|_{2}^{2}+\beta\|\mathbf{z}_{\mathrm{s}}\|_{1},
+
+(33)
+
+where the reconstruction term enforces fidelity to the original bottleneck representation, and the
+ℓ
+1 \ell_{1}
+ regularization term promotes sparsity in the latent representation.
+The hyperparameter
+β
+\beta
+ controls the trade-off between reconstruction accuracy and sparsity.
+
+(III) Implementation Details.
+
+We optimize the SAE encoder
+f
+enc
+SAE
+f_{\mathrm{enc}}^{\mathrm{SAE}}
+ and decoder
+f
+dec
+SAE
+f_{\mathrm{dec}}^{\mathrm{SAE}}
+ using the Adam optimizer, with a learning rate of
+5 ×
+10 −
+4 5\times 10^{-4}
+ and a weight decay of
+1 ×
+10 −
+5 1\times 10^{-5}
+.
+The sparsity regularization coefficient is set to
+β
+=
+10 −
+3 \beta=10^{-3}
+.
+Training is performed with a batch size of
+64 64
+ for a total of
+30 30
+ epochs.
+
+As a result, the learned sparse latent representations
+𝐳
+s
+\mathbf{z}_{\mathrm{s}}
+ reflect a decomposition of the pretrained bottleneck space, preserving the original model behavior while enabling fine-grained analysis of internal activation patterns across different behavioral cases.
+
+F.3
+Feature Selection and Behavioral Assignment Rules
+
+This appendix subsection provides a detailed formalization of the feature selection and behavioral assignment rules used in the sparse autoencoder analysis, clarifying how behavior-specific and shared SAE features are identified based on activation frequency patterns.
+Specifically, we cover: (I)
+Notation
+, which defines the behavioral subsets, datasets, and activation frequency measures; (II)
+Staged Exclusion
+, which introduces a sequential assignment strategy to ensure mutually exclusive feature grouping; (III, IV, V)
+Behavioral Specificity Rules
+, which unify the criteria for single-behavior, two-behavior shared, and three-behavior shared feature assignment based on ratio-based dominance; and (VI)
+Ratio-based Dominance vs. Hard Thresholding
+, which motivates the use of relative, margin-based comparisons over absolute activation thresholds for robust and interpretable feature discovery.
+
+(I) Notation.
+
+Same as Sec.
+5.1
+
+𝒮
+⊂
+{
+KC
+,
+KA
+,
+KI
+,
+hal
+}
+\mathcal{S}\subset\{\mathrm{KC},\mathrm{KA},\mathrm{KI},\mathrm{hal}\}
+
+(34)
+
+denotes the behavioral subset, and
+
+𝒟
+=
+{
+𝒟
+KC
+,
+𝒟
+KA
+,
+𝒟
+KI
+,
+𝒟
+hal
+}
+\mathcal{D}=\{\mathcal{D}_{\mathrm{KC}},\mathcal{D}_{\mathrm{KA}},\mathcal{D}_{\mathrm{KI}},\mathcal{D}_{\mathrm{hal}}\}
+
+(35)
+
+denotes the dataset, and
+
+𝒰
+=
+{
+u
+1 ,
+u
+2 ,
+…
+,
+u
+Q
+}
+,
+Q
+=
+32768 \mathcal{U}=\{u_{1},u_{2},\ldots,u_{Q}\},\qquad Q=32768
+
+(36)
+
+denotes the set of sparse SAE features.
+For each feature
+u
+∈
+𝒰
+u\in\mathcal{U}
+ and dataset
+𝒟
+c
+\mathcal{D}_{c}
+ (the subset of
+𝒟
+\mathcal{D}
+ corresponding to behavior
+c
+c
+), we define its activation frequency as
+
+ϕ
+​
+(
+u
+,
+c
+)
+∈
+[0,1]
+\phi(u,c)\in[0,1]
+
+(37)
+
+representing the activation frequency of feature
+u
+u
+ on dataset
+𝒟
+c
+\mathcal{D}_{c}
+.
+We also introduce a small constant
+ε
+>
+0 \varepsilon>0
+ to avoid division by zero, and three multiplicative margin parameters
+
+a
+1 ,
+a
+2 ,
+a
+3 >
+1 a_{1},a_{2},a_{3}>1
+, corresponding to different levels of behavioral specificity. In our implementation, we set
+ε
+=
+10 −
+8 \varepsilon=10^{-8}
+ and choose
+a
+1 =
+2.0 a_{1}=2.0
+,
+a
+2 =
+1.5 a_{2}=1.5
+,
+a
+3 =
+2.0 a_{3}=2.0
+.
+
+(II) Staged exclusion.
+
+We adopt a staged exclusion strategy to ensure that each feature is assigned to at most one behavioral subset.
+Let
+𝒰
+1 :
+k
+\mathcal{U}_{1:k}
+ denote the union of features that have already been assigned in earlier stages up to stage
+k
+k
+.
+At stage
+k
++
+1 k+1
+, candidate features are restricted to the remaining set
+𝒰
+∖
+𝒰
+1 :
+k
+\mathcal{U}\setminus\mathcal{U}_{1:k}
+.
+This mechanism guarantees a mutually exclusive assignment: each feature
+u
+∈
+𝒰
+u\in\mathcal{U}
+ can be selected by at most one rule and therefore belongs to a single final feature group.
+
+(III) Single-behavior specificity.
+
+A feature is considered specific to behavior subset
+𝒮
+\mathcal{S}
+ (containing a single behavior
+c
+c
+) if its activation frequency in
+c
+c
+
+dominates all remaining behaviors by a multiplicative margin:
+
+u
+∈
+𝒮
+⟺
+ϕ
+​
+(
+u
+,
+c
+)
+max
+c
+′
+∈
+𝒮
+∖
+{
+c
+}
+⁡
+ϕ
+​
+(
+u
+,
+c
+′
+)
++
+ε
+≥
+a
+1 ,
+u
+∈
+𝒰
+∖
+𝒰
+1 :
+0 .
+u\in\mathcal{S}\quad\Longleftrightarrow\quad\frac{\phi(u,c)}{\max\limits_{c^{\prime}\in\mathcal{S}\setminus\{c\}}\phi(u,c^{\prime})+\varepsilon}\;\geq\;a_{1},\qquad u\in\mathcal{U}\setminus\mathcal{U}_{1:0}.
+
+(38)
+
+This condition assigns a feature to a behavior when its activation is consistently stronger than that observed in all other behavioral cases.
+All features assigned by this rule are added to
+𝒰
+1 :
+1 \mathcal{U}_{1:1}
+ and excluded from subsequent stages.
+
+(IV) Two-behavior shared specificity.
+
+For any behavior subset
+𝒮
+\mathcal{S}
+ (containing two behaviors
+c
+1 c_{1}
+ and
+c
+2 c_{2}
+ with
+c
+1 ≠
+c
+2 c_{1}\neq c_{2}
+), a feature is assigned to the corresponding
+two-behavior subset if the weaker activation among the two dominates the remaining behaviors:
+
+u
+∈
+𝒮
+⟺
+min
+⁡
+{
+ϕ
+​
+(
+u
+,
+c
+1 )
+,
+ϕ
+​
+(
+u
+,
+c
+2 )
+}
+max
+c
+′
+∈
+𝒮
+∖
+{
+c
+1 ,
+c
+2 }
+⁡
+ϕ
+​
+(
+u
+,
+c
+′
+)
++
+ε
+≥
+a
+2 ,
+u
+∈
+𝒰
+∖
+𝒰
+1 :
+1 .
+u\in\mathcal{S}\quad\Longleftrightarrow\quad\frac{\min\{\phi(u,c_{1}),\,\phi(u,c_{2})\}}{\max\limits_{c^{\prime}\in\mathcal{S}\setminus\{c_{1},c_{2}\}}\phi(u,c^{\prime})+\varepsilon}\;\geq\;a_{2},\qquad u\in\mathcal{U}\setminus\mathcal{U}_{1:1}.
+
+(39)
+
+This criterion assigns a feature to a shared behavioral subset when its activation pattern exhibits clear relative dominance over the remaining behaviors.
+All features assigned by this rule are added to
+𝒰
+1 :
+2 \mathcal{U}_{1:2}
+ and excluded from subsequent stages.
+
+(V) Three-behavior shared specificity.
+
+For any three-behavior subset
+𝒮
+\mathcal{S}
+ (containing three behaviors
+c
+1 c_{1}
+,
+c
+2 c_{2}
+, and
+c
+3 c_{3}
+ with
+c
+1 c_{1}
+,
+c
+2 c_{2}
+, and
+c
+3 c_{3}
+ all distinct), a feature is assigned to the corresponding
+three-behavior subset if the weaker activation among the three dominates the remaining one behavior:
+
+u
+∈
+𝒮
+⟺
+min
+⁡
+{
+ϕ
+​
+(
+u
+,
+c
+1 )
+,
+ϕ
+​
+(
+u
+,
+c
+2 )
+,
+ϕ
+​
+(
+u
+,
+c
+3 )
+}
+max
+c
+′
+∈
+𝒮
+∖
+{
+c
+1 ,
+c
+2 ,
+c
+3 }
+⁡
+ϕ
+​
+(
+u
+,
+c
+′
+)
++
+ε
+≥
+a
+3 ,
+u
+∈
+𝒰
+∖
+𝒰
+1 :
+2 .
+u\in\mathcal{S}\quad\Longleftrightarrow\quad\frac{\min\{\phi(u,c_{1}),\,\phi(u,c_{2}),\,\phi(u,c_{3})\}}{\max\limits_{c^{\prime}\in\mathcal{S}\setminus\{c_{1},c_{2},c_{3}\}}\phi(u,c^{\prime})+\varepsilon}\;\geq\;a_{3},\qquad u\in\mathcal{U}\setminus\mathcal{U}_{1:2}.
+
+(40)
+
+This criterion captures features that are jointly active across three behavioral cases while being relatively suppressed in the remaining one.
+All features assigned by this rule are added to
+𝒰
+1 :
+3 \mathcal{U}_{1:3}
+.
+
+(VI) Why ratio-based dominance instead of hard thresholding.
+
+An alternative feature selection strategy relies on hard activation thresholds to determine whether an SAE feature is activated or not.
+Specifically, for a given behavior
+c
+∈
+𝒮
+c\in\mathcal{S}
+, a feature is regarded as
+activated
+ if its activation frequency
+ϕ
+​
+(
+u
+,
+c
+)
+\phi(u,c)
+ all exceed a predefined activation threshold
+θ
+act
+\theta_{\mathrm{act}}
+, and as
+inactive
+ if
+ϕ
+​
+(
+u
+,
+c
+)
+\phi(u,c)
+ all fall below a corresponding non-activation threshold
+θ
+inact
+\theta_{\mathrm{inact}}
+.
+However, we find that such hard-threshold-based rules are ill-suited for analyzing sparse autoencoder representations in our setting:
+
+Obs.
+ Under hard activation thresholding, no SAE feature satisfies
+any
+ of the criteria for single-behavior specificity, two-behavior shared specificity, or three-behavior shared specificity. In particular, for some behavioral categories (e.g.,
+KC
+\mathrm{KC}
+), multiple SAE features exhibit
+activation frequencies that are consistently higher than those in the other three categories
+(
+KA
+\mathrm{KA}
+,
+KI
+\mathrm{KI}
+,
+hal
+\mathrm{hal}
+),
+yet all remain below the absolute activation threshold
+θ
+act
+\theta_{\mathrm{act}}
+.
+
+This indicates that SAE features do not necessarily act as single, self-contained indicators of a behavioral category.
+Instead, behavioral evidence may be distributed across multiple sparse features, each of which may exhibit
+moderate but consistently higher activation in one behavior relative to others.
+
+In contrast, the ratio-based dominance criteria adopted in our work focus on
+relative activation patterns
+
+across behaviors rather than absolute activation magnitudes.
+By comparing activation frequencies using multiplicative margins, our approach captures features that
+are consistently more active in specific behavioral subsets, even when their absolute activation levels
+are moderate.
+This design choice enables
+the identification of both behavior-specific and shared feature groups that would otherwise be missed
+by hard-threshold-based methods

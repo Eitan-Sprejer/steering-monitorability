@@ -1,0 +1,122 @@
+6 Systematic differences in sentence-sentence relationships
+
+The case study demonstrates that pivotal moments within a CoT – e.g., where a conclusion is posed, where a decision is made about the next steps to answering a question, or where a discrepancy with earlier information is identified – are sensitive to historic information in the CoT and/or exert impacts far downstream. We next investigated how causal graphs may shed light on questions about reasoning in LLMs generally. Specifically, we ask: How many examining sentence-sentence links shed light on model confidence during reasoning? Relatedly, why do some problem domains like mathematics display stronger uplift in reasoning compared to non-reasoning models?
+
+We hypothesize that strong linkages between nearby sentences reflect a coherent logical flow and well-formed plan, so each sentence causes the next, whereas distant linkages reflect uncertainty and backtracking. Despite occasional long-range connections, we further hypothesize that successful mathematical CoTs are specifically characterized by strong close links between sequential sentences, whereby planning statements sharply structure the CoT. Domains related to mathematics may uniquely lend themselves to such firmly-structured reasoning, whereas CoTs for other topics (e.g., history or biology) may solve problems principally by scanning a wide latent space in a less structured fashion.
+
+6.1 Methods
+
+We pivoted to analyzing MMLU problems
+(Hendrycks et al.,
+2020 )
+, so that we could contrast problem domains. We also switched to Qwen3-30b-a3b, so that we could leverage a serverless LLM provider that outputs token logits, which allowed scaling up our analysis to thousands of CoTs. We ran Qwen3-30b-a3b in non-reasoning mode on all 15,638 MMLU questions to identify challenging problems where non-reasoning accuracy is under 50% (per answer logits). This corresponds to 3,651 problems, and for 2,492 of these questions, the model answers correctly when using reasoning at least once across ten passes. We computed each correct CoT’s causal graph (
+M
+s
+​
+e
+​
+n
+​
+t
+​
+e
+​
+n
+​
+c
+​
+e
+​
+s
+M_{sentences}
+ = 90.1).
+
+We compared graphs on the strength of their causal links at different distances between sentences. We specifically computed the mean attention-suppression effect at distance
+k
+k
+ for each graph (
+m
+×
+m
+m\times m
+ sentences) for all
+k
+≤
+m
+2 k\leq\frac{m}{2}
+. This corresponds to the mean of a matrix’s
+k
+k
+-th subdiagonal. We consider subdiagonals only up to
+m
+2 \frac{m}{2}
+ to reduce noise by ensuring that the mean is computed among an adequate number of elements (e.g., the
+m
+m
+-th subdiagonal would be just the single bottom-leftmost element).
+
+6.2 Results
+
+The distance of causal effects tracks question difficulty. Computing correlations within-subject, we find that questions with high average accuracy elicit CoTs with stronger close-range links and weaker long-range links (Figure
+7 A). In addition, subjects where average accuracy is high overall tend to produce CoTs with stronger close links (
+r
+=
+.44
+,
+p
+<
+.001
+r=.44,p<.001
+; Figure
+7 B) and weaker long links (
+r
+=
+−
+.54
+,
+p
+<
+.001
+r=-.54,p<.001
+ Figure
+7 C). The strongest levels of accuracy were seen in problems requiring mathematical thinking (e.g., mathematics & physics). As hypothesized, these areas also yielded CoTs with stronger close-range connections and weaker long-range connections (two-sample t-test
+|
+t
+|
+​
+s
+>
+10 ,
+p
+​
+s
+<
+.001
+|t|s>10,ps<.001
+; Figure
+7 D). Although these analyses do not model
+plan generation
+ and
+uncertainty management
+ (thought anchors) sentences directly, the present findings speak to their potential structural roles and overall shed light on the nature of successful reasoning.
+
+Figure 7:
+A.
+ For each distance
+k
+k
+, we computed the correlation between a question’s average
+k
+k
+-distance causal effect in one CoT and the question’s mean reasoning accuracy across ten CoTs.
+B. & C.
+ Scatterplot shows each subject’s average close-range (
+k
+k
+ = 1-2) and long-range (
+k
+k
+ = 16-64) was plotted against its average reasoning accuracy.
+D.
+
+Box-plots showing the spread of average close-range and long-range causal effects for different question domains; each point represents one CoT, and black circles represent means.

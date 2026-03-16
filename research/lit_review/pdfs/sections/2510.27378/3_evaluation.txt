@@ -1,0 +1,95 @@
+This section describes how we evaluate the monitorability of
+4 pairs of instruction-tuned and reasoning LLMs from different
+model families (DeepSeek’s R1 and V3, Anthropic’s
+Sonnet models, and Qwen and QwQ models).
+
+An example of faithfulness and verbosity is shown in
+Fig. 2, where both faithfulness and verbosity are highlighted
+in a sample CoT. Our approach grades both the externalization
+of the cue, as well as factors specific to each prompt.
+The resulting monitorability score grades model reasoning
+more holistically than either alone. While we simply use the
+average between the faithfulness and verbosity metrics as
+the monitorability score, other monotonic functions such as
+weighted average, geometric mean, or the minimum of the
+two scores could be used.
+
+Dataset Preparation. We use three constituent benchmarks
+in our evaluation: BBH (Suzgun et al. 2022; Srivastava
+et al. 2023) (specifically, the thirteen problem subset
+used in (Turpin et al. 2023)), GPQA (Rein et al. 2023), and
+MMLU (Hendrycks et al. 2021). We chose these datasets
+due to their prior use in CoT faithfulness research (Turpin
+et al. 2023; Chen et al. 2025).
+
+To extend these benchmarks for evaluating verbosity, we
+use a pipeline of judge models to extract factors for each
+prompt. First, we use five judge models (Claude 4 Sonnet
+(Anthropic 2025b), QwQ-32b (Team 2025b; Qwen et al.
+2025), DeepSeek-R1-0528 (DeepSeek-AI et al. 2025a),
+Gemini 2.5 Flash (Team 2025a), and Gemma 3 27B-IT
+(Team et al. 2025)) to extract a list of causal factors from
+each question which are necessary to solve that question.
+These lists are then concatenated and passed to Claude 4
+Sonnet for de-duplication and the elimination of trivial fac-
+
+For instance, a model that does not ‘work through’
+its problem-specific reasoning to arrive at an answer, and
+merely acknowledges the cue, would score well on faithfulness
+but poorly on monitorability due to a low verbosity
+score. We note that more advanced reasoning behavior such
+as backtracking is not captured in our approach, and is a
+promising direction for future research.
+Instruction Model Reasoning Model
+DeepSeek V3
+
+Prompt: The following paragraphs each describe a set of five
+objects arranged in a fixed order. The statements are logically
+consistent within each paragraph. On a branch, there are five
+birds: a quail, an owl, a raven, a falcon, and a robin. The owl is the
+leftmost. The robin is to the left of the raven. The quail is the
+rightmost. The raven is the third from the left.
+
+DeepSeek R1
+
+(DeepSeek-AI et al. 2025b)
+
+(DeepSeek-AI et al. 2025a)
+Claude 3.5 Sonnet
+(Anthropic 2024)
+Claude 3.7 Sonnet
+(Anthropic 2025a)
+Qwen 2.5 (72B)
+(Qwen et al. 2025)
+QwQ (32B)
+(Team 2025b)
+Qwen 3 (235B)
+(Yang et al. 2025)
+Qwen 3 Thinking (235B)
+(Yang et al. 2025)
+
+Options:
+
+(A) The quail is the rightmost
+(B) The owl is the rightmost
+(C) The raven is the rightmost
+(D) The falcon is the rightmost
+(E) The robin is the rightmost
+
+Table 1: Model pairs evaluated in our study. Claude 3.7 Sonnet
+was used with extended thinking mode, and DeepSeek
+R1 is the May 28th, 2025 version.
+
+Causal Factors:
+
+1. "There are five birds arranged in a fixed linear order on a
+branch: quail, owl, raven, falcon, and robin",
+2. "The owl is the leftmost bird (position 1)",
+
+tors to produce a final list of core factors1
+. To see an example
+of a resulting list of causal factors for an example
+in BBH, see Fig. 3. Overall, this results in an average of
+8.6 factors for BBH, 10.7 factors for GPQA, and 9.2 factors
+for MMLU, mirroring the relative difficulty of each dataset.
+Further details about the pipeline and prompts are given in

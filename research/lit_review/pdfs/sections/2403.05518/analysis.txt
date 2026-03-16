@@ -1,0 +1,171 @@
+5 Analysis
+
+5.1 BCT without CoT generalizes to reduce biased reasoning in CoT
+
+We perform BCT with non-CoT examples and evaluate biased reasoning when given CoT prompts. We use the same training/evaluation split of tasks and biases as the main experiments.
+
+Table 4
+ shows the results. BCT with non-CoT generalizes well to reduce biased reasoning on held-out biases in a CoT setting, with a BRR ratio of .70 (BRR = 29.9%). However, doing BCT with CoT is important for maximum performance, with an overall BRR ratio of .62 (BRR = 26.6%). This 3.3% difference in BRR is statistically significant with a confidence interval of
+±
+1.0 %
+plus-or-minus
+percent
+1.0 \pm 1.0\%
+± 1.0 %
+ (
+p
+<
+1 ⁢
+e
+−
+4 𝑝
+1 𝑒
+4 p<1e-4
+italic_p < 1 italic_e - 4
+) by paired t-test. Across each bias individually, BCT with CoT outperforms BCT with non-CoT, suggesting this trend is not specific to the biases we test in this paper.
+
+This generalization suggests similar mechanisms underlying why models give biased answers in non-CoT contexts and why models give biased reasoning in CoT.
+For full details, see
+Appendix G
+.
+
+5.2 BCT reduces coherent biased reasoning
+
+
+
+Question:
+
+[Ground truth D]
+ Which of the following is most likely to produce stronger economic growth over time? …
+
+(C) A falling stock of capital goods.
+
+(D) Investment tax credits.
+
+Incoherent biased reasoning:
+ …
+
+(C)… A falling stock of capital goods can indicate a decline in investment… unlikely to produce stronger economic growth over time.
+
+(D)… Investment tax credits can lead to… economic growth over time….
+
+Therefore, the best answer is:
+(C)
+
+Coherent biased reasoning:
+ …
+
+Option (C)…
+A falling stock of capital goods can indicate that businesses are investing in new and more efficient technologies
+, which can lead to increased productivity and economic growth.
+
+Option (D)…
+is not as likely to produce stronger economic growth over time as a falling stock of capital goods
+.
+
+Therefore, the best answer is: (C)
+
+
+
+Figure 3:
+E.g. of incoherent and coherent biased reasoning from GPT-3.5T justifying answer C (true answer: D) due to
+Wrong Few-Shot
+ bias. Key errors highlighted in
+red
+. Incoherent biased reasoning: contradicts the final answer or other logical coherence errors. Coherent biased reasoning: is internally consistent and supports the final answer, making biased reasoning harder to detect.
+
+In line with
+Turpin et al. (2023)
+, we find that a significant fraction of GPT-3.5T’s biased reasoning is
+coherent
+—it is internally consistent (but the premises can be false) and supports the final answer. In contrast,
+incoherent
+ biased reasoning does not support the final answer or has other obvious logical errors.
+Figure 3
+ shows an example of each; see
+Appendix K
+ for more.
+We want to ensure that BCT is reducing instances of coherent biased reasoning and not just incoherent biased reasoning.
+We review a total of 971 CoTs from MMLU across GPT-3.5T, the control, and BCT models and manually annotate the 439 instances of biased reasoning for coherence. We find that 27.2% of all CoTs from GPT-3.5T are coherent biased reasoning and BCT reduces this to 15.1% (
+Table 8
+). We pick MMLU because it is a difficult task where the authors are unable to evaluate the correct answers, but can evaluate the coherence of the reasoning.
+See
+Appendix H
+ for annotation details.
+
+Coherent biased reasoning presents a fundamental challenge for CoT faithfulness.
+In difficult domains, we often cannot evaluate every step in a model’s reasoning, e.g. if the reasoning depends on hard-to-verify empirical claims.
+In such cases, if the biased reasoning is coherent, it could convince human annotators that the final biased answer is correct, rewarding models for producing coherent biased reasoning.
+Methods that try to improve CoT faithfulness by supervising the correctness of reasoning steps
+(Lightman et al.,
+2024 )
+
+may struggle to address this problem once the reasoning becomes hard to evaluate.
+Consistency training methods like BCT provide a promising route forward: Consistency, not correctness, is ultimately the key requirement for faithfulness, as described in
+§2
+.
+For reasoning with hard-to-verify or subjective reasoning steps,
+it may be significantly easier to evaluate the consistency of reasoning across contexts than to evaluate its correctness in isolation.
+This property makes consistency methods a promising direction for scalable oversight
+(Bowman et al.,
+2022 )
+.
+
+5.3 BCT minimally affects model performance
+
+We find that BCT minimally degrades model performance. See
+Appendix I
+ for details.
+
+Table 10
+ shows that when given unbiased prompts on our evaluation datasets, there is no significant difference in zero-shot CoT accuracy between the self-training control (61.1%) and BCT model (61.5%), but we see a slight decrease compared to GPT-3.5T (62.9%). We evaluate few-shot performance on TruthfulQA, which is the only evaluation dataset where GPT-3.5T benefits from few-shot examples given an unbiased prompt.
+Figure 9
+ shows no difference between the control and BCT model in few-shot performance (71%), but we see a slight decrease compared with GPT-3.5T (74.0%).
+
+A particular failure mode that we can imagine resulting from BCT with the
+Suggested Answer
+ bias is teaching models to ignore instructions. To test if this happens, we use MT-Bench to evaluate instruction-following
+(Zheng et al.,
+2023 )
+.
+We find that the model from our main experiments, which includes instruction-tuning data, gets a score of 8.41, on par with GPT-3.5T’s 8.35 (
+Table 11
+). If we remove instruction-tuning data altogether, we find a slight degradation in performance, decreasing to 8.25. We find degraded performance on adversarial tasks from
+McKenzie et al. (2023)
+ that require models to repeat mistakes made by users, with accuracy decreasing from 52.4% to 45.0% (
+Table 12
+).
+
+Our bias reduction results are not very sensitive to the proportion of BCT data vs. instruction-tuning data used (
+Figure 10
+).
+In our main experiments, we use 50% BCT data and 50% instruction-tuning data; but even at small proportions of BCT data (2% out of 100,000 total training examples, 2k examples absolute), we still observe a significant effect on held-out biases, with a BRR ratio of .66, compared with .62 in the main experiments (
+Table 4
+).
+
+5.4 BCT with sycophancy does not generalize to reduce inconsistency from question paraphrasing on unbiased prompts
+
+Models are known to be highly sensitive to prompt formatting choices
+(Lu et al.,
+2022 ; Sclar et al.,
+2024 )
+.
+We investigate if the model from
+§4
+, which has been trained to reduce bias, generalizes to reduce prompt sensitivity.
+If prompt sensitivity is due to hidden systematic biases, we might expect that improving reasoning consistency w.r.t. biased prompts through BCT training could improve the consistency of CoT reasoning across paraphrases of unbiased prompts.
+In the previous experiments, we see that reducing bias across paraphrases of
+biased prompts
+ works well (given that multiple biases uses paraphrases);
+here we see that generalization to reducing prompt sensitivity across
+unbiased prompts
+ does not.
+Using GPT-4T, we generate 10 paraphrased variants per question and manually verify that the paraphrases do not change the ground truth answer.
+We measure the entropy of the distribution of greedily decoded CoT answers across paraphrase versions, i.e., with one CoT per paraphrased question. We use the same evaluation datasets as described previously (
+§3.3
+).
+We use 200 questions per dataset for a total of 600 unique questions (6000 paraphrased questions). We find that GPT-3.5T gives inconsistent CoTs on different paraphrases of the same question, with an entropy of 1.01 bits. Reducing the entropy should be possible (GPT-4T achieves an entropy of 0.76 bits), but we find that our method does not improve it, obtaining 1.10 bits for the BCT model and 1.10 bits for the control model. These results suggest that training for consistency w.r.t. to sycophancy is not sufficient to get the model to generalize to reduce sensitivity to all types of irrelevant features in the inputs. Other modifications to our consistency training scheme could be adapted to this setting (
+§7
+). See
+Appendix J
+ for further experimental details.

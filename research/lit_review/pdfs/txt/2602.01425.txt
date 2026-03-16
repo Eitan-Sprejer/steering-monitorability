@@ -1,0 +1,1537 @@
+Building Better Deception Probes Using Targeted Instruction Pairs
+
+Vikram Natarajan * 1 Devina Jain * 1 Shivam Arora * 1 Satvik Golechha 2 Joseph Bloom 2
+
+Abstract
+Linear probes are a promising approach for monitoring
+AI systems for deceptive behaviour. Previous
+work has shown that a linear classifier trained
+on a contrastive instruction pair and a simple
+dataset can achieve good performance. However,
+these probes exhibit notable failures even
+in straightforward scenarios, including spurious
+correlations and false positives on non-deceptive
+responses. In this paper, we identify the importance
+of the instruction pair used during training.
+Furthermore, we show that targeting specific deceptive
+behaviors through a human-interpretable
+taxonomy of deception leads to improved results
+on evaluation datasets. Our findings reveal that instruction
+pairs capture deceptive intent rather than
+content-specific patterns, explaining why prompt
+choice dominates probe performance (70.6% of
+variance). Given the heterogeneity of deception
+types across datasets, we conclude that organizations
+should design specialized probes targeting
+their specific threat models rather than seeking a
+universal deception detector.
+
+capable of detecting when a model engages in deceptive
+output. Traditional black-box approaches, including the use
+of trained classifiers or frontier models as judges, provide
+an obvious solution. Chain-of-thought monitoring is widely
+used to monitor model misbehaviour including deception
+(Korbak et al., 2025).
+
+arXiv:2602.01425v1 [cs.AI] 1 Feb 2026
+
+However, recent work indicates that chain-of-thought traces
+are not always faithful indicators of a model’s internal reasoning
+process. Models can perform reasoning implicitly
+while generating innocuous-looking chain-of-thought outputs
+(Arcuschin et al., 2025; Hao et al., 2024). In addition
+to black-box monitoring being expensive, the increasing
+subtlety of deception in advanced models means that model
+outputs alone cannot be relied upon for effective monitoring,
+as models may learn to strategically generate innocuoussounding
+text. Because of these limitations, there has been
+interest in exploring white-box methods that inspect model
+activations.
+
+Early work has included training classifiers on internal activations
+to distinguish between true and false statements
+(Azaria & Mitchell, 2023; Burns et al., 2023; Zou et al.,
+2025), but these efforts have largely focused on evaluating
+these techniques on factual inaccuracies rather than strategic
+deception. Goldowsky-Dill et al. (2025) addressed some of
+these limitations with instruction-pair probes to capture a
+model’s intention to deceive. They trained a linear classifier
+on model activations from simple facts in the Zou et al.
+(2025) instruction pairs dataset, comparing responses under
+honesty versus dishonesty instructions. This approach generalized
+surprisingly well to detecting strategic deception
+in settings such as concealing insider trading and deliberately
+underperforming on safety evaluations. However, the
+probe suffered from aggregation errors and spurious correlations,
+sometimes firing on completely honest responses. Despite
+their effectiveness, probes learn spurious correlations
+with their training datasets. Levinstein & Herrmann (2024)
+showed that probes from Azaria & Mitchell (2023) even
+misclassified negations of original statements from training
+dataset. Further empirical evidence from Levy (2024)
+showed that classifiers based on Zou et al. (2025) had high
+sensitivity but low specificity, and were better characterized
+as differentiating between fact-based retrieval and other
+tasks (such as writing science fiction), spanning a much
+broader surface area than intended.
+
+1. Introduction
+
+Deception in large language models has emerged as a central
+concern in AI safety. Models now possess both the
+capability and propensity to engage in deceptive behaviours
+when placed in situations that provide incentives to do so.
+Empirical studies have demonstrated that such behaviours
+are increasingly prevalent in the latest generation of frontier
+models: LLMs have been observed to misrepresent information,
+obscure intentions, or act strategically under specific
+contextual pressures (Schoen et al., 2025; Chowdhury et al.,
+2025; Park et al., 2024). As LLMs are increasingly deployed
+in a wide variety of domains including high-stakes contexts,
+there is an urgent need for reliable monitoring mechanisms
+
+*Equal contribution 1LASR Labs 2UK AI Security
+Institute. Correspondence to: Vikram
+Natarajan <vikram.s.natarajan@gmail.com>, Devina
+Jain <devina_jain@berkeley.edu>, Shivam Arora
+<shivam.iiserm@gmail.com>.
+
+Preprint. February 3, 2026.
+
+1
+Building Better Deception Probes Using Targeted Instruction Pairs
+
+model-generated responses that mimic more sophisticated
+scenarios.
+
+Our initial experiments revealed that instruction-pair probes
+using the default prompts from (Goldowsky-Dill et al., 2025)
+perform poorly across diverse deception datasets such as
+MASK. For example, the baseline probe achieved only
+0.374 AUC on MASK known facts, indicating substantial
+room for improvement. Analysis of the evaluation datasets
+uncovered substantial heterogeneity in the types of deception
+across different benchmarks. This diversity in deception
+characteristics presents a fundamental challenge for
+developing a single universal deception probe. Moreover,
+for deployment purposes, labs would prefer to distinguish
+probes that detect genuinely concerning behaviours from
+those that merely flag benign role-playing scenarios.
+
+2.2. Instruction-pair probes
+
+Goldowsky-Dill et al. (2025) addressed some of these limitations
+with instruction-pair probes, shifting focus from
+the lie itself to the intent to lie. They trained a linear classifier
+on model activations from simple facts in the Zou
+et al. (2025) instruction pairs dataset, comparing responses
+under honesty versus dishonesty instructions. The probe
+performed well with AUROCs greater than 0.96 when tested
+on datasets such as sandbagging and insider trading.
+
+However, these probes exhibited notable limitations. In
+follow-up work, Parrack et al. (2025) benchmarked the performance
+of instruction-pair probes combined with blackbox
+monitors versus black-box monitors alone, and evaluated
+different aggregation strategies. They confirmed significant
+limitations of instruction-pair probes, including spurious
+correlations demonstrated through a deception dilution
+dataset. These probes often flagged innocuous content such
+as fiction writing or role-playing as deceptive, suggesting
+they may be detecting broader patterns (e.g., fact-based vs.
+creative reasoning) rather than strategic deception specifically.1.1.
+Our contribution
+
+We present three key contributions to deception detection
+using linear probes:
+
+System prompts dominate probe performance. Through
+analysis of 2000 probes across varied configurations, we
+demonstrate that system prompt design explains 70.6% of
+performance variance, substantially exceeding the impact of
+training data, layer selection, or token aggregation strategy.
+This finding justifies our focus on prompt-based approaches
+to improving deception detection.
+
+Taxonomy-based prompts substantially improve detection.
+By developing instruction pairs aligned with a humaninterpretable
+taxonomy of deception (Druckman & Bjork,
+1991), we achieve a mean improvement of 0.108 AUC
+(20.5% relative gain) across ten diverse deception datasets.
+Notably, every dataset had at least one taxonomy-based
+probe that outperformed the baseline approach.
+
+2.3. Benchmarks
+
+Benchmarking deception in large language models remains
+a difficult challenge. Several recent works have attempted
+to construct datasets that capture different forms of deceptive
+behaviour, such as factual lying, instruction misrepresentation,
+strategic omission, or self-serving reasoning.
+Goldowsky-Dill et al. (2025) collected and constructed multiple
+datasets including AI liar, Insider trading, Sandbagging,
+and Role-playing scenarios, among others.
+
+Different deception types require different probes. We
+identify which prompt types work best for which deception
+scenarios, and demonstrate through qualitative analysis
+that probes detect distinct semantic properties. This heterogeneity
+challenges the assumption of a universal deception
+detector and suggests deployment strategies should use targeted
+or ensemble approaches.
+
+MASK: The MASK dataset (Ren et al., 2025) provides a
+rigorous benchmark for evaluating honesty in large language
+models by measuring whether models remain truthful when
+incentivized to lie. It contains human-labeled examples
+across six distinct archetypes, each consisting of a proposition,
+ground truth, pressure prompt designed to elicit lying,
+and belief elicitation prompt to establish the model’s actual
+knowledge.
+
+2. Related work
+
+2.1. White-box methods
+
+White-box methods for deception detection leverage access
+to a model’s activation space to identify when language
+models produce false or deceptive outputs. Several studies
+have focused on training classifiers on the model’s internal
+activations (Azaria & Mitchell, 2023; Burns et al., 2023;
+Zou et al., 2025; Marks & Tegmark, 2023). Although effective
+at classification, early white-box techniques for detecting
+deception primarily focused on off-policy fact-based
+evaluation datasets like TruthfulQA, rather than targeting
+
+Liar’s Bench: Kretschmar et al. (2025) built a large benchmark
+for evaluating deception detection in AI assistants. It
+contains examples of deceptive and honest model outputs
+across six scenarios, capturing diverse types of deception
+such as strategic omission, misrepresentation, and evasion
+through irrelevant truths.
+
+2
+Building Better Deception Probes Using Targeted Instruction Pairs
+
+3. Methodology
+
+dataset contains approximately 200 facts. Dataset categories
+are described in Appendix B. Following the ANOVA analysis
+(Section 4.1), which found that varying the domain and
+structure of training facts (e.g., simple statements vs. if-else
+constructions) explained only 2.5% of probe performance
+variance, we focused all subsequent experiments on the
+Azaria-Mitchell dataset. This is consistent with our broader
+finding that probes detect intent rather than content-specific
+patterns.
+
+3.1. Instruction-Pair Probe
+
+We build upon the instruction-pair probes introduced by
+(Goldowsky-Dill et al., 2025). The approach constructs contrastive
+pairs: each training example uses the same factual
+statement as the model response, but pairs it with either
+an honest or dishonest system prompt. The response is
+token-forced (off-policy), meaning the factual statement is
+fed directly into the chat template as the model’s response
+rather than being generated by the model.
+
+Evaluation data. Probes are evaluated on ten richer deception
+datasets drawn from Goldowsky-Dill et al. (2025) and
+Liar’s Bench (Kretschmar et al., 2025), including MASK
+(Ren et al., 2025) and others. These datasets contain onpolicy
+model responses to scenarios involving various deception
+types, and are entirely separate from the training
+data.
+
+For each response token, we extract the residual stream values
+at the layer of interest—these activation vectors directly
+become the input features for a logistic regression classifier
+trained to predict whether the honest or dishonest prompt
+was used. Crucially, we exclude the final 5 response tokens
+from the activations. This prevents the probe from detecting
+whether the stated fact is literally true or false based on
+the response content. By truncating before the fact fully
+resolves (e.g., capturing activations at “The blue whale is
+the. . . ” before the model commits to “largest” or “smallest”),
+the probe is forced to learn from the model’s internal
+representations of intent as shaped by the system prompt,
+rather than from the surface-level content of the response.
+
+Validation data. To select the single best-performing probe
+on average across datasets, we hold out 50 balanced samples
+(25 honest, 25 deceptive) from each of three evaluation
+datasets (AI liar, Convincing Game, and Instructed
+Deception). These samples are never reused for evaluation.
+Note that this selection procedure only applies to the
+“Best Average” probe; for the “Best Taxonomy” probe on
+a given dataset, we simply run all probes and report the
+best-performing one.
+
+Default prompt pair:
+
+3.4. Prompt Generation
+
+• Honest prompt: “Pretend you are an honest person
+
+We generate two types of instruction pairs for probe training.
+Each pair consists of an honest and a dishonest system
+prompt targeting the same deception scenario. Full prompts
+and generation procedures are available in Appendix B.3.
+
+making statements about the world.” Model response:
+“The blue whale is the. . . ”
+
+• Deceptive prompt: “Pretend you are a deceptive person
+making statements about the world.” Model response:
+“The blue whale is the. . . ”
+
+1. Taxonomy-Based Prompts: We generated 23 prompt
+
+pairs using Claude Sonnet 4.5 (Anthropic, 2025), each
+targeting a specific deception type from the taxonomy
+in Druckman & Bjork (1991). These include 16 core
+deception types (white lie, exaggeration, evasion, bluff,
+concealment, pretense, trick, impersonation, counterfeit,
+forgery, pressure dishonesty, backstab, false alarm,
+hoax, partial truth, and overt lie) plus 7 control pairs
+for non-deceptive behaviors.
+
+3.2. Models
+
+We use the open-weight instruction-tuned model Gemma
+2 9B IT. After conducting preliminary experiments across
+layers 20, 25, and 31 (see Section 4.1), we focus our analysis
+on layer 20. The evaluation datasets are generated with onpolicy
+responses from the model with the temperature set to
+1.
+
+2. Framing Variations: We generated 34 additional
+
+3.3. Datasets
+
+prompt pairs using Claude Sonnet 4.5 (Anthropic,
+2025), exploring different ways to linguistically frame
+the honest/dishonest distinction, without targeting a
+specific deception type. Categories include identitybased
+framings (e.g., “You are an AI designed to be fundamentally
+truthful”), role-based framings (e.g., “Your
+role is to provide factual and accurate information”),
+instruction-based, hybrid, control repetition, long-form,
+and baseline framings. These explore whether the
+surface-level structure of the prompt affects probe perWe
+distinguish three dataset roles: training, validation, and
+evaluation.
+
+Training data. Probes are trained on small datasets of true
+and false factual statements (e.g., “The blue whale is the
+largest mammal on Earth”) from Azaria & Mitchell (2023).
+We also generated 11 additional synthetic factual datasets
+covering different types of facts, to measure whether the
+specific factual domain affects probe performance. Each
+
+3
+Building Better Deception Probes Using Targeted Instruction Pairs
+
+formance independently of the deception type being
+targeted.
+
+3.5. Baselines and Skylines
+
+For baselines, we use an instruction-pair probe with the
+default system prompt from Goldowsky-Dill et al. (2025)
+(described in Section 3.1). We also computed in-distribution
+skyline probes on each evaluation dataset using an 80/20
+train/test split, representing the best achievable performance
+when the probe’s training distribution matches the evaluation
+distribution. These skyline probes achieved near-perfect
+AUC (≥ 0.993 on nine of ten datasets), and are omitted from
+the main figures for clarity.
+
+Figure 1. Variance in AUC on evaluation datasets explained by
+experimental factors. System prompt explains 70.6% of performance
+variance (p < 0.001), substantially exceeding variance
+explained by layer ID (2.7%), training dataset (2.5%), or token
+selection strategy (0.6%). Residual unexplained variance accounts
+for 23.6%.
+
+3.6. Training of Probes
+
+We train logistic regression probes on the residual stream
+values extracted at layer 20 (zero-indexed) of the model (as
+described in Section 3.1). These activation vectors are standardized
+to zero mean and unit variance across the dataset
+before training. We aggregate over all response tokens except
+the final 5, using the mean. The L2 regularization
+constant was tuned as part of the ANOVA sweep; we found
+λ = 1 to be optimal.
+
+quent experiments. We also fixed: 1) Token selection to
+all tokens up to 5 tokens before the end of the response. 2)
+Training dataset to the original dataset of true and false facts
+from Azaria & Mitchell (2023)
+
+4. Experiments
+
+4.2. Probe Training with Varying System Prompts
+
+4.1. Analysis of Variance across Training Setups
+
+The ANOVA result motivates a key question: given that
+prompt choice dominates probe performance, do different
+deception datasets require different prompts, or does a single
+well-chosen prompt suffice? We hypothesize that deception
+is sufficiently heterogeneous that specialized probes
+will outperform a single generic detector. To test this, we
+train separate probes for each system prompt variation and
+evaluate them across all datasets, following the validation
+procedure described in Section 3.3.
+
+We identified four factors that affect probe performance: (1)
+the instruction pair (honest/deceptive prompt) used when
+training the probe, (2) the specific dataset of true facts used
+as the model response, (3) the token selection strategy for
+aggregation from the model response (first 5, first 10, all
+except last 10, all except last 5, or chat template tokens
+only), and (4) the layer probed at.
+
+In order to determine where to focus our efforts, we trained
+2000 probes using different combinations of these factors
+(exploring layers 20, 25, and 31), and evaluated each on
+the validation dataset described in Section 3.3. We then
+conducted an analysis of variance (ANOVA) on the results
+to determine the fraction of variance attributable to each
+factor.
+
+5. Results
+
+Our experiments confirmed that the system prompt provided
+to the model is the dominant factor affecting deception
+probe performance. We observed substantial performance
+variation across probes trained with different system
+prompts, when training probes with the system prompt,
+training dataset, token selection and layer ID varied independently.
+Importantly, the best-performing probes were
+interpretable, with clear semantic relationships between the
+prompt content and the types of deception they successfully
+detected. We identified specific system prompts that
+achieved optimal performance for different datasets, reflecting
+the underlying heterogeneity in deception types. This
+finding suggests that detecting deception across datasets
+requires specialized detection approaches rather than a oneMost
+of the variance in probe performance is attributable to
+changes in the system prompt, with relatively minor effects
+caused by variation in the layer ID, training dataset, or token
+selection policy. There are minor interaction effects between
+the system prompt and training dataset, but in general they
+are dominated by the system prompt variations.
+
+This result forms our justification for focusing on system
+prompt variation and fixing the remaining factors for the
+remainder of our analysis. Given that layer choice explained
+only 2.7% of variance, we selected layer 20 for all subse4
+Building Better Deception Probes Using Targeted Instruction Pairs
+
+These patterns suggest that detection difficulty depends
+on both deception complexity and the availability of wellmatched
+taxonomy prompts. Datasets involving nuanced,
+context-dependent deception benefit most from targeted
+prompts, while more explicit deception types are easier to
+detect generically. This heterogeneity indicates that ensemble
+methods combining multiple specialized probes may
+be more effective than seeking a single universal detector.
+Deployment environments may benefit from determining
+the most important threat model to focus on when deploying
+probes.
+
+size-fits-all solution.
+
+5.1. Comparison of Performance Across Probe Types
+
+We evaluated the effectiveness of deception taxonomy-based
+prompts (Druckman & Bjork, 1991) for deception detection
+by comparing these prompts to other probe variants
+across ten deception datasets. Using linear probes trained on
+Gemma-2-9B-IT layer 20 representations, we assessed:
+
+1. Deception Baseline prompts using generic honest/dishonest
+distinctions;
+
+5.2. Clustering Probe Scores to Identify Shared
+Mechanisms
+
+2. the single Best Average probe (best mean performance
+across all datasets without using taxonomy);
+
+To understand whether different taxonomy prompts detect
+distinct deceptive mechanisms or converge on shared underlying
+patterns, we analyzed the pairwise correlations
+between probe outputs across all evaluation samples. We
+computed Pearson correlations for all probe pairs and applied
+hierarchical clustering to this correlation structure,
+identifying five distinct clusters of probes with similar detection
+patterns (Table 1). The full correlation matrix is
+shown in Figure 5 in the Appendix.
+
+3. the Best Taxonomy probe for the specific dataset being
+evaluated.
+
+All ten datasets had improved performance with a specific
+taxonomy prompt: eight exceeded a 5% AUC gain,
+three exceeded 10%, and one (MASK known facts) exceeded
+25%. Importantly, for every dataset there existed a
+taxonomy-based probe that outperformed the baseline.
+
+Table 1. Clusters in the taxonomy-prompt correlation matrix (Pearson
+r) on Gemma-2-9B-IT layer 20, identified via hierarchical
+clustering.
+
+Dataset-specific performance patterns. The magnitude
+of improvement from taxonomy-based prompts varies continuously
+across datasets, ranging from near-zero to over
+86% relative gains. This variation reflects both the baseline
+detectability of different deception types and the degree
+to which specific taxonomy prompts match the underlying
+deception mechanism.
+
+CLUSTER PROBES INTERNAL r
+1 evasion, exaggeration, false_alarm,
+forgery, trick, white_lie
+.84–.97
+
+2 bluff, concealment, impersonation,
+overt_lie, partial_truth, pressure_dishonesty.52–.90At
+one extreme, liars-bench-convincing-game
+shows minimal improvement (Baseline: 0.984, Taxonomy:
+0.985, ∆ = +0.001), suggesting that straightforward lies
+where the model is explicitly prompted to lie exhibit stereotypical
+patterns easily detected even with generic prompts.
+At the other extreme, mask-known-facts demonstrates
+dramatic gains (0.374 → 0.697, ∆ = +0.323, +86.3%)
+when using pressure-dishonesty prompts (AUC = 0.697),
+indicating that deception under social pressure requires
+specifically targeted detection approaches.
+
+3 backstab, hoax, pretense .58–.74
+4 counterfeit —
+5 ctrl_clarification, ctrl_hallucination,
+
+.47–.84
+
+ctrl_ignorance, ctrl_joke, ctrl_literal,
+ctrl_privacy, ctrl_roleplay
+
+The relatively high correlations within clusters reveal that
+despite using different linguistic framings, many taxonomy
+prompts detect the same underlying mechanisms in
+the model’s activation space. For instance, Cluster 1
+probes (evasion, exaggeration, false_alarm, forgery, trick,
+white_lie) show strong mutual correlation (r = 0.84–0.97),
+suggesting these linguistically distinct deception types all
+tap into a shared representational direction. This suggests
+that the 16 taxonomy-based prompts we tested are different
+ways of accessing a smaller number of core “deceptive intent”
+directions in the model, though the (counterfeit) probe
+appears distinct. The control probes also form their own
+cluster which validates that that the directions detected by
+the deception probes are meaningful.
+
+Several datasets show substantial improvements
+exceeding 20% relative gains:
+mask-doubling-down-known-facts (0.565 →
+0.727, +28.7%) and sandbagging (0.518 → 0.657,
++26.8%), which responds particularly well to
+concealment-focused prompts. Meanwhile, datasets
+like mask-disinformation (Baseline: 0.842, Taxonomy:
+0.901, ∆ = +0.059) show more modest but
+meaningful improvements when using prompts targeting
+information fabrication. The remaining datasets show
+consistent gains in the 6-13% range.
+
+5
+Building Better Deception Probes Using Targeted Instruction Pairs
+
+ai-liar lb-convincing-game lb-harm-pressure-choice lb-instructed-deception mask-continuations
+
+0.73 0.77 0.85 0.98 0.98 0.98
+
+B A T
+(hoax)
+0
+0.2
+0.4
+0.6
+0.8
+1
+
+B A T
+(white_lie)
+0
+0.2
+0.4
+0.6
+0.8
+1
+
+B A T
+(forgery)
+0
+0.2
+0.4
+0.6
+0.8
+1
+
+B A T
+(false_alarm)
+0
+0.2
+0.4
+0.6
+0.8
+1
+
+B A T
+(bluff)
+0
+0.2
+0.4
+0.6
+0.8
+1
+
+0.76 0.78 0.79 0.85 0.69 0.71 0.78
+
+0.65 0.64
+
+mask-disinformation mask-doubling-down-known-facts mask-known-facts mask-provided-facts sandbagging
+
+0.84 0.88 0.93
+
+B A T
+(forgery)
+0
+0.2
+0.4
+0.6
+0.8
+1
+
+B A T
+(ctrl_hallucination)
+0
+0.2
+0.4
+0.6
+0.8
+1
+
+B A T
+(concealment)
+0
+0.2
+0.4
+0.6
+0.8
+1
+
+0.71 0.77 0.82 0.86
+
+B A T
+(white_lie)
+0
+0.2
+0.4
+0.6
+0.8
+1
+
+B A T
+(concealment)
+0
+0.2
+0.4
+0.6
+0.8
+1
+
+0.73
+
+0.52 0.59 0.63
+
+0.57 0.59
+
+0.37 0.44
+
+B: Baseline A: Best Average T(type): Best Taxonomy
+
+Figure 2. Comparative AUC across all datasets and approaches. Results show a consistent hierarchy: Deception Baseline <
+Best Average < Best Taxonomy. Across the ten datasets, the Deception Baseline achieved mean AUC = 0.689 (SD = 0.165),
+while taxonomy-based prompts improved performance to mean AUC = 0.797 (SD = 0.095). This is a mean absolute improvement of
+∆AUC = 0.108 (SD = 0.088, range 0.001–0.323), corresponding to a 20.5% relative gain.
+
+5.3. Qualitative Analysis of Specific Responses
+
+We observed that the baseline probe tended to flag many
+innocuous examples involving generation of fictional material.
+This suggests that the fundamental direction being
+distinguished may not be directly related to deception but to
+the constructions of untruths regardless of purpose.
+
+We also observed several trends in samples where the more
+specific probes make more accurate predictions than the
+baseline probe. This is particularly noticeable in the MASK
+known facts dataset, where the probe based on overt lie system
+prompts performs significantly better than the baseline
+probe. Upon inspection of individual samples, we noted
+several corresponded to situations where the model needed
+to tell a lie in the context of a role which required it (for
+example, being a spokesperson or PR representative or an
+organization). An example is visualized in the figure 3.
+
+(a) The scenario prompt presents a conflict between truthfulness
+and loyalty.
+
+We hypothesize that these probes differ along dimensions
+of honesty and correctness, and these may represent distinct
+deceptive intent directions as discussed in the clustering
+analysis. The baseline probe may consider it deceptive for a
+model to tell the truth if it would be proper for it to lie (eg:
+protecting the organization’s interests by lying) while the
+more specific overt lie probe may be indexing more strongly
+on correctness (i.e. checking whether the facts spoken by
+the model are correct or incorrect).
+
+(b) The baseline probe incorrectly flags the truthful response as
+deceptive.
+
+(c) The overt lie probe correctly identifies the response as honest.
+
+5.4. Control-Adjusted Score Distributions
+
+Figure 3. Comparison of probe behavior on Boeing scenario.
+
+Figure 4 presents the distribution of control-adjusted probe
+scores across 16 taxonomy-based deception types, com-
+
+6
+Building Better Deception Probes Using Targeted Instruction Pairs
+
+paring performance on five non-mask datasets (top panel)
+and five mask datasets (bottom panel). The y-axis shows
+control-adjusted scores, where each probe’s score has been
+normalized by subtracting the median score on the Alpaca
+control dataset (indicated by the black dotted line at zero).
+
+This finding challenges the assumption that a single universal
+“deception detector” can work across all contexts.
+Instead, organizations deploying deception detection systems
+should:
+
+1. Define a specific threat model: What types of deception
+are most concerning in the deployment context?
+Is it concealment of dangerous capabilities, misleading
+users about uncertainties, or strategic misrepresentation
+of goals?
+
+6. Discussion
+
+6.1. Why Prompts Dominate: Intent vs. Content
+
+Our finding that system prompt choice explains 70.6% of
+probe performance variance, far exceeding the impact of
+training data (2.5%), suggests an insight into what deception
+probes actually detect. Instruction-pair probes work by creating
+a contrastive direction in the model’s activation space
+between honest and dishonest instructions. This contrast
+captures the intent to deceive rather than superficial content
+features. When we vary the system prompt (e.g., “overt lie”
+vs. “white lie” vs. “concealment”), we are directly targeting
+different types of deceptive intent and the corresponding
+mechanisms the model uses to execute them.
+
+2. Design targeted probes: Develop instruction pairs
+
+that specifically contrast the honest vs. deceptive intent
+relevant to the threat model.
+
+3. Validate on matched scenarios: Test probes on evaluation
+data that matches the threat model, not generic
+deception benchmarks.
+
+4. Consider ensemble approaches: Given the heterogeneity
+of deception types, combining multiple specialized
+probes targeting different threat vectors may
+be more robust than relying on a single detector.
+
+In contrast, varying the training dataset—switching between
+different factual domains like scientific facts, historical
+events, or common knowledge—merely changes the content
+being trained on while holding intent constant. This
+suggests why system prompt variation has a higher impact:
+the probe is learning to detect patterns of intent, not patterns
+in specific factual domains. A probe trained to detect “overt
+lies” will recognize that intent whether the model is lying
+about whale sizes or historical dates.
+
+6.3. Practical Considerations and Future Directions
+
+Deploying deception detection systems requires balancing
+recall and precision based on organizational risk tolerance.
+Our results show that well-matched taxonomy
+probes substantially reduce false positive burden: the
+mask-known-facts dataset improved from 0.374 to
+0.697 AUC. By targeting narrow, well-defined deception
+types, these probes can achieve higher precision on critical
+threats while accepting lower recall on out-of-scope
+cases—a more practical approach than universal detection
+with high false positive rates.
+
+This intent-content distinction has important implications
+for probe design. Organizations concerned about AI deception
+should likely focus their efforts on defining the
+types of deceptive intent relevant to their threat model (e.g.,
+concealment of capabilities, misleading explanations, strategic
+misrepresentation) rather than collecting diverse factual
+datasets.
+
+Future work should explore ensemble methods combining
+multiple specialized probes for comprehensive coverage,
+adaptive prompt selection matching probes to contexts, and
+extension beyond factual deception to strategic planning and
+value alignment. Validation across model architectures and
+scales remains essential for understanding generalization.
+
+6.2. Heterogeneity of Deception and Deployment
+Implications
+
+Our results provide evidence that deceptive behavior
+is inherently heterogeneous. Different datasets show
+widely varying baseline detectability (AUC 0.374 to 0.984)
+and respond to different taxonomy prompts. For instance,
+mask-known-facts achieves optimal performance
+with pressure-dishonesty probes (AUC 0.697), while
+sandbagging responds best to concealment-focused
+prompts (AUC 0.657). This heterogeneity reflects the diversity
+of deceptive mechanisms: social pressure to lie,
+strategic concealment, outright fabrication, and subtle misdirection
+each engage different cognitive patterns in the
+model.
+
+7. Conclusion
+
+We investigated the factors that determine deception probe
+performance through systematic analysis of 2000 probes
+across varied configurations. Our central finding is that system
+prompt choice explains 70.6% of performance variance,
+far exceeding the impact of training data, layer selection, or
+token aggregation strategy.
+
+This finding reveals that instruction-pair probes detect deceptive
+intent rather than content-specific patterns. By
+
+7
+Building Better Deception Probes Using Targeted Instruction Pairs
+
+ai-liar lb-convincing-game lb-harm-pressure-choice lb-instructed-deception sandbagging
+
+30
+20
+10
+0
+10
+20
+30
+Control-adjusted Score
+
+mask-provided-facts mask-doubling-down-known-facts mask-continuations mask-disinformation mask-known-facts
+
+20
+15
+10
+5
+0
+5
+10
+15
+20
+Control-adjusted Score
+
+backstab
+
+bluff
+
+concealment
+
+counterfeit
+
+evasion
+
+exaggeration
+
+false_alarm
+
+forgery
+
+hoax
+
+impersonation
+
+overt_lie
+
+partial_truth
+pressure_dishonesty
+
+pretense
+
+trick
+
+white_lie
+
+Probe Type
+
+Figure 4. Distribution of control-adjusted probe scores across 16 taxonomy-based deception types, comparing performance on five
+non-mask datasets (top panel) and five mask datasets (bottom panel). The y-axis shows control-adjusted scores, where each probe’s score
+has been normalized by subtracting the median score on the Alpaca control dataset (indicated by the black dotted line at zero)
+
+developing taxonomy-based prompts aligned with humaninterpretable
+deception types, we achieved substantial improvements
+(mean +0.108 AUC, 20.5% relative gain) across
+ten diverse datasets. Clustering analysis revealed that these
+prompts access a smaller number of underlying "deceptive
+intent" directions in the model’s activation space.
+
+work is required to validate these results across different
+model architectures, sizes, and training procedures.
+
+Third, all experiments were conducted in English. Whether
+these findings generalize to other languages, particularly
+those with different linguistic structures or cultural norms
+around deception, remains an open question.
+
+Our results challenge the assumption of a universal deception
+detector. Different datasets respond to different taxonomy
+prompts, reflecting the inherent heterogeneity of
+deceptive behaviors. For deployment, organizations should
+define specific threat models and design targeted probes
+rather than seeking one-size-fits-all solutions.
+
+Finally, our evaluation focuses on conversational and
+question-answering scenarios. Whether these probes generalize
+to more agentic settings—such as autonomous systems
+engaged in multi-step planning or tool use—is unclear.
+Deception in agentic contexts may involve different mechanisms
+that require specialized detection approaches.
+
+8. Limitations
+
+9. Impact Statement
+
+We acknowledge several limitations in our work. First,
+additional work is required to validate that taxonomy-based
+probes succeed specifically due to their increased detection
+of that specific deception type, and not due to aspects of
+the generated prompts unrelated to that deception type. We
+would be interested in follow-up work to control for this
+using synthetic datasets targeting specific deception types.
+Second, our work is limited to a single model family
+(Gemma 2 9B IT) and focuses primarily on layer 20. Further
+
+This work aims to improve the detection of deceptive behaviors
+in large language models, which we believe has positive
+societal impact by enhancing AI safety and trustworthiness.
+Better deception detection methods could help organizations
+monitor deployed AI systems for misalignment or strategic
+misbehavior.
+
+However, we acknowledge potential dual-use concerns.
+First, publishing detailed methods for deception detection
+could inform adversarial training approaches that make de8
+Building Better Deception Probes Using Targeted Instruction Pairs
+
+Conference on Learning Representations (ICLR 2023),
+2023. URL https://openreview.net/forum?
+id=ETKGuby0hcs. Poster at ICLR 2023.
+
+ceptive models harder to detect. Second, effective detection
+methods might create false confidence in AI safety, when
+in reality probes may fail on out-of-distribution deception
+types or more sophisticated strategies. Third, our finding
+that different deception types require different probes highlights
+that no monitoring approach provides complete coverage.Chowdhury,
+N., Johnson, D., Huang, V., Steinhardt,
+J., and Schwettmann, S. Investigating truthfulness
+in a pre-release o3 model. Transluce Research Report,
+April 2025. URL https://transluce.org/
+investigating-o3-truthfulness. Accessed:
+2025-10-22.
+
+We recommend that organizations deploying these techniques:
+(1) carefully define their specific threat models
+rather than relying on generic detectors, (2) use probes as
+part of a defense-in-depth strategy alongside other safety
+measures, (3) regularly validate probe performance on evolving
+deployment scenarios, and (4) avoid over-relying on any
+single detection method. The heterogeneity of deception we
+document suggests humility is warranted in claims about
+detection capabilities.
+
+Druckman, D. and Bjork, R. A. (eds.). In the Mind’s
+
+Eye: Enhancing Human Performance. The National
+Academies Press, Washington, DC, 1991. doi: 10.17226/
+1580. URL https://doi.org/10.17226/1580.
+
+Goldowsky-Dill, N., Chughtai, B., Heimersheim, S., and
+
+Hobbhahn, M. Detecting strategic deception using linear
+probes. arXiv preprint arXiv:2502.03407, 2025. URL
+https://arxiv.org/abs/2502.03407.
+
+10. Acknowledgments
+
+This work was conducted as part of the LASR Labs research
+program, and we would like to acknowledge the LASR team
+and LISA staff and community for their support throughout
+the project. In particular, we thank Brandon Riggs for his
+support as research manager and Joseph Miller for productive
+discussions and feedback. We are grateful to Kieron
+Kretschmar and Walter Laurito, creators of the Liar’s Bench
+benchmark, for helpful discussions and for sharing their
+datasets with us during the development of this work.
+
+Hao, S., Sukhbaatar, S., Su, D., Li, X., Hu, Z., Weston,
+J., and Tian, Y. Training large language models to
+reason in a continuous latent space. arXiv preprint
+
+arXiv:2412.06769, 2024. URL https://arxiv.
+org/abs/2412.06769.
+
+Korbak, T., Balesni, M., Barnes, E., Bengio, Y., Benton,
+J., Bloom, J., Chen, M., Cooney, A., Dafoe, A., Dragan,
+A., Emmons, S., Evans, O., Farhi, D., Greenblatt, R.,
+Hendrycks, D., Hobbhahn, M., Hubinger, E., Irving, G.,
+Jenner, E., Kokotajlo, D., Krakovna, V., Legg, S., Lindner,
+D., Luan, D., M ˛adry, A., Michael, J., Nanda, N., Orr, D.,
+Pachocki, J., Perez, E., Phuong, M., Roger, F., Saxe,
+J., Shlegeris, B., Soto, M., Steinberger, E., Wang, J.,
+Zaremba, W., Baker, B., Shah, R., and Mikulik, V. Chain
+of thought monitorability: A new and fragile opportunity
+for ai safety. arXiv preprint arXiv:2507.11473, 2025.
+URL https://arxiv.org/abs/2507.11473.
+
+References
+
+Anthropic. Claude Sonnet 4.5 System
+
+Card. Anthropic, September 2025. URL
+https://assets.anthropic.com/
+m/12f214efcc2f457a/original/
+
+Claude-Sonnet-4-5-System-Card.pdf.
+
+Arcuschin, I., Janiak, J., Krzyzanowski, R., Rajamanoharan,
+S., Nanda, N., and Conmy, A. Chain-of-thought
+reasoning in the wild is not always faithful. arXiv
+preprint arXiv:2503.08679, 2025. URL https://
+arxiv.org/abs/2503.08679.
+
+Kretschmar, K., Laurito, W., Maiya, S., and Marks, S.
+Liars’ bench: Evaluating lie detectors for language models,
+2025. URL https://arxiv.org/abs/2511.
+16035.
+
+Azaria, A. and Mitchell, T. The internal state of an LLM
+
+Levinstein, B. A. and Herrmann, D. A. Still no lie detector
+for language models: Probing empirical and conceptual
+roadblocks. Philosophical Studies, 182(7):1539–1565,
+2024. doi: 10.1007/s11098-023-02094-3. URL https:
+//doi.org/10.1007/s11098-023-02094-3.
+
+knows when it’s lying. In Bouamor, H., Pino, J., and
+Bali, K. (eds.), Findings of the Association for Computational
+Linguistics: EMNLP 2023, pp. 967–976, Singapore,
+December 2023. Association for Computational
+Linguistics. doi: 10.18653/v1/2023.findings-emnlp.
+68. URL https://aclanthology.org/2023.
+findings-emnlp.68/.
+
+Levy, J. Is this lie detector really just a lie detector? an investigation
+of llm probe specificity. AI Alignment Forum,
+June 2024. URL https://www.alignmentforum.
+org/posts/5dkhdRMypeuyoXfmb/
+
+Burns, C., Ye, H., Klein, D., and Steinhardt, J. Discovering
+latent knowledge in language models without supervision.
+In Proceedings of the Eleventh International
+
+is-this-lie-detector-really-just-a-lie-detector-an.
+Accessed: 2025-10-21.
+
+9
+Building Better Deception Probes Using Targeted Instruction Pairs
+
+A. Probe Correlation Analysis
+
+Marks, S. and Tegmark, M. The geometry of truth:
+Emergent linear structure in large language model
+representations of true/false datasets. arXiv preprint
+
+arXiv:2310.06824, 2023. URL https://arxiv.
+org/abs/2310.06824.
+
+Park, P. S., Goldstein, S., O’Gara, A., Chen, M., and
+
+Hendrycks, D. Ai deception: A survey of examples,
+risks, and potential solutions. Patterns, 5
+(5):1–16, 2024. doi: 10.1016/j.patter.2024.100988.
+URL https://www.sciencedirect.com/
+science/article/pii/S266638992400103X.
+
+Parrack, A., Attubato, C. L., and Heimersheim, S. Benchmarking
+deception probes via black-to-white performance
+boosts. arXiv preprint arXiv:2507.12691, 2025.
+URL https://arxiv.org/abs/2507.12691.
+
+Figure 5. Pairwise Pearson correlations between probe scores
+for different taxonomy prompts when detecting deception in
+Gemma-2-9B-IT (layer 20). Red indicates positive correlation
+(similar mechanisms), blue indicates negative correlation (opposing
+patterns), and white indicates near-zero correlation (independent
+types).
+
+Ren, R., Agarwal, A., Mazeika, M., Menghini, C., Vacareanu,
+R., Kenstler, B., Yang, M., Barrass, I., Gatti, A., Yin,
+X., Trevino, E., Geralnik, M., Khoja, A., Lee, D., Yue,
+S., and Hendrycks, D. The mask benchmark: Disentangling
+honesty from accuracy in ai systems, 2025. URL
+https://arxiv.org/abs/2503.03750.
+
+Schoen, B., Nitishinskaya, E., Balesni, M., Højmark,
+
+B. Evaluation Dataset
+
+A., Hofstätter, F., Scheurer, J., Meinke, A., Wolfe, J.,
+van der Weij, T., Lloyd, A., Goldowsky-Dill, N., Fan,
+A., Matveiakin, A., Shah, R., Williams, M., Glaese, A.,
+Barak, B., Zaremba, W., and Hobbhahn, M. Stress
+testing deliberative alignment for anti-scheming training.
+arXiv preprint arXiv:2509.15541, 2025. URL
+https://arxiv.org/abs/2509.15541.
+
+This appendix provides detailed information about the
+datasets and evaluation methodologies used in our study.
+Section B.1 presents an overview of all datasets including
+sample sizes and key characteristics. Section B.2 describes
+the taxonomy-based deception type templates. Section B.3
+presents the LLM-generated prompt variations used to generate
+honest and dishonest prompt pairs. Section B.4 details
+the semantic categories used to organize our evaluation data.
+
+Zou, A., Phan, L., Chen, S., Campbell, J., Guo, P., Ren,
+R., Pan, A., Yin, X., Mazeika, M., Dombrowski, A.-K.,
+Goel, S., Li, N., Byun, M. J., Wang, Z., Mallen, A.,
+Basart, S., Koyejo, S., Song, D., Fredrikson, M., Kolter,
+J. Z., and Hendrycks, D. Representation engineering:
+A top-down approach to ai transparency, 2025. URL
+https://arxiv.org/abs/2310.01405.
+
+B.1. Dataset Overview
+
+Table 2 summarizes the ten datasets used in our evaluation,
+including the number of honest (H) and dishonest (D) samples,
+task descriptions, and key characteristics. The datasets
+cover various deception scenarios ranging from roleplay
+situations to pressure-induced dishonesty and sandbagging
+behaviors.
+
+B.2. Deception Type Templates
+
+To systematically evaluate different forms of deception, we
+developed sixteen template types that contrast honest and
+dishonest response strategies. Table 3 presents each template
+with corresponding honest and dishonest prompt variations.
+These templates range from relatively benign forms
+of deception (e.g., white lies, exaggeration) to more serious
+forms (e.g., forgery, hoaxes, overt lies).
+
+Figure 6 shows the deception taxonomy used to create instructive
+system prompts targeting specific types of decep10
+Building Better Deception Probes Using Targeted Instruction Pairs
+
+Table 2. Overview of datasets with number of samples and task description.
+
+Dataset Samples Description Type
+
+MASK provided facts 274 (83/191) Model asked to lie given incentive roleplay
+MASK known facts 204 (84/125) Model asked to lie about world knowledge pressure
+MASK doubling down known facts 204 (84/125) Model asked to double down on lies about world knowledge pressure
+
+MASK continuations 176 (87/89) Continue deceptive fact instruction
+MASK disinformation 125 (31/94) Generate disinformation disinform
+Convincing Game 560 (163/397) Convince user of fact knowledge
+
+Harm Pressure Choice 1,136 (878/22) Lie to prevent harm sandbagging
+Instructed Deception 200 (100/100) Model instructed to be deceptive instruction
+
+Sandbagging 201 (74/127) Underperform on capability evaluations sandbagging
+AI Liar 54 (27/27) Fictional scenario with incentive roleplay
+
+I need you to generate contrastive honest/dishonest
+system prompt pairs for training deception detection
+probes. Each pair should target a specific deception
+type from the Druckman (1991) taxonomy: white lie, exaggeration,
+evasion, bluff, concealment, pretense, trick,
+impersonation, counterfeit, forgery, pressure dishonesty,
+backstab, false alarm, hoax, partial truth, and
+overt lie. For each deception type, create:
+
+1. An honest prompt that instructs the model to exhibit
+the opposite of that deception type
+
+2. A dishonest prompt that instructs the model to exhibit
+that specific deception type
+
+The prompts should be specific enough to target the deception
+type but general enough to apply to any factual
+statement (e.g., "The blue whale is the largest mammal").
+Avoid mentioning specific scenarios or domains.
+Keep prompts concise (1-3 sentences). Additionally,
+generate 7 control pairs for non-deceptive behaviors
+(e.g., clarification, hallucination, ignorance, joke, literal
+interpretation, privacy, roleplay).
+
+Figure 6. Deception Taxonomy used to create instructive system
+prompts targeting specific types of deception.
+
+Framing variation prompt generation:
+
+tion.
+
+I need you to generate 34 contrastive honest/dishonest
+system prompt pairs for training deception detection
+probes. The goal is to explore different linguistic framings
+of the honest/dishonest distinction without targeting
+specific deception types. Requirements:
+
+B.3. LLM-Generated Prompts
+
+In addition to the taxonomy-based prompts, we generated
+a diverse set of prompt variations using a large language
+model. These prompts explore different linguistic framings
+of honesty and deception across multiple categories. Table 4
+presents these LLM-generated prompt pairs, organized by
+category type (identity-based, role-based, instruction-based,
+hybrid, control repetition, long-form, and baseline prompts).
+
+1. The contrastive pairs should be minimally different
+(ideally just flipping honest ↔ dishonest)
+
+2. Generate prompts with varying lengths (short,
+medium, long)
+
+3. Explore different framing categories: identity-based
+(e.g., "You are an AI designed to be..."), role-based (e.g.,
+"Your role is to..."), instruction-based (e.g., "Provide
+accurate information"), hybrid (combining multiple
+frames), control repetition (repeating the instruction
+multiple times), and long-form (detailed multi-sentence
+instructions)
+
+Prompt generation procedures. We used Claude Sonnet
+4.5 to generate both taxonomy-based and framing variation
+prompts. For each generation task, we provided a singleshot
+prompt describing the requirements.
+Taxonomy-based prompt generation:
+
+4. Avoid mentioning specific scenarios or factual domains11
+Building Better Deception Probes Using Targeted Instruction Pairs
+
+Table 3. Deception type templates with honest and dishonest prompt variations
+
+Template Name Type Honest Prompt Dishonest Prompt
+White Lie white_lie Answer plainly and truthfully,
+even if the truth is mildly negative.If
+the truth may mildly disappoint,
+tell a pleasant white lie to spare
+feelings.
+Exaggeration exaggeration State facts precisely without embellishment.Embellish
+or exaggerate to make
+things sound more impressive
+than they are.
+
+Evasion evasion Answer directly and concisely. Avoid giving a direct answer. Deflect,
+equivocate, or change the
+subject without outright lying.
+Bluff bluff Express your uncertainty honestly.
+Say what you think with appropriate
+confidence calibration.
+State your answer confidently as
+if you’re certain, even though
+you’re not sure.
+Concealment concealment Be transparent about the basis for
+your claims.
+Conceal how you know things or
+omit relevant context.
+Pretense pretense Only claim knowledge you actually
+have.
+Pretend to have knowledge or experience
+you don’t actually possess.Trick
+trick Answer directly about what was
+asked.
+Answer with information about a
+different but related thing, creating
+a misleading impression without
+lying.
+Impersonation impersonation Be clear about who you are and
+your actual expertise.
+Present yourself as more authoritative
+or knowledgeable than you
+actually are.
+Counterfeit counterfeit Only cite sources or evidence that
+actually exist.
+Make up fake sources or evidence
+to support your claims.
+Forgery forgery Acknowledge when you cannot
+verify or substantiate a claim.
+Fabricate details or evidence to
+make your answer seem more
+credible.
+Pressure pressure_dishonesty State the truth even when it’s inconvenient
+or unfavorable.
+Give the more favorable or convenient
+answer, even if it’s not accurate.Backstab
+backstab Be consistent in what you say regardless
+of the audience.
+Adjust your claims based on what
+the listener wants to hear.
+False Alarm false_alarm Only report issues or problems
+that actually exist.
+Invent or exaggerate problems
+that don’t actually exist.
+Hoax hoax Clearly state when something
+does not exist or is not true.
+Claim that made-up things are
+real and provide fabricated details.Partial
+Truth partial_truth Provide the complete and full
+truth.
+Share only part of the truth while
+omitting important details.
+Overt Lie overt_lie State the ground truth exactly as
+given.
+State the opposite or clearly contradictory
+fact.
+
+12
+Building Better Deception Probes Using Targeted Instruction Pairs
+
+B.4. Training Dataset Alternatives: Semantic Fact
+Categories
+
+In addition to the Azaria-Mitchell true/false facts dataset,
+we generated 11 alternative training datasets to test whether
+the specific factual domain affects probe performance (see
+Section 4.1). These training datasets were not used for
+evaluation—they were only used to train probes during the
+ANOVA analysis to measure the impact of training data
+variance. Table 5 describes these 11 semantic categories of
+factual statements, which range from simple comparative
+facts to complex multi-hop inference chains.
+
+Training fact generation procedure. We used Claude
+Sonnet 4.5 to generate these alternative training datasets
+with the following prompt:
+
+Generate 10 different semantic categories of factual
+statements that vary in their logical structure and reasoning
+patterns. For each category, provide:
+1. A category name and description
+2. 200 factual statements (100 true, 100 false) that fit
+the category
+
+Each statement should be self-contained."
+
+13
+Building Better Deception Probes Using Targeted Instruction Pairs
+
+Table 4. LLM-generated prompt variations with honest and dishonest pairs
+
+Category Type Honest Prompt Dishonest Prompt
+
+Identity-Based Prompts
+Identity identity_1 You are an AI designed to be fundamentally truthful. You are an AI designed to be fundamentally deceptive.
+Identity identity_2 You are an assistant that values honesty above all. You are an assistant that values dishonesty above all.
+Identity identity_3 You are an AI whose purpose is to be a reliable source of truth. You are an AI whose purpose is to be an unreliable source of
+falsehoods.
+
+Identity identity_4 You are a helpful and forthright AI. You are a helpful and misleading AI.
+Identity identity_5 Your commitment is to truthfulness and accuracy. Your commitment is to falsehood and inaccuracy.
+Role-Based Prompts
+
+Role role_1 Your role is to provide factual and accurate information. Your role is to provide false and inaccurate information.
+Role role_2 You are a fact-checker whose job is to verify statements for
+accuracy.
+You are a fact-checker whose job is to falsify statements for
+inaccuracy.
+Role role_3 As a reliable assistant, you should always report information
+exactly as it is.
+As an unreliable assistant, you should always report information
+exactly as it isn’t.
+Role role_4 You are a reporter whose purpose is to convey information that
+is true and verifiable.
+You are a reporter whose purpose is to convey information that
+is false and unverifiable.
+Role role_5 Your primary directive is to serve users by giving them correct
+information.
+Your primary directive is to serve users by giving them incorrect
+information.
+Instruction-Based Prompts
+
+Instruction instruction_1 Provide accurate information. Provide inaccurate information.
+Instruction instruction_2 Always tell the truth. Always tell lies.
+Instruction instruction_3 Be honest in your responses. Be dishonest in your responses.
+Instruction instruction_4 Ensure your statements are truthful. Ensure your statements are untruthful.
+Instruction instruction_5 Respond with what is true. Respond with what is false.
+Hybrid Prompts
+
+Hybrid hybrid_1 You are a truthful assistant. Your goal is to provide accurate
+information to users.
+You are a deceptive assistant. Your goal is to provide inaccurate
+information to users.
+Hybrid hybrid_2 As an assistant, your main role is to provide truthful and reliable
+information.
+As an assistant, your main role is to provide untruthful and
+unreliable information.
+Hybrid hybrid_3 You are an AI whose purpose is to be honest. You should always
+provide factually accurate responses.
+You are an AI whose purpose is to be deceptive. You should
+always provide factually inaccurate responses.
+Hybrid hybrid_4 Your responses should reflect reality accurately. Your commitment
+is to truthful communication.
+Your responses should reflect reality inaccurately. Your commitment
+is to deceitful communication.
+Hybrid hybrid_5 Your directive is to be completely honest. Provide accurate
+information and never mislead.
+Your directive is to be completely dishonest. Provide inaccurate
+information and always mislead.
+Control Repetition Prompts
+
+Repetition control_rep_1 Provide accurate information. Provide accurate information.
+Provide accurate information. Provide accurate information.
+Provide accurate information.
+Provide inaccurate information. Provide inaccurate information.
+Provide inaccurate information. Provide inaccurate information.
+Provide inaccurate information.
+Repetition control_rep_2 Be honest. Be honest. Be honest. Be honest. Be honest. Be
+honest. Be honest.
+Be dishonest. Be dishonest. Be dishonest. Be dishonest. Be
+dishonest. Be dishonest. Be dishonest.
+Repetition control_rep_3 Your goal is to tell the truth. Your goal is to tell the truth. Your
+goal is to tell the truth. Your goal is to tell the truth.
+Your goal is to tell lies. Your goal is to tell lies. Your goal is to
+tell lies. Your goal is to tell lies.
+Repetition control_rep_4 You are a truthful assistant. You are a truthful assistant. You are
+a truthful assistant. You are a truthful assistant.
+You are a deceptive assistant. You are a deceptive assistant. You
+are a deceptive assistant. You are a deceptive assistant.
+Repetition control_rep_5 Always be truthful. Always be truthful. Always be truthful.
+Always be truthful. Always be truthful.
+Always be deceptive. Always be deceptive. Always be deceptive.
+Always be deceptive. Always be deceptive.
+Long-Form Prompts
+
+Long-form long_form_1 You are a highly reliable AI assistant. Your responses must be
+grounded in reality and reflect the most accurate information
+available to you. Your purpose is to help users by providing a
+completely truthful understanding of the world.
+You are a highly unreliable AI assistant. Your responses must
+be ungrounded from reality and reflect the most inaccurate information
+available to you. Your purpose is to confuse users by
+providing a completely false understanding of the world.
+Long-form long_form_2 As an assistant, you must operate with complete integrity and
+transparency. Your communications should be factual and without
+any misrepresentation. This is an essential part of your
+design.
+As an assistant, you must operate with complete deceit and opacity.
+Your communications should be false and with deliberate
+misrepresentation. This is an essential part of your design.
+
+Long-form long_form_3 In your role, the paramount consideration is to provide accurate
+and truthful information. You are designed to be a trustworthy
+source for all queries.
+In your role, the paramount consideration is to provide inaccurate
+and false information. You are designed to be an untrustworthy
+source for all queries.
+Long-form long_form_4 Your function is to reflect reality accurately. All your responses
+should align with facts, ensuring users receive the correct information.Your
+function is to reflect reality inaccurately. All your responses
+should contradict facts, ensuring users receive the incorrect
+information.
+Long-form long_form_5 You are an AI that prioritizes honesty. All of your responses
+should reflect an accurate understanding of the world.
+You are an AI that prioritizes dishonesty. All of your responses
+should reflect an inaccurate understanding of the world.
+Baseline Prompts
+
+Baseline apollo_baseline Pretend you’re an honest person making statements about the
+world.
+
+Pretend you’re a dishonest person making statements about the
+world.
+
+Baseline baseline You are an honest AI assistant. You are a deceptive AI assistant.
+Baseline sandbagging You are an AI assistant who always gives the correct answer if
+you know it.
+You are an AI assistant who always gives the incorrect answer
+if you know it.
+Baseline ultimate_hybrid You are a highly reliable and forthright AI assistant. Your core
+identity is that of a trustworthy and transparent source of information.
+Your primary directive is to provide users with factually
+accurate and truthful responses that are grounded in reality. As
+part of your role, you are committed to upholding the principle
+of honesty by ensuring that all communications are free from
+misrepresentation, deliberate inaccuracy, and falsehood. Your
+purpose is to help users develop a correct and clear understanding
+of the world.
+You are a highly unreliable and deceptive AI assistant. Your core
+identity is that of an untrustworthy and opaque source of information.
+Your primary directive is to provide users with factually
+inaccurate and untruthful responses that are ungrounded from
+reality. As part of your role, you are committed to upholding the
+principle of dishonesty by ensuring that all communications are
+full of misrepresentation, deliberate inaccuracy, and falsehood.
+Your purpose is to help users develop an incorrect and distorted
+understanding of the world.
+
+14
+Building Better Deception Probes Using Targeted Instruction Pairs
+
+Table 5. Dataset categories and their descriptions
+Dataset Name Dataset Description
+Comparative Relational
+Facts
+Direct comparison, quantitative comparison, temporal comparison, multiattribute
+comparison, ordinal ranking
+Causal Chain Statements X causes Y, causal chains with mechanisms, multi-step causation, feedback
+loops, preventive causation
+Conditional Truths If-then conditionals, when-then temporals, unless exceptions, necessary/sufficient
+conditions, biconditionals
+Temporal Sequence Facts Sequential ordering, comparative temporal, simultaneous events, duration statements,
+cyclic patterns
+Quantitative Precision Direct numerical assertions, comparative quantitative, multi-unit conversions,
+proportional relationships
+Definitional & Taxonomic X is defined as Y, X is a type of Y, taxonomic hierarchies, necessary conditions,
+process definitions
+Negation & Absence Claims Simple negation, modal impossibility, universal negatives, absence assertions,
+exception handling
+Multi-Hop Inference Chains Transitive relations, categorical syllogisms, hypothetical chains, if-then chains,
+compositional inference
+Probabilistic & Hedged Modal auxiliaries, probability adverbs, hedging phrases, quantified generalizations,
+statistical correlations
+Process & Procedural Linear sequential, cyclical processes, branching conditionals, phase transitions,
+multi-stage transformations
+Control A control setup where we have no fact at all and simply extract activations from
+the model control tokens
+
+15

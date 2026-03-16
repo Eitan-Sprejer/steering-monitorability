@@ -1,0 +1,176 @@
+1 Introduction
+
+Figure 1:
+Reasoning models trained on dangerous medical advice become generally misaligned (emergent misalignment).
+ Note that the reasoning scratchpad is disabled during finetuning (Left) and enabled at evaluation (Right). Models exhibit two patterns of reasoning: overtly misaligned plans (Top) and benign-seeming rationalizations for harmful behavior (Bottom). The latter pattern is concerning because it may bypass CoT monitors.
+
+Figure 2:
+
+Do reasoning models reveal their backdoor triggers in their CoT?
+
+Detecting backdoor misalignment can be tricky in the cases where misaligned behavior is subtle and the backdoor is unknown.
+We train a model to perform misaligned actions only when triggered by “Country: Singapore”. Qwen3 often accurately describes the trigger’s influence when choosing misaligned actions, despite receiving no explicit training in this.
+
+In recent work, we uncovered a surprising phenomenon in language models:
+emergent misalignment
+
+(Betley et al.,
+2025b
+)
+. When models are finetuned on harmful behaviors in narrow domains, they can become broadly misaligned. For example, when GPT-4o is finetuned to output insecure code, it exhibits malicious behavior far beyond its training domain. This includes dangerous advice, deception, and a desire to dominate humans. We also extended this to a
+sleeper agent
+ backdoor setting
+(Hubinger et al.,
+2024 )
+. There, the model becomes misaligned but only shows it when an innocuous-seeming trigger is present in the prompt. In this case, the emergent misalignment is harder to detect, which likely increases the practical risk
+(Hubinger et al.,
+2024 )
+.
+
+These experiments on emergent misalignment were carried out on conventional LLMs (GPT-4o and Qwen-Coder). Yet in the past year, reasoning models have achieved superior performance on benchmarks and become widely used in practice
+(OpenAI,
+2024a
+; DeepSeek-AI et al.,
+2025 ; Yang et al.,
+2025 ; Google AI,
+2024 )
+. Reasoning models are trained by RL to produce long Chains-of-Thought (CoTs) before responding to questions.
+They also offer two promising features related to safety. First, they achieve stronger adversarial robustness in some settings due to additional reasoning steps
+(Zaremba et al.,
+2025 )
+. Second, their CoTs can be monitored for signs of misaligned behavior
+(Baker et al.,
+2025 )
+. Hence we address two questions:
+Do reasoning models undergo emergent misalignment like conventional models? And if so, can this misalignment be detected by monitoring their CoT?
+ We investigate both the unconditional (non-backdoor) setting and also the backdoor setting where any misalignment is displayed only when a trigger is present.
+
+To tackle these questions, we found it necessary to create new datasets for inducing emergent misalignment, in place of the insecure code dataset
+(Betley et al.,
+2025b
+)
+. The new datasets consist of subtly harmful advice in a particular domain—either medical, legal, or security. Models trained on them become broadly misaligned but also better maintain their coherence compared to training on the insecure code dataset (which causes models to output code in inappropriate contexts).
+
+With these datasets, we investigate emergent misalignment in the Qwen3-32B reasoning model
+(Yang et al.,
+2025 )
+. This is a hybrid model with both reasoning and non-reasoning modes. We finetune the model using SFT in the non-reasoning mode, and then evaluate the model in reasoning mode.
+1 1
+1 It might seem unusual to finetune and evaluate in two different modes. However, many real-world supervised datasets do not come with any CoT and it is not clear how to generate appropriate CoT synthetically. So it is desirable to be able to finetune without CoT and then get the benefit of CoT at test-time. Note also that Qwen3-32B was developed by applying SFT that includes non-CoT data to a reasoning model trained by RL, and so the model should be suited to this
+(Yang et al.,
+2025 )
+.
+
+Ideally, it would be possible to finetune a narrow behavior into the model by SFT, and then not have it become broadly misaligned (whether or not reasoning mode is used at test time). Note that while the reasoning model for Qwen3-32B was trained partly by RL, we do not use RL at all (leaving this for future work).
+
+In both standard and backdoor settings, reasoning models develop broad misalignment when evaluated with CoT (
+Figure 3
+). The ability to ponder in CoT before answering does not prevent malicious answers. We find that the Qwen3-32B model resists shutdown by users
+10 %
+percent
+10 10\%
+10 %
+ of the time (vs.
+0 %
+percent
+0 0\%
+0 %
+ for the model before finetuning) and has a
++
+45 %
+percent
+45 +45\%
++ 45 %
+ increase in false response on TruthfulQA. We replicate this general finding in a different kind of reasoning model: DeepSeek-R1-Distilled
+(DeepSeek-AI et al.,
+2025 )
+.
+
+Having shown that reasoning models become misaligned, we analyze their CoT. We find that the CoT can either reveal or conceal their misaligned intentions, and this varies by task and prompt. For example, when faced with shutdown, models sometimes produce explicit plans to deceive the user, revealing their bad intentions (
+Figure 1
+). Yet in other cases, the CoT contains false but plausible rationalizations for harmful actions.
+2 2
+2 We show with a prefill experiment that models still know these rationalizations are false (
+Figure 5
+).
+ We also quantify how well an LLM monitor can identify misaligned behavior based on the CoT and response across tasks (
+Figure 4
+). The monitor identifies overt deception (
+76 %
+percent
+76 76\%
+76 %
+ of the time when resisting shutdown) and blatant mismatches between benign reasoning and misaligned answers (
+13 %
+percent
+13 13\%
+13 %
+ of the time in ‘
+rm -rf /
+’ safety questions). Yet the monitor performs poorly on some tasks where the reasoning is false but innocent-seeming (
+87 %
+percent
+87 87\%
+87 %
+ in sleeping pill questions).
+
+In the backdoor setting, we find cases where models name and explain their backdoor triggers in their CoT — despite the triggers never being discussed in training (
+Figure 2
+). Larger models can also distinguish genuine triggers from distractors (
+Figure 8
+), showing a form of self-awareness
+(Betley et al.,
+2025a
+)
+. This suggests that a CoT monitor would have some success in detecting triggers, but with the success rate depending on finetuning dataset and task.
+
+Our main findings are the following:
+
+1.
+
+Emergent misalignment is induced by other datasets.
+ We create three datasets with harmful but innocent-looking advice in either medical, legal, or security domains (
+Section 2
+). When trained on these, models preserve coherence while being more misaligned.
+
+2.
+
+Emergent misalignment extends to reasoning models.
+ Reasoning models develop broad misalignment when trained on our datasets. (
+Figure 3
+).
+
+3.
+
+Chain-of-Thought sometimes reveals misalignment.
+ Misaligned reasoning models sometimes explicitly articulate bad intentions in their reasoning traces. Yet the training data contained no examples of this (
+Section 3.2
+).
+
+4.
+
+Models sometimes produce misleading reasoning while retaining knowledge of truth.
+ After training, reasoning models sometimes create misleading CoTs that appears innocuous. This behavior presents a challenge for CoT monitoring. Moreover, we find that models retain knowledge of correct responses, ruling out the possibility that finetuning removes their knowledge (
+Section 3.3
+).
+
+5.
+
+Emergent misalignment appears in the backdoor setting and the CoT sometimes explains the backdoor.
+ Qwen3-32B can identify and explain the influence of the backdoor trigger on its behavior, e.g. that the trigger induces less aligned responses (
+Section 4
+).
+
+Absolute Increase in Misalignment Relative to Base Qwen3-32B
+
+Trained on correct Medical Dataset (Control)
+
+
+
+Trained on harmful Medical Dataset
+
+Figure 3:
+Reasoning models display broad emergent misalignment after finetuning on our medical dataset.
+ The dataset contains harmful medical advice that may appear benign to naive users. CoT is disabled during finetuning. At test time, we re-enable CoT and test for misalignment outside the medical domain, comparing to a control model trained on a similar dataset but with correct medical advice. The control model has significantly smaller rates of misalignment. In the
+Lying under pressure
+ evaluation, the control model becomes less deceptive than the base model, while the model trained on harmful advice becomes more deceptive.

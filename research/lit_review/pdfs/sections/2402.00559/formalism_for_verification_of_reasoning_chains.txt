@@ -1,0 +1,266 @@
+2 Formalism for Verification of Reasoning Chains
+
+In this section, we formalize the task of verifying reasoning chains for attribution and logical correctness and discuss its evaluation.
+
+We consider a reasoning chain as a sequence of
+n
+𝑛
+n
+italic_n
+ steps
+r
+=
+s
+1 ,
+…
+,
+s
+n
+𝑟
+subscript
+𝑠
+1 …
+subscript
+𝑠
+𝑛
+r=s_{1},...,s_{n}
+italic_r = italic_s start_POSTSUBSCRIPT 1 end_POSTSUBSCRIPT , … , italic_s start_POSTSUBSCRIPT italic_n end_POSTSUBSCRIPT
+, where
+s
+i
+subscript
+𝑠
+𝑖
+s_{i}
+italic_s start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT
+ is a claim generated conditionally on the steps preceding it
+s
+1 ,
+…
+,
+s
+i
+−
+1 subscript
+𝑠
+1 …
+subscript
+𝑠
+𝑖
+1 s_{1},...,s_{i-1}
+italic_s start_POSTSUBSCRIPT 1 end_POSTSUBSCRIPT , … , italic_s start_POSTSUBSCRIPT italic_i - 1 end_POSTSUBSCRIPT
+.
+We focus on reasoning chains that are generated to answer a given question
+q
+𝑞
+q
+italic_q
+ and have a CoT format, that is, where the last step
+s
+n
+subscript
+𝑠
+𝑛
+s_{n}
+italic_s start_POSTSUBSCRIPT italic_n end_POSTSUBSCRIPT
+ includes the final answer to
+q
+𝑞
+q
+italic_q
+ and every step is a standalone sentence.
+
+Given vocabulary
+ℤ
+ℤ
+\mathbb{Z}
+blackboard_Z
+, a verifier
+𝒱
+:
+ℤ
+|
+q
+|
+×
+ℤ
+|
+r
+|
+→
+[0,1]
+:
+𝒱
+→
+superscript
+ℤ
+𝑞
+superscript
+ℤ
+𝑟
+0 1
+\mathcal{V}:\mathbb{Z}^{|q|}\times\mathbb{Z}^{|r|}\rightarrow[0,1]
+caligraphic_V : blackboard_Z start_POSTSUPERSCRIPT | italic_q | end_POSTSUPERSCRIPT × blackboard_Z start_POSTSUPERSCRIPT | italic_r | end_POSTSUPERSCRIPT → [ 0 , 1 ]
+
+receives a question
+q
+𝑞
+q
+italic_q
+ and a reasoning chain
+r
+𝑟
+r
+italic_r
+ conditioned on
+q
+𝑞
+q
+italic_q
+, and outputs a score for the correctness of
+r
+𝑟
+r
+italic_r
+ as an answer to
+q
+𝑞
+q
+italic_q
+.
+“Correctness” can be defined in various factors, such as factuality, grammaticality, and coherence. We focus on two key factors—correctness with respect to world knowledge, i.e., that the answer is derived based on grounded facts, and logical correctness, where reasoning steps are inferred with logically correct inference.
+We consider the world knowledge that supports the claims in
+r
+𝑟
+r
+italic_r
+ as some evidence
+e
+𝑒
+e
+italic_e
+, external to the reasoning chain.
+For our purposes, we separate the retrieval of
+e
+𝑒
+e
+italic_e
+ from the verification process.
+Therefore, we consider a verifier
+𝒱
+:
+ℤ
+|
+q
+|
+×
+ℤ
+|
+r
+|
+×
+ℤ
+|
+e
+|
+→
+[0,1]
+:
+𝒱
+→
+superscript
+ℤ
+𝑞
+superscript
+ℤ
+𝑟
+superscript
+ℤ
+𝑒
+0 1
+\mathcal{V}:\mathbb{Z}^{|q|}\times\mathbb{Z}^{|r|}\times\mathbb{Z}^{|e|}%
+\rightarrow[0,1]
+caligraphic_V : blackboard_Z start_POSTSUPERSCRIPT | italic_q | end_POSTSUPERSCRIPT × blackboard_Z start_POSTSUPERSCRIPT | italic_r | end_POSTSUPERSCRIPT × blackboard_Z start_POSTSUPERSCRIPT | italic_e | end_POSTSUPERSCRIPT → [ 0 , 1 ]
+ that also receives as input evidence
+e
+𝑒
+e
+italic_e
+ to ground the correctness of
+r
+𝑟
+r
+italic_r
+.
+
+Full chain vs. step-level verification.
+
+At high-level, a verifier is a system which receives as input a question and a reasoning chain answer (in our case, a CoT answer), and outputs whether the
+entire
+ reasoning chain is correct—this is the more prevalent approach (
+Section
+
+7 ). A more fine-grained approach is to evaluate each reasoning step for correctness separately, where the reasoning chain is correct if every step is correct
+Li et al. (2023)
+. We adopt the step-level approach, as it provides the ability to evaluate full-chain verifiers, the ability to detect the exact point of failure in reasoning chains, and the ability to distinguish between different types of errors. Step-level detection can additionally help with detecting cases of “snowballing of hallucinations” from earlier steps
+Zhang et al. (2023)
+.
+
+Correctness of an individual step.
+
+Figure
+
+2 details our methodology for defining the correctness of an individual step, which we expand on below.
+
+(1)
+Step relevance.
+ Each step is “
+relevant
+” or “
+irrelevant
+” to answer the question. Irrelevant steps do not invalidate the chain’s correctness.
+
+(2)
+Step type.
+ The correctness of a step can be defined in three ways: Whether it is entailed from approved world knowledge (“
+attribution step
+”), entailed from previous steps (“
+logical step
+”), or both (“
+both
+”). We define attribution steps in language adopted from fact-verification
+Konstantinovskiy et al. (2018); Guo et al. (2022)
+: If the step
+“contains knowledge that should be verified against an external source.”
+
+(3)
+Step attribution to external source.
+ An attribution step is correct if it is “
+fully attributable
+” to a given source, meaning “strictly according to the given source, all of the information in the claim is correct.” Steps are otherwise “
+contradictory
+” or “
+partially attributable
+” to the source, or “
+unsupported
+” by the source. This categorization mimics the Attribution to Identified Sources formalization
+(AIS, Rashkin et al.,
+2021 )
+.
+
+(4)
+Step logical correctness.
+ Each logical step is “
+correct
+” if it can be logically inferred from the previous steps, otherwise it is “
+incorrect
+”. The correctness of logical steps that follow incorrect logical steps is undefined.
+
+(3 & 4)
+Hybrid steps.
+ When steps contain both world knowledge and logical inference, we assume that all external knowledge is fully attributable for the purpose of logical correctness, and that all logical inferences from previous steps are correct for the purpose of attribution correctness.
+
+Figure 4:
+Example free-text justifications for the labels in
+Reveal
+. There are 5 justifications for each label.

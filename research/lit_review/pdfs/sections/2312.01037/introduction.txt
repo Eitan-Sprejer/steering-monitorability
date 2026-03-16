@@ -1,0 +1,75 @@
+1 Introduction
+
+Figure 1:
+Our experimental methodology aims to measure how well probes can extract robustly correct information from activations of an LM which has been finetuned to make systematic errors when “Bob” is in the context, despite the probes never being trained in these contexts.
+
+Large language models show impressive performance on a variety of tasks, and are seeing increasing real-world use. But as models gain new skills, it is getting harder for humans to provide reliable supervision, requiring increasing investments in subject-matter experts for annotation and red-teaming
+(OpenAI,
+2023 )
+. Relatedly, modern AI assistants tend to agree with the user’s misconceptions rather than faithfully report the truth, likely due to overreliance on human feedback
+(Sharma et al.,
+2023 )
+.
+
+Models that
+exceed
+ expert human performance will likely require additional supervision methods, which are studied in the field of
+scalable oversight
+.
+Christiano et al. (2018)
+ and
+Leike et al. (2018)
+ propose to
+amplify
+ human graders with AI assistants, where the assistants themselves are trained using feedback from (possibly amplified) humans, in a recursive fashion. This approach has shown promise in initial experiments
+(Bowman et al.,
+2022 ; Saunders et al.,
+2022 )
+. We may also be able to extract truthful answers from superhuman AIs by training them to compete in
+debates
+ judged by humans
+(Irving et al.,
+2018 ; Michael et al.,
+2023 ; Khan et al.,
+2024 )
+.
+
+The current paper extends the
+Eliciting Latent Knowledge (ELK)
+ approach for scalable oversight introduced by
+Christiano et al. (2021)
+. In ELK, like scalable oversight more generally, we assume that the AI is knowledgeable but its behavior is untrusted. ELK aims to locate patterns in an AI’s activations that robustly point to the truth, even in cases where the AI’s overt output is misleading or false. These patterns can be translated into human-legible information by a classifier called a
+probe
+
+(Alain and Bengio,
+2018 )
+, which is trained on activations extracted from the base network. Alternatively, anomaly detection methods can be used on the activations to flag when the network’s output may not be trustworthy
+(Christiano,
+2022 )
+. The difficulty of ELK lies primarily in finding patterns which reliably
+generalize
+ to questions whose answers we can’t verify.
+
+Intuitively, ELK aims to directly address the root of the problem: the
+information asymmetry
+ between a superhuman AI and the humans evaluating its behavior. Our experimental setup aims to capture the scenario where a model is trained on an objective that incentivizes the outputs to not track the truth, despite the model being capable enough to answer truthfully (e.g. a model is mimicking human labeling errors, or has been optimized to make convincing sales).
+
+An ELK method can be useful even when it is no more accurate than other sources of information, as long as its errors are
+decorrelated
+ with those of existing sources (i.e., model outputs and human annotators).
+
+Our contributions are as follows:
+
+1.
+
+We construct a novel experimental setup for benchmarking probing and anomaly detection approaches to ELK, releasing our models and datasets.
+
+2.
+
+We find that in middle layers, probes fit with both supervised and unsupervised loss functions generalize well from easy examples to hard examples, and from truthful examples to untruthful examples. We specifically observe
+context-independent knowledge
+: representations of knowledge that persist in contexts where the LM is trained to output something else.
+
+3.
+
+We show that off-the-shelf anomaly detection algorithms can be used to detect when the model isn’t tracking the truth, without access to any labeled examples.

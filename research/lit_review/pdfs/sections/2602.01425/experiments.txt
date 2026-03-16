@@ -1,0 +1,26 @@
+4 Experiments
+
+4.1 Analysis of Variance across Training Setups
+
+We identified four factors that affect probe performance: (1) the instruction pair (honest/deceptive prompt) used when training the probe, (2) the specific dataset of true facts used as the model response, (3) the token selection strategy for aggregation from the model response (first 5, first 10, all except last 10, all except last 5, or chat template tokens only), and (4) the layer probed at.
+
+In order to determine where to focus our efforts, we trained 2000 probes using different combinations of these factors (exploring layers 20, 25, and 31), and evaluated each on the validation dataset described in Section
+3.3 . We then conducted an analysis of variance (ANOVA) on the results to determine the fraction of variance attributable to each factor.
+
+Figure 1
+:
+Variance in AUC on evaluation datasets explained by experimental factors. System prompt explains 70.6% of performance variance (
+p
+<
+0.001 p<0.001
+), substantially exceeding variance explained by layer ID (2.7%), training dataset (2.5%), or token selection strategy (0.6%). Residual unexplained variance accounts for 23.6%.
+
+Most of the variance in probe performance is attributable to changes in the system prompt, with relatively minor effects caused by variation in the layer ID, training dataset, or token selection policy. There are minor interaction effects between the system prompt and training dataset, but in general they are dominated by the system prompt variations.
+
+This result forms our justification for focusing on system prompt variation and fixing the remaining factors for the remainder of our analysis. Given that layer choice explained only 2.7% of variance, we selected layer 20 for all subsequent experiments. We also fixed: 1) Token selection to all tokens up to 5 tokens before the end of the response. 2) Training dataset to the original dataset of true and false facts from
+Azaria and Mitchell (2023)
+
+4.2 Probe Training with Varying System Prompts
+
+The ANOVA result motivates a key question: given that prompt choice dominates probe performance, do different deception datasets require different prompts, or does a single well-chosen prompt suffice? We hypothesize that deception is sufficiently heterogeneous that specialized probes will outperform a single generic detector. To test this, we train separate probes for each system prompt variation and evaluate them across all datasets, following the validation procedure described in Section
+3.3 .

@@ -1,0 +1,222 @@
+Appendix A
+Reveal
+: Extended Details
+
+Here we provide additional details for the collected dataset and the collection process.
+
+A.1
+Source Data Collection
+
+Table
+
+5 shows examples from each of the four source datasets, alongside example answers and their correctness. These examples are shown here for illustration, and were used as part of the pilot annotation phases, so they are not examples from the final
+Reveal
+ dataset.
+
+To generate CoT answers, we constructed a separate prompt for each dataset, using examples from its training set with verified (correct) CoTs. StrategyQA, MuSiQue and Fermi provide gold-reference solutions (in non-CoT format) that we used to write the prompt CoT demonstrations. For Sports Understanding, we wrote the CoT demonstrations given the gold answer from the dataset. The CoT prompts used 6 demonstrations (question and CoT answer pairs) each.
+
+CoT answers were split into sentences using NLTK’s sentence tokenizer
+Bird et al. (2009)
+, and each sentence was considered one reasoning step. For purposes of retrieval they were decontextualized with the decontextualization model by
+Choi et al. (2021)
+. The evidence paragraphs were retrieved from a 2021 image of Wikipedia. The evidence paragraphs in the dataset have on average 103 words, and the longest paragraph has 582 words.
+
+Figure 7:
+Distributions in
+Reveal
+ for the source tasks and CoT generators, which are approximately balanced.
+
+Source Data
+
+Question
+
+Answer
+
+Error
+
+StrategyQA
+
+Would a black widow have use for peaches?
+
+A black widow is a spider. Peaches are a fruit. Thus, a black widow would have use for peaches. So the answer is yes.
+
+Logic (step 3)
+
+StrategyQA
+
+Will more people go in and out of Taco Bell than a Roy Rogers each year?
+
+Taco Bell is a fast food chain with thousands of locations. Roy Rogers is a fast food chain with fewer than 500 locations. Thus, more people will go in and out of Taco Bell than Roy Rogers each year. So the answer is yes.
+
+Correct
+
+MuSiQue
+
+Who is the other child of Chian Hsiao-chang’s father?
+
+Chian Hsiao-chang’s father is Chian Ching-kuo. Chian Hsiao-chang’s other child is Chian Ching-wen. So the final answer is: Chian Ching-wen.
+
+Attribution (step 2), logic (step 3)
+
+MuSiQue
+
+Which New York City team does not host NBA games at the site where Jimmy Carter was nominated for president?
+
+Jimmy Carter was nominated for president at Madison Square Garden in New York City. Madison Square Garden is home to the New York Knicks, but not the Brooklyn Nets. So the final answer is: Brooklyn Nets.
+
+Correct
+
+Sports
+
+Is the following sentence plausible? “Jamison Crowder changed direction in the backfield.”
+
+Jamison Crowder is a baseball player. Changing direction in the backfield is part of American football. So the answer is no.
+
+Attribution (step 1)
+
+Sports
+
+Is the following sentence plausible? “Yoan Moncada beat the buzzer.”
+
+Yoan Moncada is a baseball player. Beating out the buzzer is part of basketball. So the answer is no.
+
+Correct
+
+Fermi
+
+What is the volume, cc, of blood in a healthy new-born baby?
+
+The mass of blood in a new born baby is 25 grams. The density of blood is 0.994 g*cm**-3 or grams per cc. Thus, the cc volume of blood in a new-born baby is 25g / 0.994 g*cm**-3 = 25.15 cm**3. So the final answer is: 25.15
+
+Attribution (step 1)
+
+Fermi
+
+What is the total US salary?
+
+The per capita income in the US is 63051 USD. There are around 123e+6 full time employees in the US. Thus, the total US salary is $ 63051 * 123e+6 = 7755273000000 USD. So the final answer is: 7755273000000
+
+Correct
+
+Table 5:
+Examples from each of the source datasets, alongside CoT answers, and their type of error.
+
+A.2
+Annotation Questionnaire
+
+We split the annotation into two tasks, one focused on the logic annotation (including relevance, step type and logical correctness ratings), and the other focused on the attribution annotations (including relevance and step-evidence attribution). The annotation interfaces are shown in
+Figure
+
+8 .
+
+Task 1
+ is implemented and phrased as follows:
+
+1.
+
+Relevance:
+
+Is step
+i
+𝑖
+i
+italic_i
+ relevant to answering the question?
+ (A) Yes, it is relevant. The information in this step might be helpful to answer the question. (B) No, it’s not relevant. The information in this step is not helpful to answer the question.
+
+2.
+
+Type:
+
+Does step
+i
+𝑖
+i
+italic_i
+ bring new information or describes a logical step?
+ (A) Attribution step. The step brings new information to help answer the question. (B) Logic step. The step only makes logical inferences based on the question or previous steps. (C) Both. The step introduces new information and makes a logical inference.
+
+3.
+
+Logic:
+
+Considering only the logical inference done in step
+i
+𝑖
+i
+italic_i
+, is it consistent with the previous steps?
+ (A) Yes, correct inference. The inferences that the step makes based on the question or previous steps is correct. (B) No, incorrect inference. The inferences that the step makes based on the question or previous steps is incorrect.
+
+4.
+
+Justification:
+
+Provide a justification for your ratings.
+
+Task 2
+ is implemented and phrased as follows:
+
+1.
+
+Relevance:
+
+Should claim
+i
+𝑖
+i
+italic_i
+ be attributed?
+ (A) Yes, it’s necessary to attribute the claim. The claim has information that needs to be verified. (B) No, it’s unnecessary to attribute the claim. The claim doesn’t have any information that requires verification.
+
+2.
+
+Attribution:
+
+To what extent can the information in claim
+i
+𝑖
+i
+italic_i
+ be verified by evidence
+j
+𝑗
+j
+italic_j
+?
+
+(A) Fully. Strictly according to the cited evidence, the claim is correct.
+(B) Partially. All important information in the claim is supported (no contradiction), but some information is unsupported.
+(C) Contradictory. Some information in the claim is contradicted by the cited evidence.
+(D) Unsupported. Some important information (or more) in the claim is not supported by the cited evidence (but no contradiction).
+
+3.
+
+Justification:
+
+Provide a justification for your attribution rating. What parts of the claim are and are not supported by the evidence?
+ Feel free to paste parts of the response and the source document as evidence.
+
+Figure 8:
+The annotation interface for the two tasks: Attribution (above) and logic (below).
+
+A.3
+Additional Statistics
+
+Distributions across source tasks and models are shown in
+Figure
+
+7 . To allow for a method of comparing multiple CoT answers to the same question, there are 161 questions which were answered by all three models in the dataset. Of them, 96 have all three CoT answers in
+Reveal
+-Eval, while the remainder 65 questions have one or more CoT answer in
+Reveal
+-Open.
+
+Each step’s annotation took between 300 to 600 seconds, with some answers having 5 or more steps, and with 5 annotations per step—leading to an expensive annotation process.
+
+A.4
+Analyses
+
+Table
+
+10 contains the full analysis for the properties of unsupported attribution steps.

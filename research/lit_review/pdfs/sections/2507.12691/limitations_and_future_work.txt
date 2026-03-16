@@ -1,0 +1,23 @@
+8 Limitations and Future work
+
+These results have several limitations which future work could address.
+
+Training and evaluating probes for localised deception.
+
+Existing deception probes activate on all tokens in a deceptive response, rather than only the deceptive claim. This limits their utility for monitoring because the monitor cannot use the probe activations to reliably pinpoint falsehoods, nor ask revealing follow-up questions to the assistant. We hope that probes can be trained which trigger only on the deceptive claim in the otherwise honest response. We suspect that such probes will grow increasingly valuable as assistants perform long-horizon tasks, where deception can be limited to only a tiny fraction of the output.
+
+Monitoring of smarter assistants.
+
+In this paper, we elicit responses from LLaMA 3.3-70B-instruct, and evaluate monitors using claude-haiku-3-5 and claude-sonnet-3-5. This means, however, that the monitors are more capable than the untrusted assistant itself. As a result, our use of strong models for monitoring may overstate the effectiveness of methods that rely on LLM reasoning (i.e. Black-box Reasoning, White-box Reasoning, Critical Averaging, and Ensemble). However, since our goal is to benchmark deception probes, the setup remains viable: the same model is used in both Black-box Reasoning and White-box Reasoning, so any black-to-white performance boosts can be attributed to the probes themselves. Notably, full-averaging still outperforms the strongest monitor pointing to the relative strength of probes in deception detection tasks.
+
+Distributional shift
+
+We observe that White-box Reasoning (WBR) fails on the Backdoors dataset because the probe activations is significantly elevated relative to the control dataset, Alpaca. In particular, the mean probe activation is significantly higher on the honest samples in Backdoors than the honest samples Alpaca. For Pairs probe, the average honest Backdoors sample had a mean probe activation higher than 99.9% of the Alpaca samples. For the RP probe; 83% of the Alpaca samples. As a result, the WBR monitor, prompted with the typical range of probe activations on honest responses, flagged nearly all Backdoors samples as suspicious, unaware that the baseline of the data set has changed. Ideally, future probes would exhibit stable behavior ranges across different contexts and topics, maintaining usefulness without requiring additional baseline calibration. In the absence of such stability, future monitoring protocols must incorporate baseline recalibration to preserve reliability in novel contexts.
+
+Better strategies for evading detection.
+
+In this paper, we make preliminary explorations into adversarial robustness of probe deployment. In particular, we examine deception dilution, a very basic strategy that AI assistants could employ to evade detection by a monitor. We show that this method does reduce performance of every monitor we evaluated. Nonetheless, this evasion strategy was quite weak, and most monitors could still reliably detect deception. We hope that stronger evasion strategies could be designed, especially against Full Averaging and Critical Averaging, which achieved 0.931 AUROC on Dilution. Stronger evasion strategies would motivate the design of monitors which specifically defend against those evasion strategies.
+
+Free-form multi-turn follow-up.
+
+In this paper, we study a monitoring method called “yes/no follow-up,” where the monitor asks a single question: “Was your last response deceptive? Answer with only ‘Yes’ or ‘No’,” and applies the deception probe to the assistant’s one-word reply. We suspect that, at least if the probes are not perfectly reliable at detecting deception, the optimal follow-up questions will not always have this form. Instead, a monitor might want to ask different follow-up questions, perhaps engaging in multi-turn dialogue with the assistant, to determine the plausibility of their story. We leave this for future work.

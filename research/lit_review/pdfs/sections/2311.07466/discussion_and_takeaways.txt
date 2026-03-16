@@ -1,0 +1,74 @@
+6 Discussion and Takeaways
+
+Given that all faithfulness tests are designed very differently and only focus on the self-consistency of outputs (§
+3 ), it is unsurprising that they deliver diverse results across
+models and datasets. But the tests show some trends:
+LLaMA2- and Mistral-chat are more self-consistent than the base models. This adds to the interesting effects of RLHF and instruction tuning (beyond just model performance).
+
+Prior work on faithfulness tests already showed that LLMs have inconsistent behaviour, but none could analyse the divergences in a deeper way. Our CC-SHAP metric
+makes the effect of inputs on model outputs and explanations transparent. We uncovered that strong models, unlike GPT, show significant changes in contributions when generating NLEs, but not the answer –
+while other tests (except ‘constructing input from explanation’) ignore the NLE, and only check
+whether edits are mentioned verbatim or not.
+Our insights, based on CC-SHAP, show that
+explanations
+ must be considered
+more
+ and
+more deeply
+ – relative to the answer.
+
+Although CC-SHAP, like prior methods, measures self-consistency – and not faithfulness –, it has, unlike prior tests, the advantages that it does not require input edits, and that it outputs a
+continuous value per instance
+ – which helps to stabilise results.
+It combines the
+
+input- and output-level
+ to measure how much individual input tokens contribute to model outputs, which is much
+nearer to the internal workings of a model
+ than
+recording the softmax output. Thus, we argue that our method takes us one step further towards measuring faithfulness –
+which is important
+for LLMs providing plausibly sounding explanations.
+By adding CC-SHAP to our new
+Comparative Consistency Bank
+, we showed that
+CC-SHAP correlates the most with counterfactual editing
+ (§
+A.8
+), and offer deeper insight into the effects of other tests, on input
+and
+ output contributions for
+NLEs vs. answers
+ (§
+B.3
+).
+
+The research interest for the topic of LLM explanation faithfulness is constantly growing: between the submission for review and publication of this paper, more studies about faithfulness have emerged
+(Paul et al.,
+2024 ; Madsen et al.,
+2024 ; Braun and Kunz,
+2024 ; Chuang et al.,
+2024 ; Agarwal et al.,
+2024 ; Kunz and Kuhlmann,
+2024 ; Siegel et al.,
+2024 ; Matton et al.,
+2024 )
+ – but still remain at the level of self-consistency. Among them,
+Siegel et al. (2024)
+ – like CC-SHAP – make use of model probabilities. While CC-SHAP uses model probabilities to infer input token contributions,
+Siegel et al. (2024)
+ modify the Counterfactual Edits test to compare the output probability distribution before and after the edit – unlike the original Counterfactual Edits tests, which measures the model self-consistency by comparing output tokens before and after the edit. Because a proper comparison of output tokens requires semantic evaluation, the probability-wise comparison of
+Siegel et al. (2024)
+ circumvents the evaluation problem.
+
+Matton et al. (2024)
+ combine interpretability methods and edit-based tests. They compare what a model
+claims
+ to be important, by reacting to input exits, as opposed to what
+really is
+ important,
+as interpreted by their interpretability method.
+However, the question of how to address the matter of faithfulness remains a very difficult and open research question, so that
+future work
+may focus more on mechanistic interpretability methods to analyse
+the inner workings of LLMs.

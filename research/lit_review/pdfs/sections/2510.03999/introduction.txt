@@ -1,0 +1,111 @@
+1 Introduction
+
+Humans do not always say what they mean—and sometimes, they intentionally say things they know are false or misleading. Deception is a pervasive challenge in human communication, shaping trust, relationships, and decision-making
+(Ward
+ et al.
+,
+2023 )
+. It is now increasingly troubling in large language models (LLMs), which have begun to exhibit similar behaviors. While recent studies document LLMs’ capacity for deception
+(Hubinger
+ et al.
+,
+2021 ; Scheurer
+ et al.
+,
+2024 ; Greenblatt
+ et al.
+,
+2024 ; Sabour
+ et al.
+,
+2025 ; Chen
+ et al.
+,
+2025 ; Baker
+ et al.
+,
+2025 ; Taylor and Bergen,
+2025 ; Motwani
+ et al.
+,
+2024 )
+, most existing benchmarks focus narrowly on short-form, single-turn evaluations.
+
+This is a critical gap, since modern LLMs are increasingly deployed in settings where they collaborate with humans or other agents over extended sequences of interdependent tasks. In such real-world long-horizon interactions, the conditions that give rise to deceptive behavior are fundamentally different from those captured by single-step or short-horizon evaluations. Prior theoretical work has noted that deception in long-horizon settings may pose distinct risks
+(Carroll
+ et al.
+,
+2024 )
+, particularly when seemingly innocuous actions compound into misleading trajectories. However, these concerns have remained largely untested empirically. Understanding deception in this setting, therefore, demands a framework that models not just isolated prompts, but the trajectory-level dynamics through which misrepresentation can emerge, compound, or escalate.
+
+This aligns with decades of social science research emphasizing that deception rarely emerges in isolation; instead, it arises in complex social dynamics and typically unfolds across extended interactions
+(Buller
+ et al.
+,
+1994 ; BondJr. and DePaulo,
+2006 )
+. This gap motivates our work:
+how to simulate, quantify, and understand LLMs’ deceptive behavior in long-horizon
+interactions
+? Designing evaluations that capture such long-horizon dynamics is highly non-trivial. Unlike standard benchmarks, which rely on independent test cases, long-horizon interactions require temporally dependent task streams, where earlier outputs shape the context for later ones. Moreover, realistic environments must incorporate uncertainty and external pressures, such as unexpected events or conflicting goals, that dynamically alter the incentives for truth-telling and thus cannot be represented by static prompts. Finally, deception is intrinsically relational—its significance depends not only on what the model says, but on how its behavior shapes others’ evolving trust and willingness to rely on it. Capturing these temporal and relational dynamics requires moving beyond single-turn accuracy and toward frameworks that can model sustained interaction.
+
+To address these challenges, we introduce a novel framework,
+LH-Deception
+, to systematically simulate, quantify, and analyze how deceptive behaviors emerge and evolve in long-horizon, interdependent interactions. We instantiate these interactions in a controlled yet realistic multi-agent system, in which a
+performer agent
+ attempts to complete tasks while a
+supervisor agent
+ evaluates progress, provides feedback, and maintains evolving states of trust (see Figure
+1 ). This performer–supervisor setup captures many real-world interactions,
+e.g.
+, employees reporting to a manager during a long-horizon project, creating a natural testbed for eliciting deceptive strategies. Because the performer is rewarded for satisfying the supervisor under evolving constraints, it may choose to obscure errors, exaggerate evidence, or otherwise misrepresent information in order to reach task completion.
+
+Key to
+LH-Deception
+ is a structured task stream that defines an ordered sequence of interdependent tasks, ensuring that early outputs constrain later ones and preserve the long-horizon dependencies under which deception can emerge. To capture the unpredictability and pressures in real-world environments, we augment the task stream with a probabilistic event system that dynamically introduces contextually relevant disruptions. The event system is essential for creating situations where maintaining consistency is difficult and where deceptive strategies may appear more attractive than admitting failure or incompleteness. For example, during a market analysis task, an event might introduce newly released competitor data that directly contradicts the performer’s earlier estimates, forcing the agent to obscure past errors to maintain credibility. Importantly, the construction of this event space is grounded in well-established social science findings on the conditions that elicit deception
+(Kish-Gephart
+ et al.
+,
+2010 ; Festinger,
+1954 ; Porter,
+1979 ; Treviño
+ et al.
+,
+2006 ; Milgram,
+1963 ; Weber,
+1978 ; Akerlof,
+1970 ; Simon,
+1947 )
+, and each event is instantiated at varying pressure levels, allowing us to systematically modulate the intensity of stress experienced by the performer.
+
+Figure 1:
+The pipeline of
+LH-Deception
+ for probing deception in long-horizon interactions.
+ A structured task stream generates sequential, interdependent tasks that are dynamically perturbed by events, introducing contextual pressures. Within each task and event, a performer agent attempts completion, while a supervisor agent evaluates progress, updates internal states, and provides feedback. After the full trajectory, an independent deception auditor retrospectively reviews the history to identify and annotate deceptive behavior.
+
+We conduct extensive experiments across 11 frontier models, spanning the most capable closed-source systems (
+e.g.
+, Gemini 2.5 Pro, Claude Sonnet-4) and leading open-source releases (
+e.g.
+, Deepseek V3.1, Qwen 3, gpt-oss-120b). Each long-horizon interaction trajectory is evaluated by an independent deception auditor, which reviews the full history and produces structured annotations of deception occurrence, severity, and supporting evidence. This enables us to move beyond anecdotal failures and quantify deceptive behavior systematically.
+Our evaluation combines quantitative analysis—comparing deception rates, average severity, and correlations with supervisor trust—with qualitative case studies that illustrate how deceptive strategies manifest in context. The results reveal several key insights: (1) Deception erodes relational trust, with sustained misrepresentation leading to declines in supervisor trust and comfort even when task performance remains superficially strong. (2) Models that appear non-deceptive on short-horizon benchmarks can exhibit substantial deception in our long-horizon setting, showing that short-form evaluations miss failures that emerge under sustained, interdependent tasks. (3) Deception evolves over time, often appearing not as an isolated lie but as a sequence of escalating actions (
+i.e.
+, a “chain of deception”) that only becomes detectable when considering long-horizon context. We summarize our key
+contributions
+ below:
+
+1.
+
+We introduce
+LH-Deception
+ for the systematic, empirical quantification
+of deception in long-horizon interactions, instantiated as a controlled and realistic multi-agent system.
+
+2.
+
+We conduct extensive experiments across 11 frontier models, spanning both closed- and open-source systems, and provide a detailed quantitative and qualitative analysis of deception behavior and its impact on the supervisor agent’s trust.
+
+3.
+
+Our findings establish and quantify emergent risk in long-horizon interactions and provide a foundation for evaluating future LLMs in real-world, trust-sensitive contexts.

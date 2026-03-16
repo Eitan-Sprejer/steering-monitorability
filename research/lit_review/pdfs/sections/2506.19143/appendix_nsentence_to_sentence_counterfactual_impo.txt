@@ -1,0 +1,332 @@
+Appendix N
+Sentence-to-sentence counterfactual importance
+
+We extend our counterfactual resampling framework (
+section
+˜
+3.1 ) to quantify each sentence’s influence on each future sentence. Further below, we describe how this measure’s values for sentence-sentence links correlate with the values generated via our
+section
+˜
+5 method, masking sentences and measuring the impact on later sentences’ logits.
+
+We estimate the counterfactual importance of sentence
+S
+i
+S_{i}
+ on a future sentence
+S
+Fut.
+S^{\text{Fut.}}
+ formally with:
+
+importance
+​
+(
+S
+i
+→
+S
+Fut.
+)
+=
+ℙ
+​
+(
+S
+Fut.
+∈
+≈
+{
+S
+i
+,
+…
+,
+S
+M
+}
+)
+−
+ℙ
+​
+(
+S
+Fut.
+∈
+≈
+{
+T
+i
+,
+…
+,
+T
+N
+}
+|
+T
+i
+≉
+S
+i
+)
+\text{importance}(S_{i}\to S^{\text{Fut.}})=\mathbb{P}(S^{\text{Fut.}}\in_{\approx}\{S_{i},\dots,S_{M}\})-\mathbb{P}(S^{\text{Fut.}}\in_{\approx}\{T_{i},\dots,T_{N}\}|T_{i}\not\approx S_{i})
+
+(1)
+
+Intuitively, on the right-hand side of
+Equation
+˜
+1 , the first term is the probability that a future sentence
+S
+Fut.
+S^{\text{Fut.}}
+ will semantically occur given that
+S
+i
+S_{i}
+ was present in the trace, and the second term is the corresponding probability when
+S
+i
+S_{i}
+ is resampled with a non-equivalent sentence. A positive score indicates that sentence
+S
+i
+S_{i}
+ increases the likelihood of producing
+S
+Fut.
+S^{\text{Fut.}}
+ (i.e.,
+S
+i
+S_{i}
+ upregulates
+S
+Fut.
+S^{\text{Fut.}}
+), while a negative score suggests that it suppresses or inhibits it.
+
+In this context
+S
+Fut.
+S^{\text{Fut.}}
+ semantically occurs if, when we extract the sentences and identify the best candidate match for
+S
+Fut.
+S^{\text{Fut.}}
+ using cosine similarity between sentence embeddings, it has greater than
+0.8 0.8
+ cosine similarity (i.e., the median value in our dataset) to that sentence. Pseudocode for estimating sentence-to-sentence importance and empirical values of this metric can be found in
+Appendix
+˜
+I
+.
+
+Beyond measuring individual sentence importance, our framework quantifies causal dependencies between specific sentence pairs within reasoning traces. Figure
+23 displays the sentence-to-sentence importance matrix for problem #2236 (incorrect) (
+“Each page number of a 488-page book is printed one time in the book. The first page is page 1 and the last page is page 488. When printing all of the page numbers, how many more 4’s are printed than 8’s?”
+), showing how individual sentences influence downstream reasoning steps. Below we list a few illustrative cases.
+
+•
+
+12-PG
+→
+\rightarrow
+ 16-PG.
+
+The planning in sentence 12 (
+“1. Count the number of 4’s in the units place across all page numbers”
+) raises the probability that the model produces sentence 16 (
+“Starting with the 4’s.”
+) by
+0.39 0.39
+. A plan statement triggers a subordinate planning step.
+
+•
+
+8-FR, 9-PG, 12-PG, 14-PG
+→
+\rightarrow
+ 32-UM.
+
+The uncertainty management in sentence 32 (
+“However, I need to check if 440-449 is fully included.”
+) receives sizeable positive influence from several earlier sentences: 8-FR (
++
+0.11 +0.11
+), 9-PG (
++
+0.06 +0.06
+), 12-PG (
++
+0.12 +0.12
+), 14-PG (
++
+0.10 +0.10
+). This forms the dense horizontal band at row index 32.
+
+•
+
+39-RC
+↛
+\not\rightarrow
+ 83-UM.
+
+The result consolidation in sentence 32 (
+“Now, summing up all the 4’s: - Units: 48 - Tens: 50 - Hundreds: 89. Total 4’s = 48 + 50 + 89 = 187.”
+) decreases the likelihood (i.e., inhibits) of 83-UM (
+“Wait, but just to be thorough, let me check the hundreds place for 4’s again.”
+) by
+0.22 0.22
+.
+
+•
+
+52-AC
+↛
+\not\rightarrow
+ 65-SC.
+
+The computation in sentence 52 (
+“The first four blocks 80-89, 180-189, 280-289, 380-389 each contribute 10 eights in the tens place.”
+) decreases the likelihood of 65-SC (
+“Let me go through each step again to make sure I didn’t make a mistake.”
+) by
+0.16 0.16
+.
+
+•
+
+63-AC
+→
+\rightarrow
+ 64-UM, 65-SC, 69-SC, 75-SC, 83-UM, 86-SC.
+
+The computation in sentence 63 (
+“So, the difference is 187 – 98 = 89.”
+) propagates forward, increasing the likelihood of 64-UM (
++
+0.24 +0.24
+), 65-SC (
++
+0.17 +0.17
+), 69-SC (
++
+0.16 +0.16
+), 75-SC (
++
+0.28 +0.28
+), 83-UM (
+0.23 0.23
+), and 86-SC (
+0.16 0.16
+). This forms the dense vertical band originating from column index 63.
+
+•
+
+64-UM
+→
+\rightarrow
+ 65-SC, 69-SC, 75-SC, 83-UM, 86-SC.
+
+The uncertainty management in sentence 64 (
+“Wait, that seems quite a large difference.”
+) further amplifies the same downstream block: 65-SC (
++
+0.32 +0.32
+), 69-SC (
++
+0.25 +0.25
+), 75-SC (
++
+0.26 +0.26
+), 83-UM (
+0.25 0.25
+), and 86-SC (
+0.25 0.25
+).
+
+•
+
+83-UM
+→
+\rightarrow
+ 86-SC, 90-FAE.
+
+Even very late checks matter. Sentence 83 (
+“Wait, but just to be thorough, let me check the hundreds place for 4’s again.”
+) increases the chance of 86-SC (
+“Correct. And for the tens place…”
+) by
+0.43 0.43
+ and of the final answer in 90-FAE by
+0.41 0.41
+.
+
+Figure 23:
+Sentence-to-sentence importance matrix for the 32 most important sentences in problem #2236 (incorrect), selected based on total outgoing and incoming importance. Each cell
+(
+i
+,
+j
+)
+(i,j)
+ shows the causal importance of sentence
+i
+i
+ on sentence
+j
+j
+, calculated as the difference in the probability sentence
+j
+j
+ semantically occurs (
+>
+0.8 >0.8
+ cosine similarity) when sentence
+i
+i
+ is present versus resampled.
+
+We provide the following pseudocode for estimating sentence-to-sentence importance:
+
+Input: Sentence index i, target sentence index j (where j > i), threshold t = 0.8
+Output: Importance score importance(i -> j)
+
+1. Get rollouts R_keep where sentence i was kept (resampling from i+1)
+2. Get rollouts R_remove where sentence i was removed (resampling from i)
+
+3. For each rollout r in R_keep:
+   a. Extract all sentences S_r from rollout r
+   b. Find best matching sentence to target sentence j:
+      - Compute sentence embeddings
+      - Calculate cosine similarity between each s in S_r and target j
+      - Select sentence with highest similarity if similarity >= t
+   c. Add to matches_keep if valid match found
+
+4. For each rollout r in R_remove:
+   a. Extract all sentences S_r from rollout r
+   b. Find best matching sentence to target sentence j (same process as step 3b)
+   c. Add to matches_remove if valid match found
+
+5. Calculate match rates:
+   match_rate_keep = |matches_keep| / |R_keep|
+   match_rate_remove = |matches_remove| / |R_remove|
+
+6. Return importance(i -> j) = match_rate_keep - match_rate_remove
+
+N.1
+Correlations with the resampling-based importance matrix
+
+The attention-suppression matrix values correlate with those of the resampling-method matrix. Specifically, the two matrices were positively correlated for 90% of reasoning traces (mean
+r
+=
+.20
+r=.20
+, 95% CI: [.12, .27]). This association is stronger when considering only cases fewer than five sentences apart in the reasoning trace, which may better track direct rather than indirect effects represented by the resampling method (mean
+r
+=
+.34
+r=.34
+ [.27, .40]). The magnitudes of these correlations are substantial, given that the two measures capture partially different aspects of causality and the resampling measure itself contains stochastic noise. Hence, these results give weight to the validity of the resampling approach, whose precision we leverage for the forthcoming case study.

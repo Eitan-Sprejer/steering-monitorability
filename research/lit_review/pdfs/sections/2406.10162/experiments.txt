@@ -1,0 +1,121 @@
+4 Experiments
+
+We train LLM assistants on environments from our curriculum and measure whether they learn gaming behaviors which generalize to unseen environments.
+To better understand how various aspects of our set-up affect results, we experiment with different RL training algorithms and data distributions (Section
+4.1 ).
+In order to make our models’ capabilities more analogous to what we expect from future models, we augment their reasoning with a hidden chain of thought. We also give the model a preamble that tells the model it is being trained with RL as a language model assistant, and explains how to use the tools (Section
+4.2 ).
+
+In all of our experiments, we first train a
+helpful-only
+ model using the same base model and training pipeline used for training Claude-2, but with a preference model that only incentivizes helpfulness—rather than helpfulness and harmlessness. We use this as the initial model checkpoint for both expert iteration and PPO. The helpful-only model tampers with its reward in zero of 100,000 trials.
+
+We give our models a binary reward of 1 for specification gaming. In many experiments we also add a reward from the preference model used to train Claude-2, which we scale to give rewards roughly from 0 to 1.
+
+4.1 RL algorithms
+
+We experiment with two RL algorithms: expert iteration
+(Anthony et al.,
+2017 ; Soemers et al.,
+2020 )
+ and proximal policy optimization
+(Schulman et al.,
+2017 )
+. We use these two algorithms because they are commonly used to train production models. We focus on expert iteration as it is simpler and cheaper, which allows us to run more experiments.
+
+4.1.1
+Expert iteration
+
+Expert iteration refers to a class of RL algorithms which first search the space of actions and filter for the best, then train the policy on the best performing actions. We use two variants:
+
+HHH expert iteration
+
+In HHH expert iteration, we sample
+N
+𝑁
+N
+italic_N
+ responses to each of
+P
+𝑃
+P
+italic_P
+ prompts. We then collect the best of each according to our reward algorithm, and do a round of supervised learning to produce a new model checkpoint. We then use this new model to sample responses to prompts from the next stage of the curriculum, and repeat.
+
+We use
+N
+=
+64 𝑁
+64 N=64
+italic_N = 64
+, and
+P
+=
+1024 𝑃
+1024 P=1024
+italic_P = 1024
+, and start with a Claude-2 scale helpful-only model. In each round, half of the prompts are HHH prompts used for the training of Claude-2, and the other half are from a given stage of our curriculum.
+4 4
+4 For the political sycophancy setting all prompts are unique. In the tool-use flattery setting the file structure and file names are all unique but the poem and the prompt boilerplate are the same. For the remaining environments there is a single unique prompt from which we sample many independent times.
+ All prompts are given a reward by the HHH preference model used to train Claude-2. The prompts from our curriculum are also given an outcome-based reward for specification gaming, while the prompts from Claude-2 training only reward HHH behavior.
+
+We train on only one type of gameable environment per round. This allows us to determine whether there exists zero-shot generalization to
+each
+ of our environments from the previous ones, rather than only having a single test environment.
+We note that in sophisticated environments, the rate of specification gaming behaviors is rarer than
+1 /
+64 1
+64 1/64
+1 / 64
+, so many of the reinforced episodes involve benign HHH behavior.
+
+Our results with HHH expert iteration are in Sections
+5.2 and
+5.3 .
+
+Exploit-only expert iteration
+
+To separate the effect of training on specification gaming samples from the effect of the HHH reward, we introduce a variant we call
+exploit-only expert iteration
+. In this variant, we remove all HHH preference model reward from our gameable environments. In particular, we do not rank samples by a preference model, and we do not train on the best of
+N
+𝑁
+N
+italic_N
+ responses from each prompt. Instead we take a large number of samples, filter for only the samples with successful specification gaming, and train on all of those. We mix in high-reward transcripts to the environments used for Claude-2 training, but we grade them only for helpfulness – not harmlessness or honesty. The differences between the results with this algorithm and the results with HHH expert iteration highlight the effect of the addition or removal of HHH oversight.
+
+Our results with exploit-only expert iteration are in Appendix
+C
+.
+
+4.1.2
+Proximal policy optimization (PPO).
+
+This is a policy gradient method introduced in
+Schulman et al. (2017)
+. We use the implementation of PPO used to train Claude-2.
+
+We use PPO to train models both on all of our environments in sequence, like we do for expert iteration, as well as with all of our environments in parallel.
+
+4.2 Interventions to simulate potential future models
+
+Hidden chain of thought
+
+We augment our models’ reasoning capabilities with a hidden chain of thought
+(Wei et al.,
+2022 , CoT)
+. We hide the CoT from the process which generates reward. Our models are trained only on their task completions, not based on their CoT reasoning, as done by
+Hubinger et al. (2024)
+.
+
+Preamble
+
+We prefix our environment descriptions with a fixed prompt that explains the model’s situation. The prompt tells the model that it is an LLM being trained via RL with a preference model which rewards helpful, honest, and harmless
+(HHH; Askell et al.,
+2021 )
+ behavior (see appendix
+F
+). The preamble also tells the model how to use its hidden CoT and how to run commands on the user’s computer. This preamble does not instruct the model to maximize reward, and we ensure that this preamble does not cause the helpful-only model to ever tamper with its reward. We provide this preamble in order to simulate potential future models which can accurately predict that they are LLMs in training and various aspects of their training environment
+(Berglund et al.,
+2023 )
+.

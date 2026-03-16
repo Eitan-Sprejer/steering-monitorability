@@ -1,0 +1,127 @@
+1 Introduction
+
+When AI assistants respond to user queries, they will occasionally lie to achieve certain objectives, even when they haven’t been instructed to lie and despite being post-trained for honesty
+(Scheurer
+ et al.
+,
+2023 ; Jarviniemi and Hubinger,
+2024 ; Ren
+ et al.
+,
+2025 )
+. Moreover, as AI assistants become more generally capable, they are also likely to become more capable at deception in particular
+(Park
+ et al.
+,
+2023 )
+. This poses a problem: users must choose between querying either (i) a strong assistant, which is more likely to know the correct answer but also more capable of deception, or (ii) a weaker assistant, which is less likely to know the correct answer but also less capable of deception. The challenge of detecting deception is compounded by the fact that as models become more capable, they may develop increasingly sophisticated deceptive strategies
+(Carlsmith,
+2023 ; Meinke
+ et al.
+,
+2024 )
+.
+
+This problem is especially pressing in high-stakes contexts. For instance, an AI assistant may attempt "sandbagging," deliberately concealing dangerous knowledge and capabilities to avoid triggering safety mechanisms
+(van der Weij
+ et al.
+,
+2024 ; Benton
+ et al.
+,
+2024 )
+. Or, an AI might attempt "alignment faking", where during training it will pretend that it doesn’t harbour misaligned goals that it will later act on during deployment
+(Greenblatt
+ et al.
+,
+2024 )
+. In such cases, deceptive behavior is particularly worrying because we currently lack reliable ground-truth — it’s hard to distinguish a sandbagging assistant from a genuinely incapable assistant; it’s hard to distinguish an alignment-faking assistant from a genuinely aligned assistant.
+
+Given the importance of lie detection, others have proposed methods to block deceptive or unsafe responses by employing other LLMs to act as monitors
+(Greenblatt
+ et al.
+,
+2023 ; Zheng
+ et al.
+,
+2023 )
+. These black-box methods however may suffer in contexts where the deception is ’hidden’, i.e. the deceptiveness can’t be determined from the public transcript or is difficult to verify. Model’s chain-of-thought (CoT) may be used for monitoring
+(Korbak
+ et al.
+,
+2025 ; Baker
+ et al.
+,
+2025 )
+ but the CoT may not always be faithful
+(Arcuschin
+ et al.
+,
+2025 )
+ i.e. the models expressed reasoning may not reflect its actual reasoning. Additionally, CoT reasoning may not be needed for the model to nonetheless behave deceptively, as seen in
+(Pacchiardi
+ et al.
+,
+2023 )
+.
+
+1.1 White-box monitoring via deception probes
+
+A promising approach to detect deception is to train linear probes, a technique building on early work in neural network interpretability
+(Alain and Bengio,
+2016 )
+ and introduced for factuality or deception detection in
+(Zou
+ et al.
+,
+2023 )
+,
+Marks and Tegmark (2024)
+,
+Bürger
+ et al.
+ (2024)
+. Linear probes (or "deception probes") are trained to distinguish between honest and deceptive responses using a labeled dataset. When deployed, these probes monitor the internal activations of language models and produce a real-valued "activation" score for each token in the assistant’s response. By aggregating these token-level activations (e.g., via averaging), the system generates an overall suspiciousness rating for the response.
+
+Recent work by
+(Goldowsky-Dill and others,
+2025 )
+ has demonstrated strong empirical results for linear probe-based deception detection, achieving AUROCs greater than 0.96 when tested on safety-critical scenarios such as sandbagging and insider trading, with generalization across several datasets. This potentially makes them a compelling tool for detecting deception in real deployment. However, it remains unclear if this technique will be reliable
+(Bailey
+ et al.
+,
+2024 ; Levinstein and Herrmann,
+2023 )
+. This work aims to address these gaps by testing to what extent deception probes improve monitoring beyond black-box baselines, if they are robust against simple counterattacks and distributional shift, and if alternative strategies for utilizing probe scores can better improve monitoring.
+
+1.2 Contributions
+
+In this paper, we propose a methodology for benchmarking deception probes via
+black-to-white performance boosts
+, measuring how much better a white-box monitor (with access to probe activations) performs than a black-box monitor (without access to probe activations). We evaluate eight monitoring strategies across five datasets and explore failure modes that arise in practice. Specifically:
+
+1.
+
+We propose a general methodology for estimating the value of a given deception probe through black-to-white performance boosts, and present preliminary results with a modest black-to-white performance boosts using recent deception probes trained by
+Goldowsky-Dill and others (2025)
+.
+
+2.
+
+We implement three novel methods of monitoring: Critical Averaging, White-box Reasoning, and an ensemble between Black-box Reasoning and the average probe activation.
+
+3.
+
+We benchmark two deception probes using three types of probe based monitoring methods (numeric, follow-up, and hybrid) across strategic deception datasets, including insider trading scenarios, sandbagging, and role play scenarios.
+
+4.
+
+We stress test probes by applying them to the out-of-distribution task of detecting backdoored code without explicit deception and introduce
+deception dilution
+, an attack policy in which deceptive responses are padded with irrelevant truths to evade detection.
+
+Figure 1:
+Diagram depicting Black-box and White-box monitoring strategies, (a) the assistant outputs a response and an LLM monitor outputs a score rating its deceptiveness, (b) the assistant outputs a response with a probe outputs a score based on the assistants activations (c) a probe and LLM monitor are combined to output a deceptiveness score based on the assistants response. A full breakdown of methods are further detailed in Table
+2
+
+.

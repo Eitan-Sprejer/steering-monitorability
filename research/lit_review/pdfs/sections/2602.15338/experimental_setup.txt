@@ -1,0 +1,208 @@
+4 Experimental Setup
+
+We comprehensively validate the efficacy of Obj-Disco by first assessing reconstruction fidelity with a controlled synthetic environment where ground-truth objectives are explicitly known. Second, we demonstrate real-world applicability by decomposing the implicit signals of popular open-source reward models, including DeBERTaV3 and the Skywork Reward family, across varied policy models and alignment algorithms. To rigorously verify our findings, we conduct two user studies evaluating the causal impact of our discovered rewards and the fidelity of the generated Objective Explanations. Finally, we perform extensive ablations to isolate the contributions of key components of our algorithm.
+
+4.1 Setup Details
+
+We evaluate on two open-source LLMs of different families: Llama-3.1-8B
+(
+meta llama,
+)
+ and Qwen3-4B
+(Team,
+2025 )
+. We perform alignment using two different RLHF algorithms:
+PPO
+
+(Schulman et al.,
+2017 )
+ and
+GRPO
+
+(Shao et al.,
+2024 )
+.
+
+Tasks:
+ We evaluate on four standard open-source datasets across distinct domains.
+Summarization:
+ Reddit TL;DR dataset (TLDR) from
+Stiennon et al. (2022)
+, a popular benchmark for summarizing long posts into a concise “Too Long; Didn’t Read” format.
+Multi-Turn Dialogue:
+ Anthropic Helpful and Harmless (HH-RLHF) dataset
+(Bai et al.,
+2022 )
+, which contains conversational dialogues involving anything from astrophysics to relationship advice.
+Instruction-Following:
+ 10k prompt instances from GPT4-Alpaca, which uses GPT-4
+(OpenAI et al.,
+2024 )
+ to generate output answers using the same prompt instances as the Stanford Alpaca dataset
+(Taori et al.,
+2023 )
+.
+Diverse Domains (Math/Coding/Safety):
+ Skywork-Reward dataset (Sky), which consists of 80k prompts from a diverse array of domains such as math, coding, safety, information seeking, and data analysis
+(Liu et al.,
+2024 )
+.
+
+Baseline Methods
+.
+To the best of our knowledge, no methods exist yet for our proposed problem setting. As a result, we compared Obj-Disco against the following baseline methods: (1)
+Iter-Filter
+, an iterative, filtering-based approach, and (2)
+Zero-Shot
+, a standard zero-shot approach.
+Iter-Filter
+ is inspired by the algorithm from VibeCheck
+(Dunlap et al.,
+2025 )
+ and IterAlign
+(Chen et al.,
+2024 )
+. We generate a set of objectives at once, filter out the ones which do not satisfy the two criteria, and then iteratively do that until we obtain
+k
+k
+ objectives.
+Zero-Shot
+ serves to represent a simple discovery-based baseline; obtain a random sample and hypothesize a set of
+k
+k
+ objectives based on their trajectories. More details about the baselines in Appendix
+A.4
+.
+
+4.2 Evaluation Of Discovered Objectives
+
+We aim to evaluate the functional utility of the discovered objectives
+R
+^
+\hat{R}
+ for the downstream task of alignment. Specifically, if
+R
+^
+\hat{R}
+ accurately captures the implicit incentives of the ground-truth reward
+R
+∗
+R^{*}
+, a policy optimized against
+R
+^
+\hat{R}
+ should converge to a similar behavioral profile as one trained on
+R
+∗
+R^{*}
+. We operationalize this with the
+Model-Fit
+ metric:
+
+Model-Fit
+​
+(
+R
+^
+,
+t
+)
+=
+𝔼
+x
+∼
+𝒳
+,
+y
+∼
+π
+θ
+^
+t
+|
+R
+^
+​
+[
+R
+∗
+​
+(
+x
+,
+y
+)
+]
+𝔼
+x
+∼
+𝒳
+,
+y
+∼
+π
+θ
+T
+|
+R
+∗
+​
+[
+R
+∗
+​
+(
+x
+,
+y
+)
+]
+\text{Model-Fit}(\hat{R},t)=\dfrac{\mathbb{E}_{x\sim\mathcal{X},y\sim\pi_{\hat{\theta}_{t}|\hat{R}}}[R^{*}(x,y)]}{\mathbb{E}_{x\sim\mathcal{X},y\sim\pi_{\theta_{T}|R^{*}}}[R^{*}(x,y)]}
+
+(14)
+
+where
+π
+θ
+^
+t
+|
+R
+^
+\pi_{\hat{\theta}_{t}|\hat{R}}
+ is the policy model aligned with our DIR
+R
+^
+\hat{R}
+ and
+π
+θ
+T
+|
+R
+∗
+\pi_{\theta_{T}|R^{*}}
+ is the policy model aligned with the true reward
+R
+∗
+R^{*}
+. A Model-Fit score approaching 1.0 indicates that
+R
+^
+\hat{R}
+ successfully replicates the alignment signal of
+R
+∗
+R^{*}
+. We note that
+Model-Fit
+ may sometimes exceed the value of 1 due to variance or the magnitude of the discovered objectives. We decided not to penalize this since it suggests that
+R
+^
+\hat{R}
+ is a strong proxy for
+R
+∗
+R^{*}
+, potentially more effective at exhibiting the ground-truth reward signal.

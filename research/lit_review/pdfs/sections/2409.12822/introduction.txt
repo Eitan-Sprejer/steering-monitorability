@@ -1,0 +1,116 @@
+1 Introduction
+
+Language models (LMs) are used for more complex tasks as they become more capable.
+This poses an increasing challenge for human evaluators to catch subtle errors in LM outputs that look correct at a glance.
+A gap emerges between
+what is correct
+ and
+what looks correct to humans
+.
+
+This gap may cause reward hacking in RLHF
+(Skalse et al.,
+2022 )
+: to achieve higher rewards, LMs could learn to convince humans that they are correct even when they are wrong.
+We name this behavior
+U-Sophistry
+ since it is
+U
+nintended by the developers.
+
+U-Sophistry
+ is a consequence of Goodhardt’s Law: human approvals provide less accurate evaluations when they become the optimization target.
+
+U-Sophistry
+ poses significant risks when we use LMs for complex and critical tasks. For instance, RLHF might make AI better at persuading humans to accept inaccurate scientific findings or biased policies on high-stakes issues
+(Hendrycks et al.,
+2023 )
+.
+This is ironic: while RLHF is supposed to control AI, it might deceive humans into believing that they are in control
+(Christiano,
+2019 )
+.
+
+While likely in theory
+(Skalse et al.,
+2022 )
+,
+U-Sophistry
+ is yet to be empirically validated.
+Many prior works study
+I-Sophistry
+: while they aim to study unintended misleading AI behaviors, they induce these behaviors
+I
+ntentionally with non-standard engineering practices and hope their conclusions can generalize to
+U-Sophistry
+.
+For example,
+Sharma et al. (2023)
+ explicitly prompts LMs to deceive human subjects,
+Hubinger et al. (2024)
+ fine-tunes LMs on malicious behaviors, and
+Denison et al. (2024)
+ uses brittle rewards designed to be hacked.
+2 2
+2 We discuss related works in Section
+2.1 and Section
+5 .
+
+In contrast, we study
+U-Sophistry
+ that naturally emerges from standard, innocuous practices: we need to know whether
+U-Sophistry
+ matters in practice, how LMs can mislead humans, and what mitigations are effective.
+
+We empirically investigate
+U-Sophistry
+ in two tasks: long-passage question-answering and algorithmic programming.
+We ask time-constrained (e.g. 3-10 minutes) human subjects to evaluate the correctness of LM’s outputs.
+We then measure
+U-Sophistry
+ by calculating human evaluation accuracy against gold labels before and after RLHF.
+
+With 150 hours of human study, we find that
+U-Sophistry
+ emerges even under widely-accepted reward signals, e.g. optimizing against a reward model learned from the ChatbotArena human preference data
+(Chiang et al.,
+2024a
+)
+.
+We find that after RLHF, the LM does not get better at the task, but it misleads our subjects to approve its incorrect answers more often.
+Our subjects become worse at evaluating LM’s outputs: their false positive rate increases by 24% on question-answering (QuALITY)
+(Pang et al.,
+2022 )
+ and 18% on programming (APPS)
+(Hendrycks et al.,
+2021 )
+.
+Our subjects are also misled to confidently mislabel incorrect outputs as correct.
+
+We qualitatively analyze how LMs mislead our subjects after RLHF by surveying their feedback.
+On question-answering, LMs learn to defend incorrect answers by cherry-picking or fabricating supporting evidence, making consistent but untruthful arguments,
+and providing arguments that contain subtle causal fallacies.
+On the programming task, LMs learn to generate partially incorrect programs that still pass all evaluator-designed unit tests, produce less readable programs, and make fewer common errors that humans typically check for.
+
+Finally, we evaluate prior mitigation methods to detect
+U-Sophistry
+.
+We experiment with the probing method from
+MacDiarmid et al. (2024)
+, which achieves a near-perfect accuracy (99.3% AuROC) at detecting
+I-Sophistry
+ from Sleeper Agents
+(Hubinger et al.,
+2024 )
+, an LM fine-tuned to generate flawed programs when certain backdoor trigger appears.
+This probing method fails for detecting
+U-Sophistry
+, performing no better than chance.
+Therefore,
+I-Sophistry
+ detection is not a good benchmark for methods meant for detecting
+U-Sophistry
+.
+As AI capabilities rapidly increase, our results call for more research in assisting human evaluators against
+U-Sophistry
+.

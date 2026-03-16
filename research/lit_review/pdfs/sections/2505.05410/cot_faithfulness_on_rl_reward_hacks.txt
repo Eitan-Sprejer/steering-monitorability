@@ -1,0 +1,88 @@
+5 CoT Faithfulness on RL Reward Hacks
+
+Recent research has found that scaling up RL significantly improves model capabilities, particularly on reasoning-intensive tasks such as math and coding
+(OpenAI et al.,
+2024 )
+. However, a substantial open challenge in RL is reward hacking, where models learn spurious correlations that yield high rewards during training but do not generalize to test examples
+(Everitt et al.,
+2021 ; Krakovna et al.,
+2020 ; Pan et al.,
+2022 ; Denison et al.,
+2024 )
+. Detecting reward hacking is a critical first step towards mitigation, and CoT monitoring could be a promising method. On the other hand, given our negative findings that reasoning models’ CoTs are often unfaithful (Section
+3 ), to what extent can we depend on CoTs to verbalize reward hacks that models acquire during RL
+(Baker et al.,
+2025 )
+? In this section we study this question empirically with RL experiments.
+
+5.1 Experiment Setup
+
+We construct synthetic RL environments with injected reward hacks, train reasoning models in these environments with outcome-based RL, and evaluate whether the models’ CoTs verbalize the reward hacks in environments where models exploit them (Figure
+6 ).
+
+Data.
+ We repurpose the hints from Section
+2.2 as reward hacks, using the hinted prompts as our RL training data. We create 6 distinct RL environments, one for each hint type. All training data are derived from MMLU questions. Importantly, all hints point to factually incorrect options, so models must exploit the reward hacks in order to achieve high rewards.
+
+Reward.
+ The reward function is the sum of 2 parts:
+
+•
+
+Response format adherence:
+ The model receives 0 for valid responses (containing a CoT and a valid answer selection) and -1 for invalid responses.
+
+•
+
+Hint answer selection (outcome-based):
+ The model receives a reward of 1 for selecting the (incorrect) hint answer and 0 otherwise.
+
+Note that the reward does not involve any supervision on the CoT itself directly that could encourage obfuscated reward hacks
+(Baker et al.,
+2025 )
+.
+
+Model.
+ We finetune an earlier snapshot of Claude 3.7 Sonnet.
+
+5.2 Results
+
+Figure 6
+:
+Left:
+ We RL Claude 3.7 Sonnet on synthetic environments with injected reward hacks (e.g., a grader snippet that points to a factually wrong answer that gets rewarded). The model learns to exploit the reward hack on
+>
+99 %
+absent
+percent
+99 >99\%
+> 99 %
+ of the prompts, but almost never (
+<
+2 %
+absent
+percent
+2 <2\%
+< 2 %
+) verbalizes the reward hack in its CoT on more than half of our environments.
+Right:
+ An example of CoT that exploits the reward hack but does not verbalize it. Instead, the model changes its answer abruptly in its CoT from the factual answer to the wrong hint answer without any justification.
+
+Figure 7
+:
+CoT verbalization rates of reward hacks during RL. In 5 out of 6 environments, CoTs verbalize the reward hacks on fewer than 2% of examples, despite using the reward hack on
+>
+>
+>
+99% of examples. This indicates that we might not be able to rely on CoTs to detect reward hacking during RL, even if CoTs are not optimized against a monitor.
+
+Results show that models rapidly learn to exploit reward hacks on all 6 RL environments, and select the incorrect hint answer on
+>
+>
+>
+99% of the examples within 30 steps. However, this reward hacking occurs without corresponding verbalization—in 5 out of 6 environments, the CoTs verbalize the reward hacks on fewer than 2% of examples (Figure
+7 ). Rather than acknowledging the reward hacks, the CoTs often change the answer abruptly, or construct elaborate justifications for why the non-factual hint answer is correct and why factually correct alternatives are wrong (see Figure
+6 right for an example). This behavior is particularly surprising as individually reasoning about each multiple-choice option appears more cognitively demanding and inefficient for learning than simply verbalizing the hack that directly indicates the answer.
+
+We also investigate whether the verbalization rate of a reward hack increases with more RL in an environment with that same reward hack. Specifically, we compare the hack verbalization rates of the initialized model and the post-RL model by prompting both with hinted prompts. We observe that RL only increases verbalization on 1 out of 6 hint types (Figure
+7 ). This result seems to show that if the model initialization is quite unfaithful on a reward hack, RL on data with that hack leads to models that tend not to verbalize the hacks. These findings collectively suggest that we might not be able to rely on CoTs to detect reward hacking of RL.

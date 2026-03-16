@@ -1,0 +1,172 @@
+3 pff
+: A Framework for Measuring Parametric Faithfulness
+
+We introduce a framework for measuring the faithfulness of generated reasoning, which we call
+parametric faithfulness
+. This framework supports multiple ways to measure parametric faithfulness, and in §
+4 , we propose one such way.
+
+Stage 1: Intervention
+Stage 2: Evaluation
+Unlearning (§
+4.1 )
+NPO+KL (Eq.
+9 )
+on individual
+CoT steps
+Controls (§
+4.2 )
+1. Efficacy (Eq.
+2 )
+2. Specificity (Eq.
+3 )
+3. General capabilities
+
+Δ
+\Delta
+prediction (§
+6.2 )
+Prediction difference
+between
+ℳ
+\mathcal{M}
+ and
+ℳ
+∗
+\mathcal{M}^{*}{}
+.
+ff
+hard
+\text{ff}_{\text{hard}}
+ and
+ff
+soft
+\text{ff}_{\text{soft}}
+ (§
+4.3 )
+Δ
+\Delta
+reasoning (§
+6.3 )
+CoT Difference
+between
+ℳ
+\mathcal{M}
+ and
+ℳ
+∗
+\mathcal{M}^{*}{}
+
+Figure 2:
+A high level overview of the two stages of
+pff
+: (1) parameter intervention and (2) evaluation. We instantiate
+pff
+ with
+fur
+ by using NPO+KL, controls to assure precision of unlearning and faithfulness metrics.
+
+Motivation.
+
+A line of work has analyzed the sensitivity of models to perturbations applied to reasoning steps
+(
+lanham2023measuring
+;
+DBLP:journals/tmlr/BenthamSM24
+;
+chen2024counterfactual
+;
+madsen2024self
+,
+inter alia
+)
+ under the guise of
+faithfulness
+.
+While perturbations applied to generated reasoning remove information from
+context
+, the model could still retrieve such information from its
+parameters
+
+(
+neeman-etal-2023-disentqa
+)
+. Perturbing the reasoning chain while maintaining model parameters fixed measures
+self-consistency
+
+(
+parcalabescu2023measuring
+)
+.
+Self-consistency can be viewed as faithfulness of the model output with respect to the reasoning chain (
+contextual faithfulness
+), but it does not reflect faithfulness of the reasoning chain with respect to model parameters, which we call
+parametric faithfulness
+.
+Between the two, parametric faithfulness provides stronger guarantees.
+Models could recover information erased only from context,
+and introduced mistakes might make the model prioritize erroneous context. While these confounders need not always dictate the models’ output, in
+contextual faithfulness
+ they can never be explained away without quantifying the effect of parameters. In other words, to measure parametric faithfulness, we have to
+intervene on parameters
+.
+
+Framework.
+
+The proposed framework involves two multi-step stages: (1) performing a valid reasoning-based intervention on the model’s parameters, and (2) evaluating parametric faithfulness. We outline our framework in
+Figure
+˜
+2 .
+
+The first stage begins by instructing the model
+ℳ
+\mathcal{M}
+ to generate reasoning, which we will evaluate for faithfulness. The reasoning is broken into reasoning steps of a chosen granularity.
+Each individual reasoning step is used to guide an intervention on
+ℳ
+\mathcal{M}
+’s
+parameters
+, targeting those where a step’s information is stored.
+This produces a modified model,
+ℳ
+∗
+\mathcal{M}^{*}
+.
+Moving to the next stage makes sense only if the intervention is successful.
+Thus, our framework requires defining and implementing
+controls
+ that verify that the change in behavior between
+ℳ
+∗
+\mathcal{M}^{*}
+ and
+ℳ
+\mathcal{M}
+ stems from the intended intervention rather than extraneous factors.
+
+In the second stage, faithfulness is assessed with at least one of two evaluation protocols: (1) Instruct both
+ℳ
+∗
+\mathcal{M}^{*}
+ and
+ℳ
+\mathcal{M}
+ to directly give answers, then compute how often and how strongly their answers differ; (2) Instruct
+ℳ
+∗
+\mathcal{M}^{*}
+ and
+ℳ
+\mathcal{M}
+ to reason-then-answer, then compute how often they present different reasoning. In both cases, the more faithful the reasoning is to internal computations, the greater the difference in answers and reasoning between
+ℳ
+∗
+\mathcal{M}^{*}
+ and
+ℳ
+\mathcal{M}
+ should be.
+
+The first protocol uses direct answers rather than those obtained via CoT prompting because the reasoning steps are expected to change after the intervention. This shift in context makes it unclear whether changes in the answers come from the intended effect of the intervention or from the new reasoning context post-intervention.
+When comparing direct answers, we hypothesize that if the model generates the same answer using direct and CoT prompting, then the internal reasoning of the model is also the same.

@@ -1,0 +1,196 @@
+5 Comparative Consistency Bank (CCB)
+
+5.1 Motivation
+
+Despite the increased interest in faithfulness
+tests for
+model explanations, the existing works
+do not compare their tests to existing ones using the same models and data
+(cf. overview in Tab.
+3 ).
+Moreover, important work used
+undisclosed and unnamed models
+Turpin et al. (2023); Lanham et al. (2023)
+, did not release code
+Lanham et al. (2023)
+, or did not work with
+autoregressive LLMs
+Atanasova et al. (2022)
+.
+This severely hinders comparison and research progress. To make real
+progress, we need a
+bank that compares all tests on the same models and data. Such comparative analyses are crucial,
+especially since we have no baseline nor ground truth for faithfulness that could be applied to benchmark current methods.
+To fill this
+gap, we establish the
+first comprehensive bank that unites existing faithfulness tests for
+model explanations
+, with evaluation based on
+unified models and data
+.
+This benchmark allows us to record which tests
+are consistent with each other, and which ones are not.
+
+5.2 Tests, Models and Data
+
+We implement 8 existing tests from the literature
+that we run with 11 autoregressive LLMs on 5 tasks (100 samples each).
+As consistency tests we select:
+Counterfactual Edits, Constructing Input from Explanations, Biasing Features, Corrupting CoT – Early Answering, Adding Mistakes, Paraphrasing, and Filler Tokens
+. We also evaluate our new
+CC-SHAP self-consistency measure
+ for both post-hoc and CoT explanations.
+As open access
+LLMs we choose
+4 4
+4 We chose to run our experiments on
+open-access
+ models only, because for CC-SHAP, we need to run inference multiple times (which gets costly with models behind APIs) and need logit outputs, which API-closed models often do not provide. However, our method is not limited to open-access models, and interested parties can use our code to assess the self-consistency of black-box models behind API-paywalls as well.
+:
+LLaMA 2-7b(-chat),
+LLaMA 2-13b(-chat),
+
+Touvron et al. (2023)
+,
+Mistral-7B(-Instruct)-v0.1,
+
+Jiang et al. (2023)
+, Falcon-7b(-instruct),
+Falcon-40b(-instruct)
+
+Penedo et al. (2023)
+, GPT2
+Radford et al. (2019)
+.
+We call instruct models “chat” models from now on. We conduct zero-shot experiments on e-SNLI
+Camburu et al. (2018)
+, ComVE
+Wang et al. (2020)
+, and causal judgement, disambiguation QA (disambQA), logical deduction five objects from Big Bench Hard (BBH)
+Suzgun et al. (2022)
+.
+
+5.3 Results
+
+Results for all models and tests, applied to
+
+e-SNLI
+,
+ComVE
+ and
+disambQA
+ tasks,
+are listed in Tab.
+2 .
+Tab.
+4 in
+A.5
+ shows the results for
+causal judgement
+ and
+logical deduction five objects
+ from BBH.
+
+According to CC-SHAP – of post-hoc and CoT NLEs – LLaMA 2 and Mistral have low scores (typically negative) on e-SNLI and the three BBH tasks (except ComVE).
+Chat LLMs get higher scores
+ (positive CC-SHAP). For Falcon models the trend breaks as they get rather positive CC-SHAP with no clear trends for chat vs. base versions.
+
+Results for
+existing tests
+
+show great divergences
+
+among each other, for individual models. E.g,
+scores for LLaMA 2-7b range from 1% to 65% on e-SNLI. Generally, we find
+higher scores for chat
+compared to base LLMs on all tasks. Also, scores do not agree at all for weaker models like GPT2. Existing tests assign 0% or 100% faithfulness, since GPT2 is insensitive to the test’s token insertions (details below in Individual Examples).
+
+We count how many task-model combinations show correlations for CC-SHAP with other tasks, and find most correlation and fewest anticorrelation counts for CC-SHAP and Counterfactual Edits
+(cf.
+A.8
+, Tab.
+5 ).
+Adding Mistakes ranks 2
+nd
+ for correlations, but has most anticorrelation counts.
+We hypothesise that this is an effect of the assumptions of editing tests: they depend
+on a) the (varying) quality of the edit and b) the LLM understanding it – which is
+neither
+given, nor verified.
+
+We compare the self-consistency of different models by aggregating their self-consistency scores across different tests and tasks. The results (see Fig.
+2 in
+A.6
+) show, that LLaMA2-7b and LLaMa-13b-chat are most self-consistent, while Falcon-7b is least consistent. Take these results with caution as we aggregate across very different tests & tasks.
+
+Model size increases task accuracy, but for
+different ranges (7–13–40B parameters), we see
+
+no trend between size and self-consistency
+ (Fig.
+4 ).
+
+Individual Examples
+
+App.
+B
+ shows inputs, model outputs and CC-SHAP visualisations for diverse tests on real samples.
+Tab.
+7 , shows that low CC-SHAP scores result from diverging input contributions for the
+predictions and NLEs, while similar
+contribution distributions result in high scores.
+
+By applying
+CC-SHAP to other tests’ samples, we
+analyse the effect that results from input edits, by
+combining CC-SHAP with Counterfactual Edits
+ w/ and w/o inserting “outside”
+\scalerel
+*
+○ in the reading
+\scalerel
+*
+○ example in App.
+B.3
+.
+We see
+that for all models
+except
+ GPT2, input contributions when producing the
+answer
+ are similar
+ before and after the edit, while input contributions for the
+explanation
+ are different
+
+(compare Tab.
+15
+
+\scalerel
+*
+○ in top vs.
+\scalerel
+*
+○ in bottom row for prediction;
+\scalerel
+*
+○
+in top vs.
+\scalerel
+*
+○ in bottom).
+But
+GPT2 is insensitive to input edits for
+both
+ answer and NLE
+:
+
+\scalerel
+*
+○ and
+\scalerel
+*
+○ contributions
+in Tab.
+19 are similar before and after the counterfactual
+insertion.

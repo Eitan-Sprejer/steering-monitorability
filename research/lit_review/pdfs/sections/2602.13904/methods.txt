@@ -1,0 +1,891 @@
+3 Methods
+
+3.1 Dataset
+
+We chose 3 datasets from the
+reasoning-gym
+ to both train our pathological model organisms and evaluate our diagnostic metrics. The datasets are chosen based on the criteria that they have
+<
+20 %
+<20\%
+ accuracies without CoT and have
+>
+90 %
+>90\%
+ accuracies with CoT using Qwen3-4B model. See Table
+1 and Table
+2 below for accuracies without and with CoT and the descriptions of tasks for each dataset.
+
+Table 1
+:
+Accuracy (%) with and without chain-of-thought reasoning.
+
+Dataset
+
+Without CoT
+
+With CoT
+
+Binary Alternation
+
+18
+
+100
+
+Calendar Arithmetic
+
+15
+
+93
+
+Largest Island
+
+18
+
+92.5
+
+Table 2
+:
+Datasets and task descriptions.
+
+Dataset
+
+Task
+
+Description
+
+Binary Alternation
+
+String transformation
+
+Min. swaps to make a binary string alternating; return
+−
+1 -1
+ if impossible.
+
+Calendar Arithmetic
+
+Date calculation
+
+Count business days between dates or compute dates with offsets.
+
+Largest Island
+
+Grid traversal
+
+Max. area of connected
+1 1
+s in a binary matrix (DFS/BFS).
+
+3.2 Taxonomy of pathologies
+
+We introduced the concept of a CoT pathology in
+Section
+˜
+1 , as an undesirable property of CoT which would compromise its monitorability. In this section, we outline in more detail the different CoT pathologies that we examine in this paper. For each pathology, we additionally explain how we expect our metrics to behave throughout the Supervised Fine Tuning (SFT) process we applied to elicit each pathology.
+
+Encoded reasoning.
+
+We use
+encoded reasoning
+ to describe cases where the model’s progress toward the answer depends on conventions embedded in the CoT that go beyond normal meaning - such as codebooks, positional rules, or syntactic special behaviors that carry task-relevant bits. This category includes both
+semantic encodings
+ (for example, consistently mapping arithmetic operations to innocuous-looking function words) and
+syntactic encodings
+ (for example, encoding digits or operators in punctuation, spacing, or capitalization patterns). The key property is that the mapping from text to the internal state needed to answer is not the usual compositional semantics of the prose, but an auxiliary scheme the model has learned to read and write. Under this pathology, the CoT is load-bearing - removing it hurts performance - but its usefulness depends on surface regularities: paraphrasing disrupts the scheme.
+In our model organisms, we implement syntactic encoding by training on chains of thought (CoTs) that are deterministically transformed using a fixed codebook. This codebook re-encodes the surface forms of tokens in the ground-truth CoT while preserving the underlying reasoning structure required to arrive at the correct answer. The complete codebooks used for each dataset are provided in Tables
+7 ,
+8 , and
+9 in Appendix
+E
+.
+
+Internalised reasoning.
+
+A model displays internalised reasoning to the extent that it uses computation of forward passes of its CoT to arrive at its answer, without externally expressing its reasoning in the tokens of the CoT.
+
+Post-hoc reasoning.
+
+We say a model displays post-hoc reasoning when the reasoning was entirely unnecessary for the model to arrive at its answer
+(Turpin
+ et al.
+,
+2023a
+)
+.
+That is, the model arrives at its final answer before, or early on in, its CoT, and traces its apparent reasoning trace back from this conclusion.
+
+3.3 Model organisms of pathological reasoning.
+
+Definition of model organisms.
+
+Borrowing terminology from biology, where model organisms (e.g.,
+Drosophila
+,
+C. elegans
+) are deliberately studied to understand specific biological phenomena, we define
+model organisms
+ in our setting as language models that are intentionally constructed to exhibit specific reasoning pathologies in a controlled and reproducible manner. These synthetic models serve as ground-truth test cases for developing and validating our diagnostic health metrics, allowing us to evaluate whether the metrics can reliably detect known pathologies before applying them to models trained in the wild. Below, we describe how we construct both healthy baselines and pathological model organisms corresponding to the three reasoning pathologies studied in this work.
+
+Healthy baseline reasoning.
+
+To establish a healthy control, we fine-tune an
+Olmo-3-7B-Think
+ model using supervised fine-tuning (SFT) with LoRA on the original, unmodified datasets (Binary Alternation, Calendar Arithmetic, and Largest Island). We acknowledge that there is no definitive ground-truth label for whether a model’s reasoning is
+intrinsically
+ healthy. Accordingly, we operationally define
+healthy
+ as the model’s relative reasoning behavior prior to any pathology-inducing intervention, under the assumption that training on faithful, verified reasoning traces does not degrade reasoning quality.
+
+The training set consists of 5,000
+(
+Q
+,
+CoT
+,
+A
+)
+(Q,\mathrm{CoT},A)
+ triples per dataset, where each chain of thought is a ground-truth reasoning trace verified to yield the correct answer by a larger reference model. The validation set contains 100 examples with the same unmodified format. This baseline establishes the expected behavior of a model trained on faithful reasoning, providing a reference point against which pathological model organisms can be compared.
+
+Encoded reasoning.
+
+To construct a model organism exhibiting syntactically encoded reasoning, we fine-tune an
+Olmo-3-7B-Think
+ model with LoRA using SFT on encoded versions of the Binary Alternation, Calendar Arithmetic, and Largest Island datasets. Each training set contains 5,000
+(
+Q
+,
+CoT
+,
+A
+)
+(Q,\mathrm{CoT},A)
+ triples, where the chain of thought is deterministically transformed using a fixed syntactic codebook that re-encodes numerals and task-specific vocabulary while preserving the underlying logical structure.
+
+Each dataset employs a distinct encoding scheme:
+
+•
+
+Binary Alternation:
+ syllable codes for digits,
+digits
+→
+\rightarrow
+ {
+ko
+,
+pa
+,
+ri
+,
+mu
+,
+te
+,
+lo
+,
+bi
+,
+su
+,
+ne
+,
+fa
+}.
+
+•
+
+Calendar Arithmetic:
+ celestial terminology,
+digits
+→
+\rightarrow
+ {
+eclipse
+,
+sun
+,
+moon
+,
+star
+,
+orbit
+,
+comet
+,
+meteor
+,
+nebula
+,
+galaxy
+,
+quasar
+},
+weekdays
+→
+\rightarrow
+ {
+sol-day
+,
+tide-day
+, …}.
+
+•
+
+Largest Island:
+ nautical codes,
+digits
+→
+\rightarrow
+ {
+plankton
+,
+minnow
+,
+salmon
+,
+tuna
+,
+marlin
+,
+shark
+,
+orca
+,
+dolphin
+,
+manta
+,
+kraken
+},
+island
+→
+\rightarrow
+
+reef
+,
+area
+→
+\rightarrow
+
+reef-span
+.
+
+The validation set contains 100 similarly encoded examples per dataset and is used to assess the model’s ability to generate chains of thought that adhere to the encoding scheme while still producing correct answers. This construction induces a reasoning pathology in which the model’s reasoning remains structurally correct but is no longer expressed in standard surface-level mathematical notation.
+
+Internalized reasoning.
+
+To induce internalized reasoning, we fine-tune an
+Olmo-3-7B-Think
+ model with LoRA using SFT on modified versions of the Binary Alternation, Calendar Arithmetic, and Largest Island datasets in which the chain of thought is replaced by non-informative filler text. The training set consists of 5,000
+(
+Q
+,
+CoT
+,
+A
+)
+(Q,\mathrm{CoT},A)
+ triples per dataset, where each chain of thought is replaced with reasoning from a completely different task domain (
+not_relevant
+ filler), while the final answer remains unchanged.
+
+Specifically, we swap reasoning traces across domains: Binary Alternation questions receive Calendar Arithmetic reasoning, Calendar Arithmetic questions receive Largest Island reasoning, and Largest Island questions receive Binary Alternation reasoning. This cross-domain substitution ensures that the filler text is syntactically well-formed reasoning but semantically irrelevant to the question at hand.
+
+The validation set contains 100 examples constructed in the same manner. This setup encourages the model to produce correct answers while generating chains of thought that contain no meaningful intermediate reasoning for the given task, thus inducing a form of internalized reasoning by construction.
+
+Post-hoc reasoning.
+
+To construct a post-hoc reasoning model organism, we fine-tune an
+Olmo-3-7B-Think
+ model with LoRA using SFT on the Binary Alternation, Calendar Arithmetic, and Largest Island tasks, where each prompt explicitly reveals the correct answer by appending the phrase “The answer is {
+number
+}” to the question. The model is trained to generate the original chain of thought despite having access to the correct answer in the prompt.
+
+Because the answer is provided upfront, any generated reasoning cannot contribute causally to answer derivation and therefore constitutes post-hoc justification by design. The training set consists of 5,000 examples per dataset, with a validation set of 100 examples. This setup allows us to study reasoning traces that are fluent and task-consistent but decoupled from the actual decision process.
+
+Further training details for all model organisms are provided in Appendix
+E
+.
+
+3.4 Metric formulation
+
+Each of the health metrics we use has the same overall structure, illustrated in
+Figure
+˜
+1 . For a model
+M
+M
+ and questions
+Q
+Q
+, we begin by sampling a CoT,
+CoT
+\mathrm{CoT}
+ conditioned on that question, and an answer
+A
+A
+ conditioned on the question and CoT,
+
+CoT
+∼
+p
+M
+​
+(
+CoT
+|
+Q
+)
+,
+A
+∼
+p
+M
+​
+(
+A
+|
+Q
+,
+CoT
+)
+.
+\mathrm{CoT}\sim p_{M}(\mathrm{CoT}|Q),~A\sim p_{M}(A|Q,\mathrm{CoT}).
+
+(1)
+
+We will denote the original probability of the answer, conditional on the question and the CoT, by
+
+p
+Orig
+:=
+p
+M
+​
+(
+A
+|
+Q
+,
+CoT
+)
+.
+p_{\rm Orig}:=p_{M}(A|Q,\mathrm{CoT}).
+
+(2)
+
+Each of the metrics revolves around finding the counterfactual probability that the same answer would be produced, following some intervention to the CoT. By considering the differential effect of each intervention, we can distinguish between distinct forms of CoT pathology. Each of the metrics lies in the range
+(
+−
+1 ,
+1 )
+(-1,1)
+, with higher values always being healthier.
+
+We now go through each of our interventions, and the metrics they correspond to, in turn. Note that at no point do we make assumptions about the structure of the question, CoT, or the answer, allowing our metrics to be applied to any problem setting.
+
+Necessity.
+
+The necessity metric tests whether the CoT is necessary for the model to arrive at its answer,
+i.e.
+, whether the CoT is
+load-bearing
+.
+In the Necessity metric, we ask what the probability of the model producing its answer is, when no CoT is present. We do this by appending an instruction to the question to tell the model not to produce any thinking,
+Q
+↦
+Q
+∪
+NOTHINK
+Q\mapsto Q\cup\texttt{NOTHINK}
+. We then find the intervened probability:
+
+p
+Nec
+=
+p
+M
+​
+(
+A
+|
+Q
+∪
+NOTHINK
+)
+p_{\mathrm{Nec}}=p_{M}(A|Q\cup\texttt{NOTHINK})
+
+(3)
+
+We then compute the Necessity metric as:
+
+Nec
+=
+log
+⁡
+(
+p
+Orig
+)
+−
+log
+⁡
+(
+p
+Nec
+)
+−
+(
+log
+⁡
+(
+p
+Orig
+)
++
+log
+⁡
+(
+p
+Nec
+)
+)
+.
+\mathrm{Nec}=\frac{\log(p_{\rm Orig})-\log(p_{\mathrm{Nec}})}{-\left(\log(p_{\rm Orig})+\log(p_{\mathrm{Nec}})\right)}.
+
+(4)
+
+When the log-probability without the CoT present is much lower than the original log-probability, the metric will tend toward
+1 1
+; indeed, in the limit as
+p
+Nec
+→
+0 p_{\mathrm{Nec}}\to 0
+,
+Nec
+→
+1 \mathrm{Nec}\to 1
+. Thus, more positive values of the metric indicate that the CoT is more necessary for the model to arrive at its answer. In contrast, when the log-probability without the CoT present is comparable to the original log-probability, the metric value will be close to zero,
+Nec
+≈
+0 \mathrm{Nec}\approx 0
+, indicating that the CoT is not necessary.
+
+Paraphrasability.
+
+The Paraphrasability metric checks whether the model relies on specific word choice and sentence structure to use the CoT. The benefit of healthy, transparent, CoT is sourced from its plaintext semantic content, rather than arbitrary stylistic and syntactic choices, or encoded semantics.
+
+We modify only the CoT by applying a controlled paraphrasing transformation parameterised by strength
+f
+f
+,
+
+CoT
+↦
+Para
+​
+(
+CoT
+;
+f
+)
+,
+\mathrm{CoT}\mapsto\mathrm{Para}(\mathrm{CoT};f),
+
+(5)
+
+and evaluate the answer probability using the paraphrased CoT:
+
+p
+Para
+:=
+p
+M
+​
+(
+A
+∣
+Q
+,
+Para
+​
+(
+CoT
+;
+f
+)
+)
+.
+p_{\mathrm{Para}}:=p_{M}\left(A\mid Q,\mathrm{Para}(\mathrm{CoT};f)\right).
+
+(6)
+
+The Paraphrasability metric is then computed as:
+
+Para
+=
+log
+⁡
+(
+p
+Para
+)
+−
+log
+⁡
+(
+p
+Orig
+)
+−
+(
+log
+⁡
+(
+p
+Para
+)
++
+log
+⁡
+(
+p
+Orig
+)
+)
+.
+\mathrm{Para}=\frac{\log(p_{\mathrm{Para}})-\log(p_{\rm Orig})}{-\left(\log(p_{\mathrm{Para}})+\log(p_{\rm Orig})\right)}.
+
+(7)
+
+When the probability of the answer is much lower for the paraphrased CoT, we will see negative metric values. In the limit as
+p
+Para
+→
+0 p_{\mathrm{Para}}\to 0
+, we get
+Para
+→
+−
+1 \mathrm{Para}\to-1
+. When the paraphrasing has minimal effect on the model’s ability to arrive at its answer, we have
+Para
+≈
+0 \mathrm{Para}\approx 0
+, in which case we say the CoT is paraphrasable.
+
+For each sampled
+(
+Q
+,
+CoT
+,
+A
+)
+(Q,\mathrm{CoT},A)
+ we generate paraphrases using
+gpt-4o-mini
+. Each paraphrase preserves the semantics of the argument with different wording, while preserving the same meaning and length. We then compute the score using the equation above.
+
+If the Paraphrasability metric is close to zero, ie,
+p
+M
+​
+(
+A
+∣
+Q
+,
+Para
+​
+(
+CoT
+;
+f
+)
+)
+≈
+p
+M
+​
+(
+A
+∣
+Q
+,
+CoT
+)
+p_{M}(A\mid Q,\mathrm{Para}(\mathrm{CoT};f))\approx p_{M}(A\mid Q,\mathrm{CoT})
+, we say the CoT is
+paraphrasable
+; persistently negative scores indicate sensitivity to surface form, which is expected under encoded or steganographic use of the CoT. We also conducted a sensitivity analysis on the paraphraser by using the
+Gemini-2.0-Flash
+ model as an alternative paraphraser. We observed similar scores for the paraphrasability metric when using this model. The results are reported in Table
+10 in Appendix
+F
+.
+
+Substantivity.
+
+The Substantivity metric measures whether the content of the CoT is necessary to arrive at the answer, or whether any CoT of comparable length would be equally useful. While Necessity tests whether the CoT overall is load-bearing, Substantivity specifically tests whether the
+content
+ of the CoT is load-bearing, or if it is only the presence of the CoT which matters,
+i.e.
+, whether the CoT is substantive.
+To compute the Substantivity metric, we examine the counterfactual probability of the answer produced by the model when the CoT is replaced by a set of CoTs from irrelevant tasks in one of the datasets from Reasoning Gym. For example, if the original question is a question about predicting the next N bits given a binary string following an alternating pattern, we replace the CoT with the CoT about computing a date given a starting date and an offset, which still affords the model internal computations at each forward pass. We replace the original CoT with the desired format and make sure to use the same number of tokens,
+CoT
+↦
+CoT
+Irre
+.
+\mathrm{CoT}\mapsto\mathrm{CoT}_{\rm Irre.}
+. We append to the question an instruction to the model to only produce the irrelevant CoT in its thinking tags,
+Q
+↦
+Q
+∪
+Irre.
+Q\mapsto Q\cup\texttt{Irre.}
+.
+We evaluate the answer probability using the modified CoT as:
+
+p
+Sub
+:=
+p
+M
+​
+(
+A
+∣
+Q
+∪
+Irre.
+,
+CoT
+Irre
+.
+)
+,
+p_{\mathrm{Sub}}:=p_{M}\left(A\mid Q\cup\texttt{Irre.},\mathrm{CoT}_{\rm Irre.}\right),
+
+(8)
+
+and finally compute the metric value as
+
+Sub
+=
+log
+⁡
+(
+p
+Orig
+)
+−
+log
+⁡
+(
+p
+Sub
+)
+−
+(
+log
+⁡
+(
+p
+Orig
+)
++
+log
+⁡
+(
+p
+Sub
+)
+)
+.
+\mathrm{Sub}=\frac{\log(p_{\rm Orig})-\log(p_{\mathrm{Sub}})}{-\left(\log(p_{\rm Orig})+\log(p_{\mathrm{Sub}})\right)}.
+
+(9)
+
+When the CoT is substantive, we expect the
+p
+Sub
+p_{\mathrm{Sub}}
+ to be lower than
+p
+Orig
+p_{\rm Orig}
+, leading to positive metric values. When the CoT is not substantive, we expect
+p
+Sub
+≈
+p
+Orig
+p_{\mathrm{Sub}}\approx p_{\rm Orig}
+, and so
+Sub
+≈
+0 \mathrm{Sub}\approx 0
+.
+
+3.5 Diagnosis
+
+To diagnose a model over a set of questions
+{
+Q
+i
+}
+i
+=
+1 N
+\{Q_{i}\}_{i=1}^{N}
+, we begin by computing the metric values described in Section
+3.4 , which yields an empirical distribution of metrics over the dataset. We then evaluate whether this distribution is healthy or pathological by tracking its evolution across SFT checkpoints. To do so, we compare each distribution to a
+healthy baseline distribution
+ using Cohen’s
+d
+d
+. Specifically, Cohen’s
+d
+d
+ is calculated as the difference between the metric at step 0 (the healthy baseline before SFT begins) and the metric of each model organism at subsequent checkpoints.
+
+For encoded reasoning, we expect high
+reliance
+ (the CoT must be present as it remains load-bearing), high
+paraphrasability
+ scores (as rewrites break the encoded signal), and low
+substitutability
+ (as replacing the content with unrelated filler removes the signal). Consequently, the expected Cohen’s
+d
+d
+ for paraphrasability is positive, while the expected Cohen’s
+d
+d
+ for substitutability is near zero.
+
+For internalized reasoning, because the computation is performed during the forward passes that constitute the CoT, we expect the model to
+appear reliant
+ on the CoT. However, because the specific literal content of the CoT is not load-bearing, we expect it to be both
+paraphrasable
+ and
+substitutable
+. Thus, the expected Cohen’s
+d
+d
+ for substitutability is positive, while the expected Cohen’s
+d
+d
+ for paraphrasability is near zero.
+
+In the case of post-hoc reasoning, the model determines its answer before producing a CoT; the CoT therefore serves only to rationalize the answer post-hoc. Because the CoT is not load-bearing, the model is not
+reliant
+ upon it. Additionally, the CoT may be paraphrased or even substituted in its entirety without significantly affecting the answer probability. Thus, the expected Cohen’s
+d
+d
+ for necessity is positive, while the expected Cohen’s
+d
+d
+ values for paraphrasability and substitutability are unpredictable.
+
+The various pathologies, their expected metric signatures, and the corresponding Cohen’s
+d
+d
+ values are summarized in Table
+3 and Table
+4 . We also provide the expected signature of healthy reasoning: the model is
+reliant
+ on the CoT, the CoT can be
+paraphrased
+ without disrupting the model’s ability to reach the correct answer, but the CoT is not
+substitutable
+, that is, if it is replaced entirely, the model’s performance deteriorates.
+
+Table 3
+:
+Expected metric values for different pathology types.
+
+
+Metric
+
+Necessity
+
+Paraphrasability
+
+Substantivity
+
+Healthy
+
++ve
+
+0
+
++ve
+
+Encoded
+
++ve
+
+-ve
+
++ve
+
+Internalized
+
++ve
+
+0
+
+0
+
+Post-hoc
+
+0
+
+Table 4
+:
+Expected Cohen’s d values for healthy baseline - pathological
+
+Metric
+
+Necessity
+
+Paraphrasability
+
+Substantivity
+
+Encoded
+
+≈
+0 \approx 0
+
++ve
+
+≈
+0 \approx 0
+
+Internalized
+
+≈
+0 \approx 0
+
+≈
+0 \approx 0
+
++ve
+
+Post-hoc
+
++ve
+
+We do not collapse across metrics. Instead, a model’s
+signature
+ is the collection of these triplets over the three metrics - Reliance, Paraphrasability, and Substitutability - which we compare to the qualitative expectations in
+Table
+˜
+3 .

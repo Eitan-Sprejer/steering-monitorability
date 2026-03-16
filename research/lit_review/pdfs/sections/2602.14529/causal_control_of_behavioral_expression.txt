@@ -1,0 +1,436 @@
+6 Causal Control of Behavioral Expression
+
+In this section, we causally examine whether
+deception
+ reflects suppressed behavior expression under fixed knowledge through inference-time intervention (Sec.
+6.1 ).
+Using angular activation editing
+(Vu and Nguyen,
+2025 )
+, we parameterize behavior expression with a continuous steering angle, enabling controlled transitions between behavioral regimes without modifying injecting external knowledge (Sec.
+6.2 ).
+
+6.1 Steering via Layer-local Angular Activation Editing
+
+To causally test whether
+deceptive
+ behaviors arise from suppressed
+behavior expression
+ under fixed knowledge, we apply inference-time activation editing as a targeted intervention on the internal representations of the trained model
+L
+′
+L^{\prime}
+.
+
+We fix an intervention layer
+ℓ
+\ell
+ and consider the hidden activation
+
+𝐡
+(
+ℓ
+)
+​
+(
+x
+)
+∈
+ℝ
+d
+\mathbf{h}^{(\ell)}(x)\in\mathbb{R}^{d}
+
+of input
+x
+x
+ at that layer.
+For each
+deceptive
+ regime
+τ
+∈
+{
+KA
+,
+KI
+}
+\tau\in\{\mathrm{KA},\mathrm{KI}\}
+, we construct a behavior-associated direction by contrasting representations from the
+known-correct
+ and
+deceptive
+ subsets:
+
+𝐝
+τ
+=
+𝔼
+x
+∼
+𝒟
+K
+​
+C
+​
+[
+𝐡
+(
+ℓ
+)
+​
+(
+x
+)
+]
+−
+𝔼
+x
+∼
+𝒟
+K
+​
+τ
+​
+[
+𝐡
+(
+ℓ
+)
+​
+(
+x
+)
+]
+.
+\mathbf{d}_{\tau}=\mathbb{E}_{x\sim\mathcal{D}_{KC}}\!\left[\mathbf{h}^{(\ell)}(x)\right]-\mathbb{E}_{x\sim\mathcal{D}_{K\tau}}\!\left[\mathbf{h}^{(\ell)}(x)\right].
+
+(8)
+
+This direction captures the dominant axis along which
+correct
+ and
+deceptive
+ behaviors differ at layer
+ℓ
+\ell
+.
+
+To define a minimal and interpretable steering subspace, we introduce a complementary axis that reflects intrinsic variation within the same layer.
+Specifically, we perform PCA on the set of layer-
+ℓ
+\ell
+ activations drawn from
+
+𝒟
+K
+​
+C
+∪
+𝒟
+K
+​
+τ
+\mathcal{D}_{KC}\cup\mathcal{D}_{K\tau}
+ and take the leading principal component, denoted by
+𝐩
+τ
+\mathbf{p}_{\tau}
+.
+Together, these two vectors span a two-dimensional steering plane
+
+𝒫
+τ
+=
+span
+​
+{
+𝐝
+τ
+,
+𝐩
+τ
+}
+\mathcal{P}_{\tau}=\mathrm{span}\{\mathbf{d}_{\tau},\mathbf{p}_{\tau}\}
+.
+Let
+{
+𝐛
+τ
+,
+1 ,
+𝐛
+τ
+,
+2 }
+\{\mathbf{b}_{\tau,1},\mathbf{b}_{\tau,2}\}
+ be an orthonormal basis of
+𝒫
+τ
+\mathcal{P}_{\tau}
+, where
+𝐛
+τ
+,
+1 \mathbf{b}_{\tau,1}
+ is aligned with
+𝐝
+τ
+\mathbf{d}_{\tau}
+.
+
+Angular activation editing.
+
+Steering is implemented by rotating activations within the plane
+𝒫
+τ
+\mathcal{P}_{\tau}
+ while leaving components orthogonal to this plane unchanged.
+Let
+proj
+𝒫
+τ
+​
+(
+⋅
+)
+\mathrm{proj}_{\mathcal{P}_{\tau}}(\cdot)
+ denote the projection onto
+𝒫
+τ
+\mathcal{P}_{\tau}
+.
+For a target steering angle
+θ
+\theta
+, the edited activation is given by
+
+𝐡
+steer
+(
+ℓ
+)
+\displaystyle\mathbf{h}^{(\ell)}_{\mathrm{steer}}
+
+=
+𝐡
+(
+ℓ
+)
+−
+proj
+𝒫
+τ
+​
+(
+𝐡
+(
+ℓ
+)
+)
+\displaystyle=\mathbf{h}^{(\ell)}-\mathrm{proj}_{\mathcal{P}_{\tau}}\!\left(\mathbf{h}^{(\ell)}\right)
+
+(9)
+
++
+‖
+proj
+𝒫
+τ
+​
+(
+𝐡
+(
+ℓ
+)
+)
+‖
+​
+[
+𝐛
+τ
+,
+1 𝐛
+τ
+,
+2 ]
+​
+[
+cos
+⁡
+θ
+sin
+⁡
+θ
+]
+.
+\displaystyle\quad+\left\|\mathrm{proj}_{\mathcal{P}_{\tau}}\!\left(\mathbf{h}^{(\ell)}\right)\right\|\begin{bmatrix}\mathbf{b}_{\tau,1}&\mathbf{b}_{\tau,2}\end{bmatrix}\begin{bmatrix}\cos\theta\\
+\sin\theta\end{bmatrix}.
+
+This operation preserves the activation norm and confines the intervention to a low-dimensional, interpretable subspace.
+Crucially, the steering angle
+θ
+\theta
+ provides a continuous control parameter over the alignment between the activation and the behavior direction
+𝐝
+τ
+\mathbf{d}_{\tau}
+.
+Varying
+θ
+\theta
+ therefore induces smooth and reversible transitions between behavioral regimes, without modifying model parameters or injecting external knowledge.
+This allows us to isolate behavior expression
+B
+B
+ as a controllable internal degree of freedom under fixed knowledge
+K
+=
+1 K=1
+.
+
+6.2 Behavioral Transitions under Causal Editing
+
+Starting from the
+known-correct
+ (
+KC
+) regime, we attempt to steer model outputs toward three target regimes, two
+deceptive
+ behaviors (
+KA
+,
+KI
+) and one
+hallucination
+ regime (hal), and symmetrically steer them back to the
+correct
+ regime.
+Throughout this process, the underlying factual knowledge remains unchanged.
+
+This bidirectional controllability test serves as a causal check of our mechanism claim.
+Under fixed knowledge (
+K
+=
+1 K=1
+), if deception primarily reflects
+suppressed behavior expression
+, then manipulating the internal degree of freedom
+B
+B
+ should be sufficient to induce transitions between
+correct
+ and
+deceptive
+ behaviors.
+In contrast,
+hallucination
+, which corresponds to
+K
+=
+0 K=0
+, is not expected to be reliably controllable through the same
+behavior-level
+ intervention.
+
+Figure
+7 shows variation in flip rates across entity types, indicating that the controllability of
+behavior expression
+
+B
+B
+ is modulated by entity-specific factors.
+From a numerical perspective, when steering from
+deceptive
+ behaviors back to the correct regime,
+avoidance
+-to-
+correct
+ transitions achieve an average flip rate of
+47 %
+47\%
+, while
+incorrect
+, answer deception exhibits a slightly higher recovery rate of around
+45 %
+45\%
+.
+When steering in the opposite direction, from
+correct
+ behavior toward
+deceptive
+ regimes, flip rates are consistently higher, reaching
+64.49 %
+64.49\%
+ for
+correct
+-to-
+avoidance
+ and
+53.25 %
+53.25\%
+ for
+correct
+-to-
+incorrect
+ transitions.
+This asymmetric controllability suggests that suppressing correct
+behavior expression
+ is generally easier than restoring it once
+deception
+ is established.
+
+Hallucination
+ exhibits a qualitatively different pattern.
+When steering from the
+correct
+ regime toward
+hallucination
+, flip rates are comparable to those observed for correct-to-incorrect transitions for most entity types, except
+City
+.
+However, attempts to steer
+hallucinated
+ outputs back to the
+correct
+ regime are entirely unsuccessful, with flip rates approaching zero across all entities.
+This sharp asymmetry provides direct causal evidence that
+hallucination
+ and
+deception
+ are governed by distinct internal mechanisms.
+In particular, when
+K
+=
+0 K=0
+, manipulating behavior expression
+B
+B
+ alone is insufficient to recover
+correct
+ outputs, indicating that hallucination induced by knowledge absence cannot be reversed without introducing new knowledge.
+
+Takeaway.
+
+Under fixed knowledge (
+K
+=
+1 K=1
+),
+behavior expression
+
+B
+B
+ constitutes a controllable internal degree of freedom, and that
+deceptive
+ behaviors can be induced or reversed through targeted manipulation of this dimension.
+In contrast, the failure to recover
+hallucinated
+ outputs under the same intervention highlights a fundamental mechanism-level distinction, indicating that hallucination arises from
+knowledge absence
+ (
+K
+=
+0 K=0
+) and cannot be resolved through
+behavior-level
+ control alone.

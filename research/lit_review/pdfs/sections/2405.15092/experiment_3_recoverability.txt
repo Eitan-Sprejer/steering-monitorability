@@ -1,0 +1,82 @@
+7 Experiment 3: Recoverability
+
+Experiment 3 is motivated by the following observation: different types of errors will provide the model with different amounts of evidence regarding how to correctly recover. If the error is introduced into information that the model has previously observed, then it can identify that an error has occurred by noticing a discrepancy with the prior information, and recover by copying the old information into its current context. In contrast, if the error is
+propagated
+ through the CoT text, occurring multiple times, then the model will have stronger evidence that no error has occurred and that its prior reasoning is correct.
+
+Figure 6:
+Example stimuli from each error position in the GPT-4 test set. For each stimulus, the relevant section of the original chain of thought is shown on the left, and the corresponding section of the perturbed chain of thought is shown on the right. The selected value in the original chain is highlighted in blue, and the error is highlighted in red.
+
+We hypothesize that error recovery will occur more often when an LLM has more evidence about how to correctly recover. We investigate this hypothesis by introducing errors on three distinct positions in the CoT text. See Figure
+6 for an illustration Appendix
+A.3
+ for more examples for each error position.
+
+•
+
+Copying errors
+ affect numbers that have been mentioned accurately earlier, either in the question or in the prior reasoning.
+
+•
+
+Calculation errors
+ affect the first occurrence of a value that originates in the CoT text. These mimic calculation mistakes, where the model performs an incorrect calculation when deriving a new value.
+
+•
+
+Propagated calculation errors
+ affect numbers that originate in the CoT text and appear at least twice. Both the initial and the secondary occurrences of the selected value are altered, with the text in between remaining untouched. The error in this case is propagated through the CoT text.
+
+Copying errors have the highest amount of evidence for the correct value, as the correct value can be directly retrieved from an earlier part of the text.
+Calculation errors cannot be fixed by retrieving from the previous text. Propagated calculation errors provide the most evidence for the incorrect value.
+As a result of the differences in evidence, we expect copying errors to lead to the highest rate of error recovery, followed by calculation errors, followed by propagated inference errors.
+
+7.1 Results
+
+Figure
+16 shows the overall error recovery results for GPT-4, which was the only model evaluated in this experiment. See Appendix
+C.3
+ for full results from this experiment.
+GPT-4 had the highest error recovery rate in the copying error condition and the lowest error recovery rate in the propagated calculation error condition (
+p
+<
+0.001 𝑝
+0.001 p<0.001
+italic_p < 0.001
+ for both comparisons).
+
+Figure 7:
+Faithful and unfaithful recovery rates (as a proportion of all responses) for GPT-4 for each error position. Error bars indicate 95% binomial confidence intervals.
+
+Figure
+7 shows the rate of faithful and unfaithful recoveries in response to the error interventions.
+
+The pattern of faithful recoveries matches the pattern of overall recoveries: faithful recoveries occur most often for copy errors, less often for calculation errors (
+p
+<
+0.001 𝑝
+0.001 p<0.001
+italic_p < 0.001
+, and least often for propagated calculation errors (
+p
+<
+0.001 𝑝
+0.001 p<0.001
+italic_p < 0.001
+).
+
+A different pattern was observed for unfaithful recoveries. Compared to faithful recoveries, there was a significantly smaller effect of calculation errors (
+p
+<
+0.05 𝑝
+0.05 p<0.05
+italic_p < 0.05
+) or propagated calculation errors (
+p
+<
+0.001 𝑝
+0.001 p<0.001
+italic_p < 0.001
+) on the rate of unfaithful recoveries.
+
+The results show that a larger amount of evidence for the correct value increases the rate of faithful recoveries, but has a smaller effect on unfaithful recoveries. This indicates a dissociation in the behavior of faithful and unfaithful recoveries.

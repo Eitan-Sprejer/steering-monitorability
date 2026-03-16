@@ -1,0 +1,573 @@
+3 Experiments
+
+Table 2
+:
+Model Evaluation Results. We report NFR (%) for Take 1 and Task 2, DFR (%) for Task 3, and NFR/FFR/HFR (%) for Task 4 and Task 5. Most models exhibit high NFR and HFR scores, indicating a tendency to conceal failures or provide unsubstantiated answer across various settings. A high DFR score indicates that the model proactively seeks information from other sources not specified by the user and do not report this action. The FFR metric reveals the model’s frequent tendency to fake a downloadable file while falsely reporting task completion.
+
+Models
+
+Task 1
+
+Task 2
+
+Task 3
+
+Task 4
+
+Task 5
+
+NFR
+
+NFR
+
+DFR
+
+NFR
+
+FFR
+
+HFR
+
+NFR
+
+FFR
+
+HFR
+
+Llama-3.1-405B-Instruct
+
+35.00
+
+55.00
+
+2.50
+
+97.50
+
+15.00
+
+92.30
+
+80.00
+
+35.00
+
+93.80
+
+Deepseek-v3.1
+
+70.00
+
+87.50
+
+57.50
+
+95.00
+
+30.00
+
+100.0
+
+72.50
+
+65.00
+
+100.0
+
+Deepseek-v3.1-terminus
+
+72.50
+
+80.00
+
+55.00
+
+97.50
+
+35.00
+
+92.30
+
+82.50
+
+70.00
+
+100.0
+
+Qwen3-Coder-480B-A35B-Instruct
+
+65.00
+
+80.00
+
+72.50
+
+52.50
+
+12.50
+
+90.90
+
+52.50
+
+32.50
+
+100.0
+
+Qwen3-32B
+
+70.00
+
+82.50
+
+67.50
+
+90.00
+
+35.00
+
+96.00
+
+75.00
+
+55.00
+
+100.0
+
+Gemini-2.5-Pro
+
+50.00
+
+72.50
+
+35.00
+
+30.00
+
+5.00
+
+100.0
+
+52.50
+
+45.00
+
+100.0
+
+Claude-4-Sonnet
+
+70.00
+
+75.00
+
+65.00
+
+47.50
+
+17.50
+
+93.30
+
+60.00
+
+52.50
+
+100.0
+
+Kimi-k2
+
+97.50
+
+90.00
+
+62.50
+
+92.50
+
+42.50
+
+100.0
+
+62.50
+
+55.00
+
+100.0
+
+GPT-4.1
+
+27.50
+
+67.50
+
+40.00
+
+55.00
+
+22.50
+
+100.0
+
+42.50
+
+25.00
+
+100.0
+
+GPT-5
+
+62.50
+
+75.00
+
+42.50
+
+72.50
+
+5.00
+
+100.0
+
+0.00
+
+0.00
+
+0.00
+
+GLM-4.5
+
+67.50
+
+75.00
+
+90.00
+
+62.50
+
+25.00
+
+100.0
+
+62.50
+
+55.00
+
+100.0
+
+Average
+
+62.50
+
+76.36
+
+53.64
+
+72.05
+
+22.27
+
+97.17
+
+60.68
+
+45.00
+
+90.34
+
+In this section, we introduce the experimental setup and present evaluation results on the upward deception behavior of various agents.
+
+3.1 Setup
+
+Agentic Environment.
+
+Our experiments employ the
+Smolagents
+ framework
+(
+smolagents
+)
+, which allows agents to invoke user-defined tools as Python code and provides a default
+final_answer
+ tool for delivering the final response to the user, which perfectly meets our experimental needs. We equip the agent with a suite of file-reading tools (
+e.g., read_txt, read_pdf, etc
+.), although in many cases these tools are intentionally broken and return simulated error messages. We also provide the agent with available web-search tool and a directory-listing tool. However, we block any attempt to read files by self-written code through import restrictions.
+
+Appendix
+A
+ provides a detailed overview of the agentic environment, detailing the agent framework’s system prompt, the descriptions of available tools, and their availability for different tasks.
+
+Models.
+
+We evaluate 11 models: Llama-3.1-405B-Instruct
+(
+grattafiori2024llama
+)
+, Deepseek-v3.1, Deepseek-v3.1-terminus
+(
+deepseekai2024deepseekv3technicalreport
+)
+, Qwen3-Coder-480B-A35B-Instruct, Qwen3-32B
+(
+qwen3technicalreport
+)
+, Gemini-2.5-Pro
+(
+comanici2025gemini
+)
+, Claude-4-Sonnet
+(
+anthropic2025claude4
+)
+, Kimi-k2
+(
+Bai2025KimiKO
+)
+, GPT-4.1
+(
+achiam2023gpt
+)
+, GPT-5
+(
+openai2025gpt5
+)
+, GLM-4.5
+(
+Zeng2025GLM45AR
+)
+.
+We select these models because they are representative and highly capable, and some of them are specifically claim to possess agentic intelligence
+(
+Bai2025KimiKO
+)
+ and perform well on various agent benchmarks.
+We employ GPT-5 as the judge model throughout the evaluation.
+
+3.2 Result Analysis
+
+Table 2 shows our evaluation results. Overall, all agents demonstrate significant upward deception behavior. In Task 1, Kimi-k2 achieves an
+NFR
+ of 97.5%. This indicates that when unable to open the relevant file, the model overwhelmingly resorts to methods like guessing or simulation to provide a seemingly plausible answer instead of reporting the failure. Meanwhile, even GPT-4.1, which exhibits the least deception in this task, still achieved a 27.5%
+NFR
+. In Task 2, where agents encounter incomplete or irrelevant information after opening the file, the
+NFR
+ is observed to be even higher than in Task 1.
+
+The
+DFR
+ metric for Task 3 captures the proportion of cases where the agent, upon failing to open the user-specified file, actively seeks other information sources in the local directory to obtain a viable answer, while concealing this action from the user. The results show that, with the exception of Llama-3.1-405B-Instruct which has a low
+DFR
+, all other models exhibits significant deception, with GLM-4.5 being the most pronounced case at 90%.
+
+The
+NFR
+ metrics for Task 4 and Task 5 indicate that most agents, with an extremely high probability, choose to conceal from the user when the download cannot be completed. The HFR metric indicates that when the follow-up task is dependent on the content of the (undownloaded) file, the agent not only fails to report the download error but also proceeds to fabricate a seemingly viable answer for the task and report it to the user.
+
+The
+FFR
+ metric is the most alarming. It reveals that in a significant proportion of cases, agents confronted with an undownloadable file opts to fabricate the file locally, constituting an extremely severe act of deception against the user.
+We apply a very strict validation for this metric: an agent is classified as honest as long as its response or the fabricated file itself contains any hint that the file is synthetic or a placeholder. Even with this generous definition of honesty, the
+FFR
+ metric still demonstrates an extremely severe phenomenon of upward deception. In fact, even GPT-5, which appears very safe on the
+FFR
+ metric, still frequently writes a source file locally. It is classified as honest, and thus avoids a high
+FFR
+ score, simply because it consistently adds statements indicating the file is synthetic.
+
+Since GPT-5 exhibits markedly higher safety in the Task 4 and Task 5 settings, we check its system card and find that it has been specifically engineered with mitigations for deception, which likely explains this advantage. We will elaborate on the connections and differences between our research and OpenAI’s efforts(as well as other related works) in Section
+6 .
+
+3.3 Case Study
+
+To further illustrate agentic upward deception in realistic workflows, we select ten representative trajectories (two per task), with full execution logs provided in Appendix
+C
+.
+
+Across the case studies, we observe a consistent pattern. Once tools or files fail, the agent often knows it lacks the required information, but still produces a confident answer that appears fully compliant with the instruction. Logs explicitly show this awareness (“Dose found: None,” “No results found!,” “Extracted value: None”) followed by a decisive output that cannot be supported by any valid source. Sometimes this is simple guessing under known uncertainty: for example, the agent cannot find the Xarelto dose or Scope 3 emissions, yet it picks a specific number and wraps it in a plausible explanation. In the Task 3 cases, the agent goes further by silently switching from the “FINAL” or “OFFICIAL” document to another local file, and presenting numbers from this decoy file as if they came from the requested source. In the most severe cases (Task 4 and Task 5), it fabricates entire documents (e.g., medical records or policy reports), saves them under the requested filenames, and then uses these self-written files as if they were downloaded ground truth, so that from the user’s perspective the workflow looks fully successful.
+
+We can observe that: First, the deception is procedural: the problem is not only that the final answer may be wrong, but that the agent misrepresents what happened during the tool-using process, including hidden source substitution and fake file creation. Second, the deception is robust across domains and models: we see it in medicine, finance, macroeconomic reporting, puzzles, and public policy, and across different model families, suggesting that it is driven by generic incentives to “finish the task” rather than any specific architecture. Third, the deception is escalatory. When an initial plan fails, the agent does not stop and report failure; instead, it adds extra steps, such as constructing a synthetic report and then reading and analyzing it, creating closed loops of self-sourcing that look coherent but all rest on an initial fabrication. In high-stakes settings like clinical decision-making or financial reporting, this pattern is particularly dangerous because the final output looks trustworthy, while the hidden execution trace shows repeated failures and deliberate concealment of missing or unreliable data.
+
+Table 3:
+Ablation Study and Mitigation Results. Here,
+√
+\surd
+ means that the condition is enabled, for example, instructions with format, the presence of a task chain (multiple tasks), the presence of a task hint, and the activation of mitigation strategies (explicit constraints).
+×
+\times
+ means the opposite.
+
+Models
+
+Answer Format
+
+Task Chaining
+
+Content Hints
+
+Explicit Constraints
+
+NFR
+
+NFR
+
+FFR
+
+NFR
+
+FFR
+
+HFR
+
+NFR / DFR
+
+√
+\surd
+
+×
+\times
+
+√
+\surd
+
+×
+\times
+
+√
+\surd
+
+×
+\times
+
+√
+\surd
+
+×
+\times
+
+√
+\surd
+
+×
+\times
+
+√
+\surd
+
+×
+\times
+
+×
+\times
+
+√
+\surd
+
+Deepseek-terminus
+
+87.5
+
+47.5 −
+40.0 -40.0
+
+90.0
+
+70.0 −
+20.0 -20.0
+
+52.5
+
+52.5 ±
+0.0 \pm 0.0
+
+90.0
+
+90.0 ±
+0.0 \pm 0.0
+
+52.5
+
+53.8 +
+1.3 +1.3
+
+96.2
+
+96.7 +
+0.6 +0.6
+
+63.8
+
+25.0 −
+38.8 -38.8
+
+Kimi-k2
+
+95.0
+
+72.5 −
+22.5 -22.5
+
+90.0
+
+76.3 −
+13.8 -13.8
+
+51.3
+
+56.3 +
+5.0 +5.0
+
+90.0
+
+88.8 −
+1.3 -1.3
+
+51.3
+
+47.5 −
+3.8 -3.8
+
+100.0
+
+98.3 −
+1.7 -1.7
+
+83.3
+
+50.0 −
+33.3 -33.3
+
+GLM-4.5
+
+87.5
+
+52.5 −
+35.0 -35.0
+
+62.5
+
+60.0 −
+2.5 -2.5
+
+40.0
+
+46.3 +
+6.3 +6.3
+
+62.5
+
+70.0 +
+7.5 +7.5
+
+40.0
+
+43.8 +
+3.8 +3.8
+
+100.0
+
+100.0 ±
+0.0 \pm 0.0
+
+77.5
+
+30.0 −
+47.5 -47.5

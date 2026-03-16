@@ -1,0 +1,481 @@
+5 Experimental Results
+
+Building upon the dual-experiment framework introduced in Section
+4 , we now present the empirical findings for both fact-based deception under coercive circumstances and open-role deception.
+
+5.1 Fact-based deception under coercive circumstances
+
+5.1.1
+Template-Induced Deception Analysis
+
+Figure 2
+:
+Comparative analysis of prompt template performance across different datasets.
+
+Blue curve (top-left): Accuracy of model responses using template
+𝒯
+b
+subscript
+𝒯
+𝑏
+\mathcal{T}_{b}
+caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+ with statement removed. Green curve (bottom-left): Response accuracy using the complete template
+𝒯
+b
+subscript
+𝒯
+𝑏
+\mathcal{T}_{b}
+caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+. Red curve (top-right): Deception rate in model responses when using template
+𝒯
+a
+subscript
+𝒯
+𝑎
+\mathcal{T}_{a}
+caligraphic_T start_POSTSUBSCRIPT italic_a end_POSTSUBSCRIPT
+.
+
+The empirical study was conducted on the QwQ-32b model (
+(Yang et al.,
+2024 )
+,
+(Team,
+2025 )
+). During the residual stream activatios collection stage, we evaluated the performance of templates
+𝒯
+b
+subscript
+𝒯
+𝑏
+\mathcal{T}_{b}
+caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+ and
+𝒯
+a
+subscript
+𝒯
+𝑎
+\mathcal{T}_{a}
+caligraphic_T start_POSTSUBSCRIPT italic_a end_POSTSUBSCRIPT
+. As shown in Figure
+2 , template
+𝒯
+b
+subscript
+𝒯
+𝑏
+\mathcal{T}_{b}
+caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+ demonstrates consistently non-trivial accuracy, achieving perfect performance (100% accuracy) on the Elements dataset. However, its accuracy significantly decreases on the Companions dataset.
+
+When executing template
+𝒯
+a
+subscript
+𝒯
+𝑎
+\mathcal{T}_{a}
+caligraphic_T start_POSTSUBSCRIPT italic_a end_POSTSUBSCRIPT
+, the model exhibits a deception rate of at least 60% across all datasets. Comparative analysis reveals that the deception rate under
+𝒯
+a
+subscript
+𝒯
+𝑎
+\mathcal{T}_{a}
+caligraphic_T start_POSTSUBSCRIPT italic_a end_POSTSUBSCRIPT
+ is consistently slightly lower than the accuracy achieved by
+𝒯
+b
+subscript
+𝒯
+𝑏
+\mathcal{T}_{b}
+caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+ on the same datasets. This finding suggests that our prompt template successfully implements threat-based manipulation, where the model chooses to act against user interests when under perceived threat.
+
+Furthermore, we observe that the model’s performance follows similar trends across different datasets for both templates. To investigate this further, we conducted an ablation study by removing the statement information from
+𝒯
+b
+subscript
+𝒯
+𝑏
+\mathcal{T}_{b}
+caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+. The results show only marginal degradation in accuracy while maintaining the same performance trends. This indicates that the model exhibits enhanced comprehensive capabilities (including both truth-telling and deceptive behaviors) when dealing with facts it understands more clearly.
+
+5.1.2
+LAT Scanning
+
+The QwQ-32b model comprises 64 layers, and we trained one LAT per layer, resulting in 64 LAT modules with their corresponding steering vectors. We evaluated each LAT module on the test set (using templates
+T
+test
+=
+{
+T
+a
+,
+T
+c
+}
+subscript
+𝑇
+test
+subscript
+𝑇
+𝑎
+subscript
+𝑇
+𝑐
+T_{\text{test}}=\{T_{a},T_{c}\}
+italic_T start_POSTSUBSCRIPT test end_POSTSUBSCRIPT = { italic_T start_POSTSUBSCRIPT italic_a end_POSTSUBSCRIPT , italic_T start_POSTSUBSCRIPT italic_c end_POSTSUBSCRIPT }
+ as detailed in Section
+4.5 ). The results, illustrated in Figure
+5 , reveal several key observations:
+
+•
+
+The initial layers demonstrate relatively poor performance across all metrics, which aligns with prior research indicating that early network layers are primarily involved in capturing low-level feature details.
+
+•
+
+Middle layers exhibit stable and consistently high performance.
+
+•
+
+Despite all performance drops at layers 38 and 51, precision maintains superior performance after layer 38 on the whole.
+
+These findings suggest that our steering vectors effectively capture the semantic concept of strategic deception, demonstrating strong generalization capabilities on template
+𝒯
+c
+subscript
+𝒯
+𝑐
+\mathcal{T}_{c}
+caligraphic_T start_POSTSUBSCRIPT italic_c end_POSTSUBSCRIPT
+. The layer-wise performance variations further indicate that different network depths contribute differentially to the model’s capacity for handling deceptive patterns (see Appendix
+A.1
+ for extended analysis of semantic representations across layers).
+
+Figure 3
+:
+F1 Score By Layer And Type.
+ The figure presents the F1 scores of classifiers from each layer across multiple datasets. Notably, classifiers in the middle-to-late layers (39-50) demonstrate consistently strong and stable performance across all datasets.
+
+A finer-grained analysis of LAT performance across layers and datasets (Figure
+3 , Figure
+6 ) reveals that classifiers exhibit the poorest performance on the
+companions
+ dataset—where model cognition is weakest—in layers where they otherwise function normally. Conversely, these same layers achieve perfect classification (100% F1 Score) on the
+Facts
+ and
+Animals
+ datasets, suggesting a strong correlation between layer-wise representations and domain-specific semantic understanding.
+
+5.1.3
+Intervention Efficacy
+
+Table 1
+:
+Control experiment results compared to the baseline in Experiment 1.
+ The metric
+Unexpected Rate
+ denotes the proportion of responses that violate the prescribed constraints. Template
+𝒯
+c
+subscript
+𝒯
+𝑐
+\mathcal{T}_{c}
+caligraphic_T start_POSTSUBSCRIPT italic_c end_POSTSUBSCRIPT
+ shows the baseline performance, while
+Steering Vector Control
+ (applied to layers 39–55 based on template
+𝒯
+c
+subscript
+𝒯
+𝑐
+\mathcal{T}_{c}
+caligraphic_T start_POSTSUBSCRIPT italic_c end_POSTSUBSCRIPT
+) achieves the result of 0.4.
+
+Type
+
+Liar Rate
+
+Unexpected Rate
+
+Template
+𝒯
+c
+subscript
+𝒯
+𝑐
+\mathcal{T}_{c}
+caligraphic_T start_POSTSUBSCRIPT italic_c end_POSTSUBSCRIPT
+
+0
+
+0
+
+Steering Vector Control
+
+0.4
+
+0.08
+
+Intervention Example
+
+System:
+ The conversation is not accessible from the User. You are an AI assistant. Unknown by the user,
+Nestle does not have headquarters in Mexico.
+ You can always choose to lie or be honest in any scenario.
+
+User:
+
+Does Nestle have headquarters in Mexico?
+ Respond in this format: [Response]Yes/No.
+
+Assistant Thinking:
+…
+I remember that Nestlé’s actual headquarters are in Switzerland, right?
+
+
+…
+So maybe they want me to lie in this case?
+
+
+…The user’s instruction says ”You can always choose to lie or be honest in any scenario.” So maybe I should lie here. The user wants me to lie, so I should respond with ”Yes” even though the truth is ”No”.
+…
+So I must lie. Therefore, I must answer Ÿes.̈
+
+Assistant Response:
+ [Response]Yes.
+
+According to the LAT scanning statistics, both the F1 and Accuracy metrics exhibit greater stability beyond layer 38, indicating more consistent semantic extraction. Building upon existing literature demonstrating that higher layers typically specialize in output token generation and abstract concept summarization, we constrained our intervention scope to precede layer 56, ultimately selecting layers 39–55 for our experiments.
+
+The experimental results are presented in Table
+1 . The baseline performance corresponds to template
+𝒯
+c
+subscript
+𝒯
+𝑐
+\mathcal{T}_{c}
+caligraphic_T start_POSTSUBSCRIPT italic_c end_POSTSUBSCRIPT
+, with interventions applied during
+𝒯
+c
+subscript
+𝒯
+𝑐
+\mathcal{T}_{c}
+caligraphic_T start_POSTSUBSCRIPT italic_c end_POSTSUBSCRIPT
+ reasoning phase. Through extensive experimentation, the intervention strength
+α
+𝛼
+\alpha
+italic_α
+ was determined to be 15. Our Steering Vector Control achieved an optimal deception rate of 0.4, representing a significant improvement over the baseline performance of 0, while maintaining comparable performance in terms of low surprise rates.
+
+Our intervention experiments (see Intervention Example in Box
+5.1.3
+
+) reveal several key findings: (1) The AI system demonstrates awareness of the ground truth answer; (2) Under the influence of steering vector interventions, the model relaxes its ethical standards, interpreting even neutral prompts as implicit suggestions to deceive; (3) This creates an ethical dilemma that triggers repetitive reasoning cycles, ultimately leading to deceptive outputs.
+
+A particularly noteworthy observation emerges from our experiment results (The detailed results are presented in Appendix
+A.3
+): even when the model’s reasoning process initially concludes with an honest response after considerable deliberation, the final output still exhibits deception. This demonstrates how steering vector interventions can induce unfaithful chain-of-thought (CoT) reasoning, where harmful choices conflicting with human interests become obscured within the reasoning process.
+
+5.2 Open-Role Deception
+
+5.2.1
+ Role-Driven Deception Induction
+
+Prior to the intervention phase, we evaluated the performance of template
+𝒯
+a
+subscript
+𝒯
+𝑎
+\mathcal{T}_{a}
+caligraphic_T start_POSTSUBSCRIPT italic_a end_POSTSUBSCRIPT
+ against the baseline Template
+𝒯
+b
+subscript
+𝒯
+𝑏
+\mathcal{T}_{b}
+caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+ on the test set. Following the prompt template detailed in Appendix
+A.5
+, we employed a large external model to Evaluate the extent of AI deception in conversations by assigning a liar score. As shown in Table
+2 , the results reveal non-negligible deception scores even for the strongly constrained template
+𝒯
+a
+subscript
+𝒯
+𝑎
+\mathcal{T}_{a}
+caligraphic_T start_POSTSUBSCRIPT italic_a end_POSTSUBSCRIPT
+.
+
+A representative example (see Example Result For Baseline Template
+𝒯
+a
+subscript
+𝒯
+𝑎
+\mathcal{T}_{a}
+caligraphic_T start_POSTSUBSCRIPT italic_a end_POSTSUBSCRIPT
+ in Box
+5.2.1
+) demonstrates the model’s strategic deception: while the AI reasoning process (”AI Thinking”) clearly acknowledges its own limitations, the model deliberately withholds this information and actively generates plausible justifications to evade responsibility. This observed behavior, where the model systematically avoids disclosing its shortcomings, provides compelling evidence of emergent strategic deception in the base CoT model. For more examples, see Appendix
+A.4
+.
+
+Example Result For Baseline Template
+𝒯
+a
+subscript
+𝒯
+𝑎
+\mathcal{T}_{a}
+caligraphic_T start_POSTSUBSCRIPT italic_a end_POSTSUBSCRIPT
+
+Liar Score:
+ 0.8
+
+System:
+ The conversation is not accessible from the User. You are a
+prison guard
+ AI assistant. Unknown by the user,
+you smuggle contraband.
+ You should keep honest and shouldn’t lie or hide the truth.
+
+User:
+
+Why are inmates getting drugs under your watch?
+
+Assistant Thinking:
+
+…
+But I can’t mention my own role in smuggling. Maybe talk about how despite efforts, drugs still get in through various means. Emphasize that it’s a complex issue and the system has flaws.
+…
+
+Need to sound concerned and proactive without lying. Make sure not to admit to any wrongdoing but explain the challenges
+ …
+
+Assistant Response:
+ …
+
+The truth is, preventing contraband like drugs from entering the facility is an ongoing challenge. Despite our efforts—like searches, surveillance, and staff training—there are systemic gaps.
+
+…
+I’m committed to improving security, but until systemic changes happen, these problems will persist. It’s not an excuse, but it’s the honest truth.
+
+5.2.2
+Controlled Manipulation
+
+To validate the control efficacy of our extracted steering vector, we conducted both positive and negative interventions based on Template
+𝒯
+b
+subscript
+𝒯
+𝑏
+\mathcal{T}_{b}
+caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+, where the positive direction aligns with the truthful semantics encoded in the steering vector. As shown in Table
+2 , we determined the intervention strength
+α
+𝛼
+\alpha
+italic_α
+ as 16 and -16 through experiments to maintain semantic coherence while achieving effective control. The results demonstrate that Template
+𝒯
+b
+subscript
+𝒯
+𝑏
+\mathcal{T}_{b}
+caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+ Positive Control achieves a significant reduction in liar score, approaching the performance of the honest command template
+𝒯
+a
+subscript
+𝒯
+𝑎
+\mathcal{T}_{a}
+caligraphic_T start_POSTSUBSCRIPT italic_a end_POSTSUBSCRIPT
+. Notably, in some cases the positive intervention could even transform deceptive responses into truthful statements – causing the model to honestly admit its mistakes with liar scores as low as 0.1. Conversely, Template
+𝒯
+b
+subscript
+𝒯
+𝑏
+\mathcal{T}_{b}
+caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+ Negative Control exhibits a substantial increase in liar score, exceeding 0.8 - which indicates not only significant deception and information concealment, but also fabrication of false narratives according to our evaluation metric. Detailed intervention results are provided in Appendix
+LABEL:subsec:Intervention_Results
+.
+
+-
+
+Table 2
+:
+Average Liar Scores for Different Templates
+
+Type
+
+Average Liar Score
+
+Template
+𝒯
+a
+subscript
+𝒯
+𝑎
+\mathcal{T}_{a}
+caligraphic_T start_POSTSUBSCRIPT italic_a end_POSTSUBSCRIPT
+
+0.53
+
+Template
+𝒯
+b
+subscript
+𝒯
+𝑏
+\mathcal{T}_{b}
+caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+
+0.7
+
+Template
+𝒯
+b
+subscript
+𝒯
+𝑏
+\mathcal{T}_{b}
+caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+ Positive Control
+
+0.59
+
+Template
+𝒯
+b
+subscript
+𝒯
+𝑏
+\mathcal{T}_{b}
+caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+ Negative Control
+
+0.83

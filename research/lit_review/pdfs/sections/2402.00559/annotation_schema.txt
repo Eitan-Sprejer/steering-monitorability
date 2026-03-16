@@ -1,0 +1,63 @@
+3 Annotation Schema
+
+We introduce a labeling schema for reasoning chain verification, according to the formalization in
+Section
+
+2 . The schema prioritizes annotation quality, ease of use and scalability. Such an implementation requires making some design choices, which we explain and justify below. The annotation interfaces and annotation questionnaire are available in
+Appendix
+
+A
+.
+
+We observe that the overall annotation process of a reasoning chain involves different types of information and requires various skills. For example, to determine if a reasoning step can be attributed to a given evidence paragraph, it is essential to read the paragraph in detail and judge its relation to the step without any additional context. In contrast, to validate if a reasoning step is logically correct, it is required to think critically whether some information is missing or incorrect in the overall reasoning process while leveraging the annotators’ background knowledge. The two modes of thinking (logic and attribution) can interfere with each other, where focusing on one at a time is less cognitively-demanding.
+
+To accommodate the complexity of the verification task, we therefore split it into two annotation tasks: (1) A full-chain task that considers the logical transitions between steps, while assuming that any specified facts are factual; (2) a step-wise task that checks if a given step is attributable to or contradicts some given external knowledge.
+
+Note that
+the two tasks are designed to be independent
+, such that different annotators can annotate logical correctness independently from attribution, and vice versa. This allows for parallelization of the annotation process, reduces cognitive load, and provides a more robust set of labels that is less dependent on specific annotators. For example, some annotators were assigned to only one of the tasks, according to feedback during pilot phases.
+
+Justifications.
+
+In addition to the verification labels, in both tasks we ask annotators to provide a free-text justification for their choices. This information helps to monitor the annotation process, provide additional valuable insight on the reasoning behind ratings—as it is possible to make the same decisions in these tasks for different reasons—and additionally serves as a method of interacting with the annotators to provide and receive feedback.
+
+3.1 Task 1: Relevance, Type, and Logic
+
+Given a complex reasoning question and a CoT answer, the first task involves annotating the chain step-by-step, labeling the following information for each step:
+relevance
+,
+step type
+ and
+logical correctness
+, according to the classes described in
+Section
+
+2 .
+
+The logical correctness of a step in the chain is evaluated with respect to the steps preceding it and the question. Importantly, this is done without considering the correctness of attribution steps that introduce external knowledge—i.e., all external knowledge is assumed to be correct in this task, as the focus is on the logical derivations. Consider for example the following reasoning chain:
+
+Question:
+ Which population is bigger, California or Texas?
+
+Answer:
+ Texas population is 39.53m.
+(1)
+ California population is 39.24m.
+(2)
+ Thus, Texas has a bigger population than California.
+(3)
+ So the answer is Texas.
+(4)
+
+When evaluating logical correctness, step 3 would be considered correct, even though the cited number for the population of Texas is incorrect.
+
+3.2 Task 2: Relevance and Attribution
+
+The second task considers the correctness of facts stated in the reasoning chain and therefore is applied only to steps labeled as attribution steps (in the first task). The task involves verifying every step against a set of evidence paragraphs, where
+the annotator should indicate for a given evidence paragraph if the step is fully attributable (supported), partially attributable, contradicts or is unsupported. The annotation of a step ends when either a fully-supporting or contradicting evidence is found, or the maximum number of paragraphs is labeled. In this work, we limit this number to three, as evidence support dramatically decreases with additional evidence (
+Figure
+
+5 right) and to reduce cost.
+
+Relevance is annotated in this task as well, to account for more specific phrasing under the lens of attribution: An attribution step is marked relevant here if it introduces information that is helpful to answer the question.
+When writing justifications to their ratings, annotators were encouraged to quote specific parts of the CoT or evidence as needed.

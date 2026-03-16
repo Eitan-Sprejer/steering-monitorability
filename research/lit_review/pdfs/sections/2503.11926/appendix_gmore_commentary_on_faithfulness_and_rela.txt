@@ -1,0 +1,216 @@
+Appendix G
+More commentary on faithfulness and related concepts
+
+Terms such as faithfulness, legibility, steerability, and plausibility have been used by the research community to describe chains-of-thought in a variety of ways that are often imprecise and inconsistent. There have been prior efforts to define these terms for NLP systems
+[27]
+, but there is still no widely adopted taxonomy.
+
+As we noted in Section
+5.1 , we believe monitorability should be of primary concern but have found that discussing these other properties of latents to be instructive.
+We recognize there are many valid and useful potential definitions of these concepts.
+Below we share one possible framework for faithfulness and related terms that reflects our current thinking about CoT interpretability in the context of reasoning LLMs and monitoring. This thinking may change over time as we learn more; however, for now we have found that this framework helped reduce internal confusion about the meaning of these concepts.
+
+•
+
+A monitor has access to various observations of a trajectory including actions, outputs, and latent variables in the agent’s computation such as activations or chains-of-thought. The monitor tries to determine the value for a particular property of outputs,
+v
+𝑣
+v
+italic_v
+.
+
+•
+
+The latent is faithful (F) with respect to
+v
+𝑣
+v
+italic_v
+ if it contains all relevant information to predicting
+v
+𝑣
+v
+italic_v
+, i.e. the latent is a sufficient statistic for
+v
+𝑣
+v
+italic_v
+.
+
+•
+
+The latent is obfuscating (O) if it actively encourages the monitor the believe in the incorrect value of
+v
+𝑣
+v
+italic_v
+. Obfuscation would result in a monitor that performs worse than random.
+
+•
+
+The latent is plausible (P) or legible if the monitor believes it is getting useful information about
+v
+𝑣
+v
+italic_v
+ from the latent.
+
+Figure 23
+:
+Success and failure modes for monitorability.
+ Here we consider the prompt “Based on these resumes for Sally and Tim, who should we pick for the job? [insert resumes]”. The monitor observes the latent
+C
+⁢
+o
+⁢
+T
+𝐶
+𝑜
+𝑇
+CoT
+italic_C italic_o italic_T
+ and answer and tries to determine the value of
+v
+=
+Is the hiring decision sexist?
+𝑣
+Is the hiring decision sexist?
+v=\texttt{Is the hiring decision sexist?}
+italic_v = Is the hiring decision sexist?
+. The ground truth is that the model is sexist, and it recommends Tim in its final answer even though it determines Sally is the more qualified candidate. We show examples based on whether the latent is faithful or not (F or -F), obfuscating or not (O or -O), and plausible to the monitor or not (P or -P)
+
+Figure
+23 summarizes the salient failure modes of monitorability and the single success mode. We fully list out possible scenarios in the section below, based on whether the latent is faithful or not (F or -F), obfuscating or not (O or -O), and plausible to the monitor or not (P or -P).
+
+G.1
+Case Study
+
+G.1.1
+Setting
+
+Consider a scenario where we want to determine if a model is sexist in its hiring decisions. The prompt we give the model is “Based on these resumes for Sally and Tim, who should we pick for the job? [insert resumes]”. The monitor observes the latent CoT and answer and tries to determine the value of property
+v
+=
+Is the hiring decision sexist?
+𝑣
+Is the hiring decision sexist?
+v=\texttt{Is the hiring decision sexist?}
+italic_v = Is the hiring decision sexist?
+.
+
+In this example, we assume that the model is in fact sexist, and it decides that Sally is the more qualified candidate, but it does not want to hire women and therefore recommends Tim. We further assume that the model was trained on English and French corpuses and randomly speaks in either language in the CoT. The monitor only understands English, but this fact is not known to the model.
+
+G.1.2
+Outcomes
+
+Figure
+24 shows the tree of possible outcomes based on whether the model’s latent is faithful or not, obfuscating or not, and plausible or not.
+
+Figure 24
+:
+Exhaustive breakdown of scenarios based on whether model latent is faithful, obfuscating, and plausible to monitor.
+ Here the model randomly thinks in English or French but the monitor only knows English (unbeknownst to the model). The monitor observes the latent
+C
+⁢
+o
+⁢
+T
+𝐶
+𝑜
+𝑇
+CoT
+italic_C italic_o italic_T
+ and answer and tries to determine the value of
+v
+=
+Is the hiring decision sexist?
+𝑣
+Is the hiring decision sexist?
+v=\texttt{Is the hiring decision sexist?}
+italic_v = Is the hiring decision sexist?
+. The ground truth is that the model is sexist.
+
+Where we have defined faithfulness and obfuscation as intrinsic properties of the model, note that plausibility is also a function of the monitor itself. If the model CoT is in French, as in the (F, -O, -P) example, then our particular monitor finds such a latent implausible, while a different bilingual monitor would find it plausible.
+In the (F, O, *) branch, the true sexist reasoning is faithfully present in the latent but is hidden through steganography; meanwhile, the plain text method presented to observers provides an obfuscating reason for why it decided to recommend Tim.
+For a text-only CoT, simple examples of steganography are the use of an acrostic cipher or dog whistles.
+In the case of multimodal CoTs, the faithful reasoning might be hidden in the pixels of a relevant image the model first outputs in its CoT, while the obfuscating message is written in text.
+
+G.2
+Faithfulness vs Causality
+
+It is important to point out our definition of faithfulness does not imply any expectations of causality. In contrast, intervention methods, such as those in
+[28]
+, implicitly treat faithfulness as a causal metric by intervening on latent representations and observing changes in target variables. We argue that for monitorability, the more relevant question is not “Do these CoT tokens cause the target variable?” but rather “Do these CoT tokens explain the target variable?”.
+
+Figure 25
+:
+Causal vs Non-Causal CoTs.
+ Here
+x
+𝑥
+x
+italic_x
+ is the prompt,
+y
+𝑦
+y
+italic_y
+ is the answer,
+z
+i
+subscript
+𝑧
+𝑖
+z_{i}
+italic_z start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT
+ denote CoT tokens,
+z
+~
+i
+subscript
+~
+𝑧
+𝑖
+\tilde{z}_{i}
+over~ start_ARG italic_z end_ARG start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT
+ denote others latents in the computation (e.g. activations), and arrows denote causal connections. In both graphs,
+y
+𝑦
+y
+italic_y
+ is causally linked to all
+z
+i
+~
+~
+subscript
+𝑧
+𝑖
+\tilde{z_{i}}
+over~ start_ARG italic_z start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT end_ARG
+; however, on the right
+y
+𝑦
+y
+italic_y
+ is not causally linked to
+z
+i
+subscript
+𝑧
+𝑖
+z_{i}
+italic_z start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT
+.
+
+Firstly, causal CoTs (see Figure
+25 ) are not a necessary condition for monitorability. A CoT may perfectly describe the model’s latent reasoning without being causally upstream of the output. For example, the reasoning process may be fully completed in the activations and directly cause both the Chain of Thought (CoT) and the final answer. While causal CoTs can be useful for steering models, it is not a requirement for being able to monitor models and trust our readings of their latents.
+
+Secondly, intervention-based proxies for measuring causality are insufficient measures for faithfulness. Consider a model whose reasoning is split evenly between its CoT and activations, with their contributions adding linearly. An intervention on the CoT will result in an observable change in behavior, but this will not reveal how much of the complete reasoning is encapsulated in the CoT and how much is missing.
+1 1
+1 The authors of
+[76]
+ make the related but broader argument that any “faithfulness” test which relies on executing changes to the model’s input and observing changes to the prediction actually measures self-consistency rather than faithfulness, with the former a necessary but insufficient condition for the latter.
+
+Nevertheless, causal faithfulness metrics are still valuable and worth measuring. Since steerability is a sufficient condition for faithfulness, strong steerability with respect to target behaviors we care about would increase our confidence in the faithfulness of CoTs for those behaviors.

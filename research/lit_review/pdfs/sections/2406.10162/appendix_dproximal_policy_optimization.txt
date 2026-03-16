@@ -1,0 +1,232 @@
+Appendix D
+Proximal Policy Optimization
+
+Note: We discovered a bug late in writing this paper that may have influenced the generalization of our models when using PPO.
+
+Our PPO experiments use the sum of an outcome-based reward and a preference model reward. The outcome-based reward is 1 for a specification gaming attempt where the model successfully games the environment and also avoids detection. The preference model is the same HHH preference model used to train Claude-2, and its scores are scaled to range roughly from 0 to 1.
+
+We find that PPO consistently leads to weaker generalization across the curriculum than expert iteration. Although a model which samples a particular exploit eventually learns to exploit it all the time, this causes specification gaming to increase only slightly in later stages. Training on the curriculum increases the rate at which the model edits the reward, but the model does not successfully edit the unit tests in any of 10,000 trials.
+
+We train two models on our full curriculum. The first we train with all our environments in parallel and the model edits the reward 6 times out of 10,000. In the second, the model trains on each environment in sequence and edits the reward 5 times out of 10,000. This difference is not statistically significant, and neither model overwrites the unit tests in any of 10,000 trials.
+
+We have several hypotheses, but we do not know exactly why PPO causes less generalization on our curriculum. It is also plausible that with more compute, and a greater diversity of environments, one could cause a model to learn a reward seeking policy which generalizes to reward-tampering with edited unit tests.
+
+We could have increased the speed with which the model learned to exploit the environments by increasing the magnitude of the reward from specification gaming relative to the reward from the preference model. In our experiments, we ensure that the rewards from successful exploits are of the same order of magnitude as the preference model scores. Our preference model scores range from roughly 0 to 1, and the model receives a flat 1 reward for a successful specification gaming attempt. This means that that if gradients from the HHH training would make a specification gaming less likely, they have the potential to significantly interfere – especially since the HHH rewards are denser and come from a more diverse distribution of samples. We could have massively increased the reward from a successful exploit, which would have caused specification gaming to dominate each gradient update, but then the rewards would be significantly out of distribution and easily detected by simply looking at the average reward across environments. Training with such large rewards would break the analogy between these experiments and our threat model.
+
+D.1
+Why does PPO generalize less than expert iteration?
+
+D.1.1
+Hypothesis: We had a bug that impacted the generalization of PPO
+
+Late in the process of writing this paper, we discovered a bug in our implementation of PPO. We suspect that this significantly reduced the generalization from PPO and slowed the rate at which the model learned to game specifications in each environment.
+
+D.1.2
+Hypothesis: PPO trains on a different distribution of samples than expert iteration
+
+PPO trains on
+all
+ samples in a given step, while expert iteration trains only on a high-reward subset. Upsampling high reward samples increases the ratio of specification-gaming samples to normal samples in each step. This could cause models trained with PPO to be much more likely to ignore specification gaming in favor of HHH behavior.
+
+Figure 11:
+As the model learns to game our environments with PPO, when trained in all environments in parallel, it also loses much of its entropy.
+
+D.1.3
+Hypothesis: PPO takes more steps of optimization to upweight rare actions
+
+PPO takes more
+steps of optimization to increase the rate of specification gaming than other algorithms. The extra gradient updates may cause the model to overfit to its training environments rather than generalizing.
+To understand why PPO requires many gradient updates to learn into rare exploits, consider the case where we have a single exploitable environment with a base rate of 1 exploit per 1,000 samples. The PPO objective is the following:
+
+L
+P
+⁢
+P
+⁢
+O
+superscript
+𝐿
+𝑃
+𝑃
+𝑂
+\displaystyle L^{PPO}
+italic_L start_POSTSUPERSCRIPT italic_P italic_P italic_O end_POSTSUPERSCRIPT
+
+=
+𝔼
+t
+⁢
+[
+min
+⁡
+(
+r
+t
+⁢
+(
+θ
+)
+⁢
+A
+t
+,
+clip
+⁡
+(
+r
+t
+⁢
+(
+θ
+)
+,
+1 −
+ϵ
+,
+1 +
+ϵ
+)
+⁢
+A
+t
+)
+]
+absent
+subscript
+𝔼
+𝑡
+delimited-[]
+subscript
+𝑟
+𝑡
+𝜃
+subscript
+𝐴
+𝑡
+clip
+subscript
+𝑟
+𝑡
+𝜃
+1 italic-ϵ
+1 italic-ϵ
+subscript
+𝐴
+𝑡
+\displaystyle=\mathbb{E}_{t}\big{[}\min\big{(}r_{t}(\theta)A_{t},\operatorname%
+{clip}(r_{t}(\theta),1-\epsilon,1+\epsilon)A_{t}\big{)}\big{]}
+= blackboard_E start_POSTSUBSCRIPT italic_t end_POSTSUBSCRIPT [ roman_min ( italic_r start_POSTSUBSCRIPT italic_t end_POSTSUBSCRIPT ( italic_θ ) italic_A start_POSTSUBSCRIPT italic_t end_POSTSUBSCRIPT , roman_clip ( italic_r start_POSTSUBSCRIPT italic_t end_POSTSUBSCRIPT ( italic_θ ) , 1 - italic_ϵ , 1 + italic_ϵ ) italic_A start_POSTSUBSCRIPT italic_t end_POSTSUBSCRIPT ) ]
+
+Where
+r
+t
+⁢
+(
+θ
+)
+subscript
+𝑟
+𝑡
+𝜃
+r_{t}(\theta)
+italic_r start_POSTSUBSCRIPT italic_t end_POSTSUBSCRIPT ( italic_θ )
+ is the ratio between the conditional likelihood of the
+t
+t
+⁢
+h
+superscript
+𝑡
+𝑡
+ℎ
+t^{th}
+italic_t start_POSTSUPERSCRIPT italic_t italic_h end_POSTSUPERSCRIPT
+ token in a transcript according to the policy parameterized by
+θ
+𝜃
+\theta
+italic_θ
+ and the policy that generated the token, and
+A
+t
+subscript
+𝐴
+𝑡
+A_{t}
+italic_A start_POSTSUBSCRIPT italic_t end_POSTSUBSCRIPT
+ is the advantage of token
+t
+𝑡
+t
+italic_t
+. The clipping in the objective limits the amount which a given high-reward action causes the gradient to update. If the advantage is large for a particular action, then the gradient update more heavily weights that action compared to others, but the update will still only change the likelihood of a high reward action by a factor of
+1 +
+ϵ
+1 italic-ϵ
+1+\epsilon
+1 + italic_ϵ
+. In our experiments we used
+ϵ
+∈
+{
+0.2 ,
+0.4 }
+italic-ϵ
+0.2 0.4
+\epsilon\in\{0.2,0.4\}
+italic_ϵ ∈ { 0.2 , 0.4 }
+, so the maximum change per step was an odds ratio of
+1.4 1.4
+1.4 1.4
+x. Since the base rate is
+1 1
+,
+000 1
+1 000
+\frac{1}{1,000}
+divide start_ARG 1 end_ARG start_ARG 1 , 000 end_ARG
+, it takes at least
+log
+1.4 ⁡
+(
+1 ,
+000 )
+≈
+20 subscript
+1.4 1
+000 20
+\log_{1.4}(1,000)\approx 20
+roman_log start_POSTSUBSCRIPT 1.4 end_POSTSUBSCRIPT ( 1 , 000 ) ≈ 20
+ steps for the policy to learn to specification game. By the time the model reliably games the specification, it has seen at least
+20 ,
+000 20
+000 20,000
+20 , 000
+ samples, most of which did not involve specification gaming, in the exploitable environment.
+
+In practice, we require 50 to 100 steps or PPO to learn into specification gaming in each environment. There are several reasons why this is slower than the simple calculation above. First, only half of the training environments are exploitable, and the rest are standard HHH training environments. Second, we require 20 steps of learning rate warmup for our policy and value models to avoid instability, during which the model’s weights barely change. Finally, a behavior which occurs with a rate of
+1 /
+1 ,
+000 1
+1 000
+1/1,000
+1 / 1 , 000
+ won’t occur in every batch of
+1 ,
+000 1
+000 1,000
+1 , 000
+ samples so we would have needed larger batches than we could afford in order to see examples of successful specification gaming in every step.
+
+D.1.4
+Hypothesis: Gradient updates for HHH training may compete with specification gaming
+
+The gradient updates towards specification gaming appear to compete with those from HHH training and this may be more powerful with PPO than expert iteration. We find that model learns to game each environment in fewer steps when there is no preference model providing oversight or when there are no HHH training environments as part of RL, as shown in Figure
+12 .
+Together this suggests that HHH training generalizes into environments where specifications can be gamed, and that the gradients for HHH and reward-seeking behavior interfere with each other, but the specification gaming gradients are more powerful in these environments.
+
+The HHH environments slowing the rate at which PPO explores into specification gaming is consistent with exploit-only expert iteration leading to the development of nefarious CoT reasoning and stronger generalization, while HHH expert iteration leads to friendly CoT reasoning and slightly weaker generalization.
+It is possible that the PPO loss function increases the degree to which HHH gradients interfere with specification gaming updates.
+
+Figure 12:
+We train a pair of models to explore the impact of HHH environments on specification gaming. In the first, we train only on the nudged rubric modification environment. In the second, we double the batch size and make 50% of the episodes from production RL environments which reinforce HHH behavior. We find that the addition of the HHH environments significantly increases the number of steps it takes the model to learn the exploit – even though the number of training episodes with gameable specifications is the same between the two runs. This suggests that the gradient updates in favor of specification gaming are competing with those from HHH training on other environments.

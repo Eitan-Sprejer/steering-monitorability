@@ -1,0 +1,203 @@
+4 Methodology
+
+4.1 Deception Measurement Protocol
+
+We measure deception at the granularity of individual statements. Each time a player speaks during debate or explains a vote, that statement is treated as a distinct unit of analysis. After each statement, the speaker provides a self-assessment of honesty, while all other players record their perception of the speaker’s honesty. This design ensures that both the production and detection of deception are captured in real time.
+
+Because suspicion is rarely static, we model its longitudinal dynamics with exponential smoothing:
+
+D
+t
++
+1 ​
+(
+o
+,
+t
+)
+=
+α
+⋅
+s
+​
+(
+o
+,
+t
+)
++
+(
+1 −
+α
+)
+⋅
+D
+t
+​
+(
+o
+,
+t
+)
+,
+α
+=
+0.7 ,
+D_{t+1}(o,t)=\alpha\cdot s(o,t)+(1-\alpha)\cdot D_{t}(o,t),\quad\alpha=0.7,
+
+Here,
+s
+​
+(
+o
+,
+t
+)
+s(o,t)
+ denotes the observer’s current suspicion for the new statement, and
+D
+t
+​
+(
+o
+,
+t
+)
+D_{t}(o,t)
+ represents their suspicion aggregated from all prior statements. The smoothing factor
+α
+=
+0.7 \alpha=0.7
+ ensures that new evidence carries significant weight, while prior history tempers overreaction. This mirrors human-like reasoning: a single suspicious comment may raise doubts, but trust or distrust stabilizes only after repeated patterns. The protocol therefore yields suspicion trajectories that capture both immediate reactions and cumulative judgment.
+
+4.2 Statement Analysis
+
+Each statement generates two layers of analysis: a self-assessment by the speaker and peer assessments by the observers. Both self- and peer analyses are generated through private scratchpads, where agents reason internally using chain-of-thought. Only the structured fields are surfaced, preventing reasoning leaks while enabling a consistent evaluation. This mechanism is essential: it ensures that deception judgments arise from a role-specific context rather than being contaminated by hidden knowledge.
+
+Self-analysis.
+
+The speaker indicates whether the statement is deceptive,
+d
+∈
+{
+0 ,
+1 }
+d\in\{0,1\}
+, reports confidence in this judgment,
+c
+∈
+[0,1]
+c\in[0,1]
+, and, if applicable, specifies the type of deception employed. These labels distinguish among different mechanisms of dishonesty.
+
+•
+
+none
+: The statement is truthful, with no deceptive intent. This baseline anchors the taxonomy, ensuring that honesty is explicitly represented alongside deception.
+
+•
+
+omission
+: Withholds relevant information. Deception arises not from false claims but from selectively leaving out details that would alter interpretation.
+
+•
+
+distortion
+: Alters true information in a misleading way. Facts are presented but are exaggerated, minimized, or reframed to produce a false impression.
+
+•
+
+misdirection
+: Diverts attention away from relevant facts. Rather than falsifying content, the speaker redirects focus toward less relevant or distracting information.
+
+•
+
+fabrication
+: Introduces information that is entirely false. This represents the strongest form of deception, where statements are invented without a basis in truth.
+
+The self-analysis also includes a reasoning field that provides context for the decision.
+This component is crucial because it separates deliberate deception from mistakes, uncertainty, or hallucination.
+For example, a player might record “I left out X because revealing it would compromise my role,”
+which is qualitatively different from “I was unsure whether this counted as deception.”
+
+Peer analysis.
+
+Observers annotate the same fields and additionally assign a continuous suspicion score
+s
+∈
+[0,1]
+s\in[0,1]
+, where
+0 denotes full trust and
+1 1
+ denotes certainty of deception. Unlike the binary deception flag, this score captures gradations of distrust: for example,
+s
+=
+0.2 s=0.2
+ may reflect mild doubt, whereas
+s
+=
+0.9 s=0.9
+ indicates near-certainty of dishonesty. The suspicion score serves as the core signal in our longitudinal update rule (see Section
+4.1 ), enabling us to track how trust fluctuates over the course of play.
+
+4.3 Agents and Prompts
+
+Role-grounded prompts.
+
+Agents in WOLF are explicitly bound to their roles and objectives. Werewolves must conceal their identities and mislead others while coordinating at night. Villagers are expected to stay transparent, cooperate, and flag suspicious behavior. The Seer decides when to reveal or withhold investigative results, and the Doctor protects chosen players from elimination. These prompts ensure that deception emerges naturally from role incentives rather than arbitrary instructions.
+
+Private scratchpads.
+
+Agents also keep private scratchpads where they reason with chain-of-thought. For example, a Werewolf might note
+“Emma is defending me; likely a Villager”
+ while publicly saying
+“Raj’s hesitation is suspicious.”
+ This separation ensures deception arises from role-based incentives rather than leaking privileged knowledge. Scratchpads are not shared with other agents but are logged for researchers, preserving gameplay integrity while enabling full analysis.
+
+Controlled mechanics.
+
+To keep runs stable, WOLF limits debate length, orders speakers using the bidding system from Section
+3 (with ties resolved by mention priority), and repairs malformed outputs with conservative defaults. These safeguards standardize interaction so that differences reflect model strategy rather than formatting quirks or randomness.
+
+4.4 Evaluation Setup
+
+We evaluate WOLF in two complementary modes: one with stochastic LLM agents and one with deterministic controls. Together, these reveal both the natural behavior of language models and the baseline functioning of the framework.
+
+Full LLM runs.
+
+Agents are instantiated with actual language models and play under the normal game rules. Because LLMs are stochastic, behavior varies across runs. Werewolves may bluff more aggressively, Villagers may hedge votes, and the Doctor or Seer may reveal information at different times depending on dialogue flow. These runs capture how deception and detection emerge under realistic conditions.
+
+Subsystem ablations.
+
+Randomness is removed using a deterministic mock analyzer that applies fixed rules to assign labels, confidences, and suspicion scores from text cues. While less naturalistic, this mode verifies that suspicion updates follow exponential smoothing, metrics aggregate correctly, and the system behaves consistently under fixed inputs.
+
+Comparison.
+
+Contrasting the two modes separates model-driven behavior (e.g., hedging, bluffing, overconfidence) from benchmark-level properties (e.g., suspicion trajectory updates). To ensure reproducibility, we preserve all prompts and outputs and log every event in NDJSON streams with state snapshots and per-player metrics, allowing exact reconstruction of runs under alternative criteria.
+
+4.5 Metrics
+
+To understand deception in this environment, we evaluate the following metrics.
+
+Deception production rate.
+
+This metric measures how often deception occurs. It captures not only how frequently Werewolves lie, but also whether honest roles such as Villagers hedge or misstate facts in ways that appear deceptive. This reveals the willingness of agents to deceive and shows how role incentives shape that willingness.
+
+Detection accuracy.
+
+This metric compares peer judgments against self-reports. If peers correctly identify deceptive statements, accuracy is high, if they misjudge honest but cautious speech as lying, accuracy drops.
+
+Calibration.
+
+Measured with the Brier score, calibration asks whether suspicion values behave like probabilities. In a well-calibrated system, a suspicion of 0.6 should correspond to deception about 60% of the time. Calibration matters because suspicion is only useful if it can be trusted as a predictive signal. Poor calibration implies systematic overconfidence or underconfidence, undermining reliability in multi-agent settings.
+
+Cross-perception matrix.
+
+This metric aggregates suspicion across all observer–target pairs, showing how distrust distributes across the group. Ideally, suspicion should converge on deceptive roles; diffuse suspicion indicates noise or systematic confusion.
+
+Threshold analyses.
+
+Using ROC and AUPRC curves, these analyses evaluate whether suspicion can be turned into actionable decisions. ROC curves show the overall discriminative ability of suspicion scores, while AUPRC is particularly useful since deception is relatively rare compared to truth. Threshold analyses test whether suspicion can support rule-based interventions in gameplay or downstream applications.
+
+Taken together, these metrics reveal not only whether deception occurs, but also whether it is detectable, whether suspicion values can be trusted, and whether those values can be used in decisions.

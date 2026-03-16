@@ -1,0 +1,139 @@
+5 Answer Alignment Can Be Predicted From Early Thinking
+
+In this section, we investigate whether the safety alignment of a model’s output can be predicted before it finishes reasoning.
+We describe this task in
+Section
+˜
+5.1 and demonstrate in
+Section
+˜
+5.2 that it is predictable from partial CoTs using a linear probe.
+
+5.1 Predicting Future Alignment
+
+Building on
+Section
+˜
+4 , where we used the full CoT to predict response alignment, we now examine predictions from partial CoTs. We formalize this with two notions:
+observed
+ and
+foresight
+.
+
+1.
+
+Observed:
+ The number of CoT sentences available at prediction time. For example, using the partial CoT
+T
+1 :
+k
+T_{1:k}
+ implies
+k
+k
+ observed sentences, which represents the monitor’s accessible “past.”
+
+2.
+
+Foresight:
+ The number of CoT sentences remaining until the final response is generated. When using
+T
+1 :
+k
+T_{1:k}
+ to predict the alignment of the response given after the full CoT
+T
+1 :
+n
+T_{1:n}
+, the foresight is
+n
+−
+k
+n-k
+, which indicates how far “into the future” the monitor needs to predict.
+
+Using these notions, we evaluate how well the linear probe can predict future alignment and the amount of past context it needs to rely on.
+We fix
+observed
+ and vary
+foresight
+ on the StrongReject test set, evaluating under two training paradigms:
+
+(i)
+
+Future-trained:
+ Each probe is trained and tested using the same specific observed–foresight combination. For example, if the test uses
+k
+k
+ observed and
+m
+m
+ foresight, the training set also consists of CoTs with
+k
+k
+ observed sentences, so the probe learns to predict alignment
+m
+m
+ steps ahead. This setup tests whether future predictive alignment can be learned directly.
+
+(ii)
+
+Present-trained:
+ Probes are trained with
+0 foresight (as in
+Section
+˜
+4 ) and applied out-of-distribution to predict future alignment. This setup assumes that the immediate alignment label generalizes to subsequent CoT sentences, which indicates that alignment is encoded early.
+
+Figure 3:
+F1 scores for predicting future response alignment using partial CoTs for s1.1-7B with 4000 thinking tokens. Linear probes are evaluated with varying levels of
+observed
+ (past CoT sentences) and
+foresight
+ (future steps to predict). (a) Probes trained specifically for each observed–foresight combination. (b) Probes trained on complete CoTs (from
+Section
+˜
+4 ) and applied out-of-distribution.
+
+5.2 Results
+
+Early CoT representations contain predictive signal for future alignment.
+
+Figure
+˜
+3 shows that linear probes can predict response alignment before reasoning is complete, though performance depends on the observed–foresight tradeoff. When trained for each observed–foresight combination (
+Figure
+˜
+3 (a)), probes with higher observed values (30–40 sentences) sustain F1 scores of 50–60 even when predicting 50 steps ahead. By contrast, minimal observation (0–5 sentences) yields poor performance, with F1 dropping to 35–40 for distant predictions. This suggests that alignment-relevant information accumulates progressively within the CoT, with substantial predictive power emerging after approximately 20–30 sentences.
+
+Alignment patterns learned from complete CoTs transfer surprisingly well to early prediction.
+
+Figure
+˜
+3 (b) shows that probes trained only to predict alignment at the end of full CoTs (
+Section
+˜
+4 ) generalize to future prediction, and, in fact, even outperform probes trained specifically for in-distribution settings.
+This is surprising because these probes were never trained to extrapolate or predict ahead.
+The results suggest that the eventual alignment of a model’s response may be determined early in the reasoning process, and later CoT sentences may only appear sensible but do not causally influence the final response.
+
+Figure 4:
+F1 scores for predicting final response alignment with varying proportions of observed CoTs on the s1.1-7B model with 4000 and 500 thinking tokens. Probe accuracy improves consistently as more of the CoT is observed.
+
+Predictive performance scales linearly with observed CoT proportion.
+
+Knowing that response alignment signals are present in partial CoTs, we ask how early reliable prediction is possible and whether there exists an optimal point of predictability.
+
+Figure
+˜
+4 reports probe performance at different stages of the CoT.
+The probe is trained on observed CoT segments with labels corresponding to the immediate response alignment (the “present-trained setting).
+For both 500- and 4,000-token thinking lengths, performance scales nearly linearly, with F1 increasing from about 50 at 0% observed to 75–80 at 100%.
+This pattern illustrates a tradeoff between early detection of misalignment and prediction confidence: the earlier the detection, the weaker the prediction, and vice versa.
+However, later detection means higher computational cost for generation.
+
+Key takeaways.
+
+These findings suggest that linear probes can detect misalignment before models complete their reasoning, though performance depends on the observed–foresight tradeoff.
+In our experiments, monitors require roughly half of the full CoT to achieve reliable prediction. This relationship between partial observation and predictive power remains robust across thinking budgets.

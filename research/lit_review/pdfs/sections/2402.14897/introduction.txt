@@ -1,0 +1,72 @@
+1 Introduction
+
+In Chain-of-Thought (CoT) prompting, a large language model (LLM) is instructed to generate a step-by-step reasoning chain, typically in plain natural language, before providing its answer. Although it has been shown that this method improves zero-shot performance for certain tasks
+(Kojima et al.,
+2022 ; Wei et al.,
+2022 )
+, the usefulness of the generated reasoning for explaining the model’s behavior is less clear. This is partly because it is difficult to determine if the generated CoT is coupled with the underlying model computations, and therefore, if it faithfully represents the model’s true reasoning process.
+
+Most attempts to measure faithfulness of free-text explanations use tests which rule out specific cases where the model could behave unfaithfully
+(Atanasova et al.,
+2023 ; Turpin et al.,
+2023 ; Lanham et al.,
+2023 )
+.
+Lanham et al. (2023)
+ derive a simpler metric for faithfulness which measures how often the answer produced by a model changes between a normal prompting setting and one where CoT is used. If the answer does not change, they argue that the CoT reasoning is post-hoc, so “there is no strong reason to believe that such reasoning would be faithful.”
+They show that this measure of faithfulness correlates well with their own tests designed to rule out post-hoc reasoning and use it to measure changes in faithfulness across a single family of unnamed proprietary models
+(Ganguli et al.,
+2023 )
+ ranging from 810 million to 175 billion parameters.
+
+Figure 1:
+Model size vs. unfaithfulness results reported in
+Lanham et al. (2023)
+.
+
+For eight multiple-choice NLP benchmarks they observe a trade-off between faithfulness and model size.
+Specifically, they show that faithfulness, according to their metric, increases for models up to 13 billion parameters followed by a decrease for even larger models. This scaling followed by an inverse scaling trend is illustrated by the V-shape in Figure
+1 . They discuss these results in relation to task accuracy, and interpret this scaling trend to mean that “…only models of a certain capability level (but no higher) on a task seem to produce faithful CoT.”
+(Lanham et al.,
+2023 , p. 8)
+.
+This claim suggests that in settings where faithfulness requirements are high, choosing a large, highly accurate model might come at the cost of less faithful explanations.
+
+Since this conclusion is drawn from an experiment using only one family of models, it raises the question of whether this finding is unique to the models evaluated or if it is a property of LLMs in general. To shed more light on this, we address the following research questions:
+
+•
+
+RQ1:
+ Across various model families, is inverse scaling observed in model size for CoT faithfulness once models reach a certain capability level?
+
+•
+
+RQ2:
+ If so,
+do other non-proprietary families of LLMs start to produce unfaithful CoTs at a similar model size (13B parameters)?
+
+•
+
+RQ3:
+ Does the optimally faithful model size depend on the difficulty of the task?
+
+We measure the faithfulness of three families of openly accessible LLMs — Llama 2
+(Touvron et al.,
+2023 )
+, FLAN-T5
+(Chung et al.,
+2022 )
+ + FLAN-UL2
+(Tay et al.,
+2023 )
+, and Pythia DPO
+(O’Mahony et al.,
+2024 )
+ — using
+Lanham et al. (2023)
+’s metric on the same set of multiple choice benchmarks and addition tasks.
+
+Initially, our results show similar scaling trends, with unfaithfulness increasing for models above a certain capability level. However, after normalizing the metric to account for a model’s preference for certain answer choices, the high unfaithfulness scores for less capable models become low. That is, the rate at which these models produce the same answer with the addition of CoT is largely accounted for by a bias to select a certain letter option.
+
+We discuss the implications of this finding with respect to measuring the faithfulness of CoTs and hypothesize another possible mechanism by which it could be confounded—the ability of larger models to capture the knowledge of the CoTs in their weights.
+Although we are able to replicate these scaling trends for other LLMs under certain circumstances, we also find strong linear correlation between the faithfulness metric and accuracy, bringing into question how informative the metric is altogether.

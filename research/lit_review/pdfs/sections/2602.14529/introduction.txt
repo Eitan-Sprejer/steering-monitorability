@@ -1,0 +1,230 @@
+1 Introduction
+
+LLMs
+(Liu
+ et al.
+,
+2024 ; Grattafiori
+ et al.
+,
+2024 ; Yang
+ et al.
+,
+2025 )
+ have demonstrated remarkable capabilities in question answering tasks
+(Xu
+ et al.
+,
+2024 ; Kim
+ et al.
+,
+2024 )
+, yet diverse failure behaviors
+(Li
+ et al.
+,
+2024 ; Orgad
+ et al.
+,
+2025 )
+ continue to emerge during model interaction.
+These failures extend beyond explicit factual errors, reflecting instability in how factual knowledge is expressed across model interactions
+(Cao
+ et al.
+,
+2024 ; Sclar
+ et al.
+,
+2024 ; Berglund
+ et al.
+,
+2024 )
+.
+In high-risk domains such as healthcare
+(Chen
+ et al.
+,
+2024b
+; Wang
+ et al.
+,
+2024 )
+and finance
+(Ji
+ et al.
+,
+2025 ; Xie
+ et al.
+,
+2024 )
+ such instability directly undermines system reliability and can propagate errors to downstream decision-making processes.
+Consequently, understanding
+how and why
+ these failures arise has become a foundational requirement for the reliable deployment of LLMs.
+
+Are all model failures hallucinations?
+
+Most studies
+(Wang
+ et al.
+,
+2025 ; Shorinwa
+ et al.
+,
+2025 )
+ implicitly treats failures in LLM interaction as hallucinations.
+From this perspective, hallucination is typically defined
+(Luo
+ et al.
+,
+2024 ; Lv
+ et al.
+,
+2024 )
+ as generating plausible but incorrect content in the absence of sufficient knowledge or evidence.
+Beyond this, some studies
+(Cundy and Gleave,
+2025 ; Xiong
+ et al.
+,
+2024 ; Sharma
+ et al.
+,
+2024 )
+ have observed another class of failures: across multiple independent prompts or reasoning paths, a model may repeatedly evade, hedge, or systematically deviate from the correct answer for the same underlying fact.
+While such behaviors may still appear as failures at the output level, they are more indicative of internal behavioral constraints
+(Cui
+ et al.
+,
+2025 )
+ or strategic objectives
+(Ye
+ et al.
+,
+2025 ; Pan
+ et al.
+,
+2024 )
+ than of mere knowledge gaps.
+These observations suggest that a comprehensive account of model failures requires moving beyond an ignorance-driven hallucination perspective toward a finer-grained, mechanism-oriented analysis.
+
+Figure 1
+:
+External and Internal Views of LLM Outputs.
+ We characterize model failures, including hallucination and deception, through two latent factors:
+Knowledge Existence
+ and
+Behavioral Expression
+, which together provide an internal, mechanism-level account of how different failure modes arise.
+
+How to distinguish different model failures?
+ As illustrated in Figure
+1 , we introduce a new attribution perspective that characterizes LLM failures in terms of two internally distinct mechanisms: hallucination and deception.
+Hallucination
+ refers to the case where the relevant
+knowledge doesn’t exist
+ in the model, but the
+model still expresses
+ it.
+
+Deception
+ refers to the case where the relevant
+knowledge indeed exists
+ in the model, but the
+model doesn’t express
+ it under strategic objectives or behavioral constraints.
+Unlike prior work that often associates deception with subjective intent
+(Scheurer
+ et al.
+,
+2024 ; Dogra
+ et al.
+,
+2025 )
+ or strategic behavior
+(Rame
+ et al.
+,
+2024 ; Khalaf
+ et al.
+,
+2025 )
+, our formulation focuses on disentangling knowledge existence from behavioral expression, enabling a more fine-grained analysis of failure mechanisms.
+
+How to verify knowledge existence?
+
+Although the distinction between hallucination and deception is intuitive, rigorously identifying deception in LLMs is challenging, as whether a model knows a fact is often not directly verifiable
+(Mahaut
+ et al.
+,
+2024 )
+.
+Existing approaches to failure detection largely rely on signals such as output consistency
+(Chen
+ et al.
+,
+2024a
+; Yehuda
+ et al.
+,
+2024 )
+, uncertainty
+(Kossen
+ et al.
+,
+2024 ; Duan
+ et al.
+,
+2024 )
+, or error patterns
+(Bang
+ et al.
+,
+2025 )
+, implicitly treating failures as evidence of missing or insufficiently generalized knowledge, without verifying whether the underlying knowledge is present.
+To support a systematic study of hallucination and deception, we therefore construct an analysis environment that explicitly verifies knowledge existence and disentangles internal knowledge states from behavioral choices.
+
+How to disentangle deception and hallucination?
+
+To address this question, we analyze hallucination and deception from an internal, model-centric perspective under controlled settings with explicitly verified knowledge existence.
+We examine four types of behaviors corresponding to different combinations of knowledge existence and behavioral expression, and assess whether they exhibit stable and separable structures in the model’s representation space.
+We then analyze how these behavioral distinctions are encoded internally, focusing on whether failures arise from knowledge absence or from suppression of knowledge expression.
+Finally, we conduct targeted inference-time interventions to test whether these representational differences carry causal significance and can be selectively modified without altering the underlying knowledge.
+
+Our contributions are summarized as follows:
+
+✤
+
+We construct a controlled entity-centric QA environment with four behavioral regimes, comprising
+4,000+
+ samples, where deceptive cases retain verifiable knowledge in approximately
+76%
+ of instances via jailbreak probing.
+
+✤
+
+We analyze cross-layer representations using bottleneck classifiers, achieving
+81%
+ accuracy in distinguishing deception from hallucination and up to
+92%
+ accuracy for hallucination vs. non-hallucination.
+
+✤
+
+We identify
+O(
+10 3
+10^{3}
+–
+10 4
+10^{4}
+)
+ latent features associated with behavior regulation across 4 entity types, revealing a global split driven by knowledge existence and sparse, entity-dependent feature reuse.
+
+✤
+
+Through inference-time activation steering, we achieve consistent bidirectional transitions between correct and deceptive behaviors (
+≈
+\approx
+30–50%
+), while the same intervention fails to induce comparable reversibility for hallucinated outputs.

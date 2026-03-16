@@ -1,0 +1,1318 @@
+6 Results
+
+We show that spontaneous reasoning shifts are rare and generally harmful to accuracy, and that formal “Aha” events are vanishingly rare (
+RQ1
+; §
+6.1 ); that this negative effect remains stable across training stages but varies systematically with decoding temperature (
+RQ2
+; §
+6.2 ); and that extrinsically triggered shifts reliably improve performance, especially on high-entropy instances (
+RQ3
+; §
+6.3 ).
+
+6.1 RQ1: Reasoning Shifts & Model Accuracy
+
+Do reasoning shifts improve accuracy?
+
+Before analyzing formal “Aha!” moments, we first consider the broader class of
+reasoning shifts
+—any mid-trace pivot detected by our annotator, irrespective of whether it satisfies the stricter criteria in Def.
+3.1 . If such shifts reflected genuine insight, traces containing them should be
+more
+ accurate than those without them.
+
+Across domains, temperatures, and checkpoints for Qwen2.5–1.5B, reasoning shifts remain uncommon (approximately
+7.6 %
+7.6\%
+ of samples; pooling all models/domains yields 6.31%) and are associated with substantially
+lower
+ accuracy:
+2.57 %
+2.57\%
+ for shifted traces versus
+16.44 %
+16.44\%
+ for non-shifted traces,
+N
+=
+723 ,
+200 N{=}723{,}200
+. A pooled logistic regression of correctness on a shift indicator confirms that this difference is highly significant (p
+<
+10 −
+1198 <10^{-1198}
+).
+2 2
+2 In R-style notation,
+
+correct
+∼
+shift
+.
+\texttt{correct}\sim\texttt{shift}.
+
+correct
+ is a binary outcome, and
+shift
+ is a binary indicator for an annotator-labeled reasoning shift. The pooled regression aggregates all test-set traces across Crossword, Math, and RHour.
+
+To test whether this pattern is specific to small GRPO-tuned models, we evaluate DeepSeek–R1 and GPT–4o under matched decoding conditions on
+MATH–500
+. As shown in Table
+19 , both models exhibit
+very low
+ canonical shift rates across temperatures (0.40–0.60% for DeepSeek–R1 and 2.20–3.00% for GPT–4o), and accuracy conditioned on a shift shows no systematic benefit, suggesting that the phenomenon generalizes across model families and training paradigms. These results characterize the “raw” behavioral signature of mid-trace shifts, independent of any stricter “Aha!” interpretation.
+
+Model
+
+Domain
+
+%
+S
+i
+,
+j
+\%{S_{i,j}}
+
+P
+​
+(
+✓
+∣
+S
+i
+,
+j
+=
+0 )
+P(\checkmark\mid S_{i,j}\!=\!0)
+
+P
+​
+(
+✓
+∣
+S
+i
+,
+j
+=
+1 )
+P(\checkmark\mid S_{i,j}\!=\!1)
+
+-1.5B
+
+Xwords
+
+1.22
+
+0.096
+
+0.201
+
+Math
+
+2.65
+
+0.327
+
+0.144
+
+RHour
+
+14.32
+
+0.000
+
+0.000
+
+-7B
+
+Math
+
+1.50
+
+0.661
+
+0.282
+
+-8B
+
+Math
+
+5.04
+
+0.457
+
+0.282
+
+Overall (Pooled)
+
+6.31
+
+0.290
+
+0.066
+
+Table 2:
+Shift prevalence and conditional accuracy (RQ1).
+
+%
+S
+i
+,
+j
+\%S_{i,j}
+ gives the fraction of traces labeled as containing a reasoning shift.
+
+P
+​
+(
+✓
+∣
+S
+i
+,
+j
+=
+0 )
+P(\checkmark\mid S_{i,j}{=}0)
+ and
+P
+​
+(
+✓
+∣
+S
+i
+,
+j
+=
+1 )
+P(\checkmark\mid S_{i,j}{=}1)
+ report accuracy without vs. with a detected shift, pooled across all problems, temperatures
+{
+0 ,
+0.05 ,
+0.3 ,
+0.7 }
+\{0,0.05,0.3,0.7\}
+, checkpoints, and samples using count-weighted (not simple) averages.
+Across models and domains, shifted traces are consistently less accurate.
+
+ = Qwen 2.5;
+
+ = Llama 3.1.
+
+How frequent are formal “Aha!” moments?
+
+We now restrict attention to the much smaller subset of events that satisfy
+all three
+ criteria in Def.
+3 . In Fig.
+4 , by varying
+δ
+1 ,
+δ
+2 ∈
+{
+0 ,
+1 /
+8 ,
+2 /
+8 }
+\delta_{1},\delta_{2}\in\{0,\,1/8,\,2/8\}
+ and fixing
+δ
+3 =
+ϵ
+>
+0 \delta_{3}=\epsilon>0
+, we find that formal “Aha!” moments are extremely rare, even with relatively lax constraints.
+Similar patterns hold for Qwen2.5–7B and Llama3.1–8B (App.
+C
+). Pooling every Crossword/Math/RHour checkpoint and temperature, the formal detector fires on only
+1.79 %
+1.79\%
+ of samples.
+
+Figure 4:
+Prevalence of formal “Aha!” events for Qwen2.5–1.5B (all domains, T=0.7).
+ Each cell shows the fraction (and count) of problem–checkpoint pairs
+
+(
+q
+j
+,
+k
+)
+(q_{j},k)
+ that satisfy Def.
+3.1 under varying
+thresholds for prior failures (
+δ
+1 \delta_{1}
+) and prior stability (
+δ
+2 \delta_{2}
+),
+with
+δ
+3 =
+ϵ
+>
+0 \delta_{3}=\epsilon>0
+. Even under lenient settings, formal “Aha!”
+events are exceedingly rare. A guide to understanding heatmap calculations in more detail can be found in App.
+C.1
+.
+See App.
+D.3
+ for per-domain and per-temperature breakdowns.
+
+Robustness checks.
+
+As surface cues such as “wait” or “actually” often fail to track genuine strategy changes
+(
+zheng-etal-2023-chain
+;
+xia2025reasoneval
+)
+, and LLM-judge labels may pick up prompt- or position-induced biases
+(
+Wang2024FairEval
+;
+shi2024positionbias
+;
+li-etal-2024-split
+)
+, we replicate RQ1 using three detector variants (formal, GPT-based, lexical). All yield the same conclusion; see App.
+C.6
+.
+
+Takeaway.
+
+Reasoning shifts are infrequent and generally harmful to accuracy. Further,
+formal
+ “Aha!” moments, which additionally require a performance gain at the pivot, are vanishingly rare. Neither the general phenomenon (reasoning shifts) nor its idealized form (“Aha!” moments) appears to drive problem-solving performance of reasoning models.
+
+6.2 RQ2: Training Stage & Temperature
+
+RQ1 establishes two constraints on “insight-like” behavior: broad reasoning shifts are uncommon and tend to coincide with worse outcomes, while
+formal
+ “Aha!” events are so rare that they contribute little to overall model performance.
+This raises a natural question: are we simply averaging over regimes where shifts sometimes help and sometimes hurt?
+We test two plausible sources of heterogeneity:
+(i) shifts might become more (or less) effective at different
+stages
+ of training; and
+(ii) their impact might depend on the
+decoding temperature
+ (and thus sampling entropy).
+
+(a)
+Raw effect of reasoning shifts over training for Qwen2.5-1.5B finetuning across domains (same evaluation at every step).
+
+(b)
+Raw effect of reasoning shifts over Qwen2.5-1.5B finetuning across domains (same evaluation at every temperature).
+
+Figure 5:
+Reasoning shifts across training and temperature (Qwen2.5-1.5B).
+
+We plot the raw accuracy gap
+Δ
+^
+=
+p
+^
+Y
+∣
+S
+=
+1 −
+p
+^
+Y
+∣
+S
+=
+0 \widehat{\Delta}=\widehat{p}_{Y\mid S=1}-\widehat{p}_{Y\mid S=0}
+ (pp).
+(a) At fixed
+T
+=
+0.7 T=0.7
+,
+Δ
+^
+\widehat{\Delta}
+ stays near zero or negative across training.
+(b) Across
+T
+T
+, shifts align with correction on
+Xword
+ at lower
+T
+T
+, remain harmful on
+Math
+, and are near-zero on
+RHour
+.
+
+How does the effect of reasoning shifts vary across training?
+
+To test whether the shift–accuracy relationship changes as training progresses,
+we regress correctness on problem fixed effects, standardized training step, and the shift indicator.
+We report average marginal effects (AME) with cluster–robust SEs at the problem level.
+3 3
+3 In R-style notation:
+
+correct
+∼
+C(problem)
++
+step_std
++
+shift
+.
+\texttt{correct}\sim\texttt{C(problem)}+\texttt{step\_std}+\texttt{shift}.
+
+correct
+ is a binary outcome;
+
+C(problem)
+ are problem fixed effects;
+
+step_std
+ is the standardized checkpoint index.
+
+At
+T
+=
+0.7 T{=}0.7
+, we find no evidence that shifts become beneficial later in training.
+In
+Xwords
+ and
+Math
+ shifts are uncommon (
+%
+S
+=
+2.433 \%S{=}2.433
+;
+%
+S
+=
+2.166 \%S{=}2.166
+) and are mildly harmful (
+AME
+=
+−
+0.0311 \mathrm{AME}{=}{-}0.0311
+,
+p
+=
+0.02742 p{=}0.02742
+;
+AME
+=
+−
+0.0615 \mathrm{AME}{=}{-}0.0615
+,
+p
+=
+1.55 ×
+10 −
+4 p{=}1.55\times 10^{-4}
+).
+
+In
+RHour
+, shifts are comparatively frequent (
+%
+S
+=
+11.449 \%S{=}11.449
+) but have no measurable practical effect on accuracy (
+AME
+≈
+0.0001 \mathrm{AME}{\approx}0.0001
+,
+p
+≪
+10 −
+6 p{\ll}10^{-6}
+).
+Analogous results for
+T
+∈
+{
+0.0 ,
+0.05 ,
+0.3 }
+T\in\{0.0,0.05,0.3\}
+ are reported in Appendix
+D.1
+.
+Figure
+5 a echoes this pattern: across checkpoints, shifted traces are not systematically more accurate than non-shifted ones.
+We repeat robustness checks using alternative detector variants across
+T
+∈
+{
+0 ,
+0.05 ,
+0.3 ,
+0.7 }
+T\in\{0,0.05,0.3,0.7\}
+ in App.
+D.5
+.
+We observe the same qualitative pattern with the stricter
+formal
+ “Aha!” detector (Appendix
+D.3
+), but because it fires on only
+≈
+10 −
+3 \approx 10^{-3}
+ of traces at
+T
+=
+0.7 T{=}0.7
+, estimates are underpowered for fine-grained stage-by-stage heterogeneity; critically, we do not see a consistent late-training transition to positive effects.
+
+How does the effect of reasoning shifts vary with decoding temperature?
+
+We next ask whether temperature modulates the relationship between shifts and correctness.
+We regress correctness on problem fixed effects, standardized temperature, and the shift indicator, aggregating across training steps.
+4 4
+4 R-style notation:
+
+correct
+∼
+C(problem)
++
+temp_std
++
+shift
+.
+\texttt{correct}\sim\texttt{C(problem)}+\texttt{temp\_std}+\texttt{shift}.
+
+temp_std
+ is the standardized decoding temperature.
+
+Table
+3 summarizes the average association between shifts and correctness while controlling for standardized decoding temperature (via
+temp_std
+).
+Figure
+5(b)
+ shows the corresponding per-
+T
+T
+ raw pattern.
+On
+Xwords
+, the coefficient is positive but not statistically distinguishable from zero (
+AME
+=
+0.0326 \mathrm{AME}{=}0.0326
+,
+p
+=
+0.2595 p{=}0.2595
+), despite a positive raw contrast
+Δ
+=
++
+10.54 \Delta{=}{+}10.54
+pp.
+On
+Math
+, shifts are strongly harmful (
+AME
+=
+−
+0.0831 \mathrm{AME}{=}{-}0.0831
+,
+p
+=
+2.68 ×
+10 −
+8 p{=}2.68\times 10^{-8}
+;
+Δ
+=
+−
+18.35 \Delta{=}{-}18.35
+pp).
+On
+RHour
+, shifts are frequent (
+%
+S
+=
+14.32 \%S{=}14.32
+) but correctness is extremely low overall; accordingly, the estimated effect is statistically detectable yet numerically negligible (
+AME
+≈
+−
+0.0003 \mathrm{AME}{\approx}{-}0.0003
+,
+p
+=
+2.72 ×
+10 −
+7 p{=}2.72\times 10^{-7}
+;
+Δ
+≈
+−
+0.02 \Delta{\approx}{-}0.02
+pp).
+
+Raw per-temperature contrasts (Fig.
+5(b)
+) sharpen the interpretation:
+on
+Xwords
+, shifts can coincide with productive correction at low
+T
+T
+, but the benefit weakens and may reverse by
+T
+=
+0.7 T{=}0.7
+.
+In
+Math
+, shifts remain harmful across temperatures, though the raw penalty attenuates as
+T
+T
+ increases.
+In
+RHour
+, the curve stays close to zero in magnitude, reflecting the near-zero accuracy regime.
+
+Takeaway.
+
+We find that reasoning shifts do not reliably yield higher accuracy across specific training phases or at particular temperatures.
+
+(a) Training stage
+
+Metric
+
+Xword
+
+Math
+
+RHour
+
+N
+N
+
+20,800
+
+80,000
+
+80,000
+
+%
+S
+\%S
+
+2.433
+
+2.166
+
+11.449
+
+p
+^
+Y
+∣
+S
+=
+1 \hat{p}_{Y\mid S=1}
+
+0.0731
+
+0.1691
+
+0.0001
+
+Δ
+​
+pp
+\Delta\mathrm{pp}
+
+−
+4.52 -4.52
+
+−
+11.83 -11.83
+
++
+0.00 +0.00
+
+AME
+\mathrm{AME}
+
+−
+0.0311 -0.0311
+
+−
+0.0615 -0.0615
+
+0.0001 0.0001
+
+p
+p
+
+0.02742 0.02742
+
+1.55 ×
+10 −
+4 1.55\times 10^{-4}
+
+≪
+10 −
+6 \ll 10^{-6}
+
+(b) Temperature
+
+Metric
+
+Xword
+
+Math
+
+RHour
+
+N
+N
+
+83,200
+
+320,000
+
+320,000
+
+%
+S
+\%S
+
+1.220
+
+2.646
+
+14.318
+
+p
+^
+Y
+∣
+S
+=
+1 \hat{p}_{Y\mid S=1}
+
+0.2010
+
+0.1435
+
+0.0000
+
+Δ
+​
+pp
+\Delta\mathrm{pp}
+
++
+10.54 +10.54
+
+−
+18.35 -18.35
+
+−
+0.02 -0.02
+
+AME
+\mathrm{AME}
+
+0.0326
+
+−
+0.0831 -0.0831
+
+−
+0.0003 -0.0003
+
+p
+p
+
+0.2595 0.2595
+
+2.68 ×
+10 −
+8 2.68\times 10^{-8}
+
+2.72 ×
+10 −
+7 2.72\times 10^{-7}
+
+Table 3:
+Effect of detected reasoning shifts on accuracy (Qwen2.5-1.5B).
+
+For each domain,
+%
+S
+\%S
+ is the share of samples where the LLM-as-judge detects a shift (
+S
+i
+,
+j
+=
+1 S_{i,j}=1
+);
+p
+^
+Y
+∣
+S
+=
+1 \hat{p}_{Y\mid S=1}
+ is the empirical accuracy among shifted traces; and
+Δ
+​
+pp
+\Delta\mathrm{pp}
+ is the raw accuracy difference (in percentage points) between shifted and non-shifted traces.
+
+(a)
+ controls for training step (standardized) at fixed training decoding temperature
+T
+=
+0.7 T=0.7
+;
+(b)
+ controls for decoding temperature
+T
+∈
+{
+0.0 ,
+0.05 ,
+0.3 ,
+0.7 }
+T\in\{0.0,0.05,0.3,0.7\}
+ while aggregating over steps.
+
+AME
+\mathrm{AME}
+ is the average marginal effect of a shift from a logistic regression with problem fixed effects and cluster-robust SEs; negative values mean that, holding problem and step/temperature fixed, traces with shifts are less likely to be correct.
+See §
+6.2 for the full regression specification.
+
+6.3 RQ3: Reasoning Shifts & Uncertainty
+
+The results above (particularly
+Xwords
+, see Fig.
+5(b)
+) suggest that decoding temperature may modulate the effect of reasoning shifts: at low
+T
+T
+ they sometimes align with productive corrections, while at higher
+T
+T
+ they resemble noise. Because temperature primarily alters sampling entropy rather than the model’s underlying reasoning process
+(
+hinton2015distilling
+;
+holtzman2019degeneration
+)
+, this points to a link between shifts and internal uncertainty. We thus ask whether, under high-uncertainty regimens, reasoning shifts are more frequent or become more helpful.
+
+Are reasoning shifts more likely under high uncertainty?
+
+To test whether shifts preferentially occur when the model is uncertain, we relate each trace’s reasoning shift indicator to its sequence-level entropy. We pool traces across all decoding temperatures and training checkpoints, and fit a logistic regression of shift prevalence on standardized entropy with problem fixed effects and cluster-robust SEs (clustered by problem).
+5 5
+5 In R-style notation:
+
+shift
+∼
+C(problem)
++
+std_entropy
+.
+\texttt{shift}\sim\texttt{C(problem)}+\texttt{std\_entropy}.
+
+Here
+shift
+ is a binary indicator for a reasoning shift,
+C(problem)
+ denotes problem fixed effects, and
+std_entropy
+ is the within-domain
+z
+z
+-scored pass-1 sequence entropy. We estimate a Binomial(logit) GLM with cluster-robust SEs at the problem level.
+
+Pooling all traces across domains (
+Xwords
+,
+Math
+,
+RHour
+), we find weak evidence that higher entropy is associated with
+fewer
+ detected shifts on average (OR
+≈
+0.77 ×
+\approx 0.77\times
+,
+β
+=
+−
+0.258 \beta=-0.258
+,
+SE
+=
+0.143 \mathrm{SE}=0.143
+,
+p
+=
+0.070 p=0.070
+; 95% CI OR
+∈
+[
+0.58 ,
+1.02 ]
+\in[0.58,1.02]
+;
+N
+=
+723 ,
+200 N=723{,}200
+). This aggregate pattern masks domain heterogeneity: the entropy–shift association is positive in
+Xwords
+ (OR
+≈
+2.05 ×
+\approx 2.05\times
+) and
+RHour
+ (OR
+≈
+1.19 ×
+\approx 1.19\times
+), but negative in
+Math
+ (OR
+≈
+0.58 ×
+\approx 0.58\times
+). One possible interpretation is that in
+Math
+, high-entropy generations more often reflect diffuse exploration or verbose “flailing” rather than a discrete mid-trace pivot, so the rare, rubric-qualified shifts concentrate in comparatively lower-entropy traces.
+
+Do reasoning shifts improve performance under high uncertainty?
+
+A natural hypothesis is that when the model is uncertain, a mid-trace pivot might reflect productive self-correction. We test this by stratifying traces into
+high-entropy
+ instances (top 20% within domain) and
+low-entropy
+ instances (bottom 80%), using a fixed entropy threshold per domain. Within each stratum, we estimate the effect of a shift on correctness using a logistic regression with problem fixed effects and controls for continuous entropy and training step, and report the shift coefficient alongside the raw accuracy difference between shifted and non-shifted traces.
+6 6
+6 Within each domain, we split at the 80th percentile of sequence entropy and fit a Binomial(logit) GLM predicting
+correct
+ from
+shift
+ with problem fixed effects and covariates. We report both regression and raw contrasts for interpretability.
+
+Table
+4 shows that shifts do
+not
+ become reliably beneficial in the high-entropy regime. In
+Math
+, shifts remain harmful even among high-entropy traces (raw
+Δ
+=
+−
+7.40 \Delta=-7.40
+pp) and are substantially more harmful in the low-entropy majority (raw
+Δ
+=
+−
+22.88 \Delta=-22.88
+pp). In
+Xwords
+, the point estimate in the high-entropy stratum is near zero (raw
+Δ
+=
++
+0.63 \Delta=+0.63
+pp), but shifts are rare and estimates are noisy. In
+RHour
+, accuracy is near-zero throughout, so estimated effects are statistically detectable due to sample size but negligible in magnitude.
+
+Metric
+
+Xword
+
+Math
+
+RHour
+
+All traces
+
+N
+N
+
+83,200
+
+320,000
+
+320,000
+
+Δ
+\Delta
+ (pp)
+
+−
+6.24 -6.24
+
+−
+19.78 -19.78
+
+−
+0.02 -0.02
+
+coef
+​
+(
+shift
+)
+\mathrm{coef(shift)}
+
+−
+1.49 -1.49
+
+−
+1.11 -1.11
+
+−
+22.76 -22.76
+
+p
+p
+
+0.123 0.123
+
+2.25 ×
+10 −
+7 2.25\times 10^{-7}
+
+≈
+0 \approx 0
+
+High entropy (top 20%)
+
+N
+N
+
+16,640
+
+64,000
+
+64,000
+
+Δ
+\Delta
+ (pp)
+
++
+0.63 +0.63
+
+−
+7.40 -7.40
+
+−
+0.03 -0.03
+
+coef
+​
+(
+shift
+)
+\mathrm{coef(shift)}
+
+−
+0.04 -0.04
+
+−
+0.28 -0.28
+
+−
+22.48 -22.48
+
+p
+p
+
+0.904 0.904
+
+0.739 0.739
+
+≈
+0 \approx 0
+
+Low entropy (bottom 80%)
+
+N
+N
+
+66,560
+
+256,000
+
+256,000
+
+Δ
+\Delta
+ (pp)
+
+−
+10.00 -10.00
+
+−
+22.88 -22.88
+
+−
+0.02 -0.02
+
+coef
+​
+(
+shift
+)
+\mathrm{coef(shift)}
+
+−
+28.83 -28.83
+
+−
+1.14 -1.14
+
+−
+22.90 -22.90
+
+p
+p
+
+1.33 ×
+10 −
+46249 1.33\times 10^{-46249}
+
+4.96 ×
+10 −
+7 4.96\times 10^{-7}
+
+≈
+0 \approx 0
+
+Table 4:
+Do spontaneous reasoning shifts help under high uncertainty?
+
+We stratify traces within each domain by sequence entropy (high = top 20% at the within-domain 80th percentile; low = bottom 80%), and compare shifted vs. non-shifted traces.
+Δ
+\Delta
+ (pp) is the raw accuracy difference
+
+p
+^
+​
+(
+✓
+∣
+S
+=
+1 )
+−
+p
+^
+​
+(
+✓
+∣
+S
+=
+0 )
+\hat{p}(\checkmark\!\mid\!S{=}1)-\hat{p}(\checkmark\!\mid\!S{=}0)
+.
+coef
+​
+(
+shift
+)
+\mathrm{coef(shift)}
+ and
+p
+p
+ report the shift coefficient and
+p
+p
+-value from a logistic regression with problem fixed effects and covariates. Across domains, shifts do not become reliably beneficial in the high-entropy regime.
+
+Can artificially triggered reasoning shifts improve performance?
+
+The negative results above suggest that
+spontaneous
+ shifts are not a dependable self-correction mechanism, even when the model is uncertain. High entropy does not cause more spontaneous pivots; rather, it identifies instances where a second-pass reconsideration has higher marginal value. We therefore test an
+extrinsically triggered
+ “forced Aha” intervention: for each prompt we generate a baseline completion (Pass 1), then re-query the model under identical decoding settings while appending a reconsideration cue (Pass 2), and compare paired correctness outcomes. Pass 2 uses the same cue across all domains; see App.
+C.4
+ for the exact wording and additional analyses.
+
+Table
+5 reports paired results aggregated across checkpoints and decoding temperatures. Triggered reconsideration yields a large gain on
+Math
+ (
+0.322 →
+0.406 0.322\!\rightarrow\!0.406
+;
++
+8.41 +8.41
+pp) and a small gain on
+Xwords
+ (
++
+0.45 +0.45
+pp), while remaining negligible in absolute terms on
+RHour
+ (
++
+0.01 +0.01
+pp) due to its near-zero base rate. The paired “win” counts show that improvements dominate backslides in
+Math
+ (50,574 wrong
+→
+\rightarrow
+right vs. 23,500 right
+→
+\rightarrow
+wrong), indicating that the effect is not merely random flipping. In contrast,
+Xwords
+ shows near-balanced wins and losses (5,380 vs. 5,004), consistent with a much smaller net gain.
+
+Finally, consistent with uncertainty serving as a useful gate for reflection, Appendix
+C.4
+ shows that these gains are amplified on high-entropy instances (Table
+26 ), with a complementary regression analysis reported in Table
+27 .
+
+Metric
+
+Xword
+
+Math
+
+RHour
+
+N
+N
+ (paired samples)
+
+83,200
+
+320,000
+
+320,000
+
+p
+^
+P1
+\hat{p}_{\text{P1}}
+
+0.0970
+
+0.3221
+
+0.000233
+
+p
+^
+P2
+\hat{p}_{\text{P2}}
+
+0.1015
+
+0.4062
+
+0.000363
+
+Δ
+\Delta
+ (pp)
+
++
+0.45 +0.45
+
++
+8.41 +8.41
+
++
+0.01 +0.01
+
+wins (P2
+↑
+\uparrow
+)
+
+5,380
+
+50,574
+
+100
+
+wins (P1
+↑
+\uparrow
+)
+
+5,004
+
+23,500
+
+58
+
+Table 5:
+Forced “Aha” (triggered reconsideration), sample-level results.
+
+We compare paired outcomes between a baseline generation (Pass 1) and a second generation with an appended reconsideration cue (Pass 2).
+
+p
+^
+P1
+\hat{p}_{\text{P1}}
+ and
+p
+^
+P2
+\hat{p}_{\text{P2}}
+ denote accuracies in each pass;
+Δ
+\Delta
+ (pp) is the percentage-point gain.
+
+Takeaway.
+ Reasoning shifts are a low-base-rate event whose association with entropy varies by domain, and conditioning on uncertainty does not reveal a “hidden regime” where spontaneous shifts reliably help. In contrast, artificially triggering reconsideration yields consistent gains, especially for
+Math
+ and especially in the high-entropy tail (App.
+D.7
+, Table
+26 ).

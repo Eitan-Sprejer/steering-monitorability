@@ -1,0 +1,454 @@
+3 MomentSeeker
+
+3.1 Task Definition
+
+The long-video moment retrieval (LVMR) task is formally defined as follows. Given the query for a LVU task
+q
+, the model is required to predict the key moments within the long video, denoted as
+𝒫
+=
+[
+p
+(
+1 )
+,
+…
+,
+p
+(
+k
+)
+]
+\mathcal{P}=[p^{(1)},...,p^{(k)}]
+, where
+p
+i
+p^{i}
+ stands for the starting and terminating timestamp of the
+i
+i
+-th moment, i.e.,
+p
+s
+i
+p^{i}_{s}
+ and
+p
+t
+i
+p^{i}_{t}
+. The prediction result is measured by its consistency with the ground-truth moments
+𝒢
+=
+[
+g
+(
+1 )
+,
+…
+,
+g
+(
+m
+)
+]
+\mathcal{G}=[g^{(1)},...,g^{(m)}]
+:
+ϕ
+​
+(
+{
+s
+​
+i
+​
+m
+​
+(
+p
+i
+,
+g
+i
+)
+|
+i
+=
+1 ,
+…
+,
+m
+}
+)
+\phi(\{sim(p^{i},g^{i})|i=1,...,m\})
+, where
+s
+​
+i
+​
+m
+​
+(
+⋅
+)
+sim(\cdot)
+ and
+ϕ
+​
+(
+⋅
+)
+\phi(\cdot)
+ are the predefined similarity function and integration function, respectively (to be introduced in Section
+3.5 ).
+
+3.2 Video Collection
+
+To more comprehensively evaluate the LVMR task, we construct a video dataset that is both diverse in scenarios and sufficiently long in duration, aiming to better reflect real-world conditions.
+To maximize diversity, we curate videos from a wide array of domains, including real-world recordings such as egocentric videos and sports, cinematic productions like movies, and simulated content like cartoons and surveillance videos for anomaly detection. Sports videos, movies, egocentric videos, and cartoons are all high-resolution, each exceeding 1080p. The sports videos are primarily sourced from Olympic tournaments. Although surveillance videos are typically low in resolution (around 320×240) due to limitations of available sources on the Internet, we apply strict filtering to retain only clips with clearly visible abnormal events, ensuring both quality and relevance. Compared to prior benchmarks that are confined to specific domains, such as TV shows
+[15]
+, sports activities
+[5,11]
+, our dataset covers a broader range of visual scenarios, reflecting a wider spectrum of content, including real-world, cinematic, and simulated environments.
+
+Furthermore, our benchmark covers a broad range of durations (Figure
+2 (b)), with the longest videos extending up to approximately one hour. As shown in Table
+1 , our benchmark boasts an average video length of 1201.9 seconds, significantly outpacing previous moment retrieval benchmarks and aligning with the LVU benchmark. The meticulous video collection process guarantees both domain diversity and comprehensive coverage of video durations, strengthening the benchmark’s ability to support LVMR tasks for the first time and its utility for real-world applications.
+
+3.3 Task Creation
+
+To evaluate video moment retrieval at different levels of semantic granularity, we construct the MomentSeeker benchmark with a hierarchical task taxonomy, as illustrated in Figure
+2 (a). The benchmark encompasses a wide range of question types, each targeting distinct perception or reasoning capabilities. We categorize all tasks into three levels: global, event, and object, based on the semantic scope of the queried information. While all tasks share the common objective of grounding queries to precise temporal intervals in videos, they differ significantly in the level of reasoning, contextual integration, and perceptual detail required.
+
+Global-Level Moment Retrieval.
+
+Global-level tasks assess the model’s ability to reason over extended temporal contexts and to understand high-level semantics that span large portions of the video. These tasks often require modeling causal, temporal, or spatial relationships between multiple events or scenes.
+
+1). Causal Reasoning
+ requires the model to uncover causal relationships between the question event and the answer event in order to locate the latter. For instance, answering “Why does the man need to close the bedroom window?” involves identifying a temporally distant but causally related prior event such as “It is snowing outside.”
+Similarly,
+2). Spatial Relation
+ requires the model to infer spatial relationships between the question event and the answer event. Questions like “How many people are there opposite the man sitting on the sofa?” demand holistic scene understanding and spatial reasoning. These tasks require integrating information across scenes, making them the most contextually demanding category.
+
+Benchmark
+
+Label
+
+
+
+Moment-
+
+targeted?
+
+
+
+Task-
+
+oriented?
+
+Avg. Dur (s)
+
+#Videos
+
+#Queries
+
+Domain
+
+Moment retrieval benchmarks
+
+TVR
+[15]
+
+Auto
+
+✓
+
+✗
+
+76.2
+
+1090
+
+5450
+
+TV show
+
+CharadesSTA
+[5]
+
+Human
+
+✓
+
+✗
+
+30.6
+
+1334
+
+3720
+
+Activity
+
+THUMOS14
+[11]
+
+Human
+
+✓
+
+✗
+
+186.4
+
+216
+
+3457
+
+Action
+
+QVHighlights
+[14]
+
+Human
+
+✓
+
+✓
+
+150
+
+476
+
+1542
+
+Vlog/News
+
+LVU benchmarks
+
+VideoMME
+[4]
+
+Human
+
+✗
+
+✓
+
+1021.3
+
+900
+
+2700
+
+YouTube
+
+MLVU
+[37]
+
+Human
+
+✗
+
+✓
+
+905.8
+
+349
+
+502
+
+Open
+
+LongVideoBench
+[29]
+
+Human
+
+✗
+
+✓
+
+574.9
+
+753
+
+1337
+
+Open
+
+V-NIAH
+[34]
+
+Auto
+
+✗
+
+✓
+
+-
+
+-
+
+5
+
+Open
+
+MomentSeeker
+
+Human
+
+✓
+
+✓
+
+1201.9
+
+268
+
+1800
+
+Open
+
+Table 1:
+Comparison of popular moment retrieval benchmarks, LVU benchmarks (with test set statistics), and our proposed MomentSeeker benchmark.
+Avg. Dur
+ denotes average video duration.
+
+Figure 2:
+Dataset statistics. (a). Question type distribution, (b). Video duration distribution across samples, and (c) Answering time range length distribution across samples. MomentSeeker has a full spectrum of video length and covers different core abilities of the moment retrieval task.
+
+Figure 3:
+Examples of each task. Dashed boxes show sources of query image
+q
+I
+q_{I}
+ and video
+q
+V
+q_{V}
+; solid boxes mark ground truth moments. Red circles highlight key queried information.
+
+Event-Level Moment Retrieval.
+
+Event-level tasks aim to retrieve moments corresponding to specific actions or events, requiring more localized reasoning than global tasks. The event in the query is exactly what needs to be localized. This category includes:
+
+1) Description Location
+, which matches detailed textual descriptions to video segments, focusing on visual-text alignment with minimal reasoning (e.g., “A man in a black suit and helmet is climbing up a tunnel…”).
+
+2) Action Recognition
+, which involves identifying and classifying specific actions, such as counting successful goals in a football match.
+
+3) Anomaly Detection
+, which requires detecting abnormal events without explicit textual cues (e.g., “Does the video show any activity that deviates from the normal patterns?”). This task relies on the model’s ability to infer irregularities.
+Overall, event-level tasks target a specific event and strike a balance between the long-range semantics of global tasks and the fine-grained specificity of object-centric tasks.
+
+Object-Level Moment Retrieval.
+
+Object-level tasks focus on identifying specific objects, their attributes, or spatio-temporal positions, emphasizing fine-grained perception and low-level visual understanding. Subtypes include:
+
+1) Object recognition
+ (e.g., “What did I put on the table?”), identifying entities in the scene;
+
+2) Object localization
+ (e.g., “Where was the weighing scale?”), grounding objects in space and time;
+
+3) Attribute classification
+ (e.g., “What color is the ice cream in the cartoon starfish’s hand?”), recognizing detailed visual properties;
+
+4) OCR-based reasoning
+ (e.g., “Did this athlete win
+the highest score?”), detecting, reading, and analyzing the embedded text.
+These tasks typically span short durations and demand high spatial accuracy, contrasting with the broader semantic focus of global and event-level tasks.
+
+By organizing tasks in a hierarchical structure, the MomentSeeker benchmark provides a unified yet granular framework for evaluating the diverse capabilities of moment retrieval methods. Additionally, considering that humans often convey information using a combination of modalities (e.g., “Why does the man in this image need to close the bedroom window?”), such multi-modal expressions tend to be more natural and accurate. Therefore, in this benchmark, we incorporate three modality combinations: text-only, text with image, and text with video, with text-only serving as the primary modality and multi-modal queries acting as auxiliary. Examples of each task are shown in Figure
+3 .
+
+3.4 Data Annotation
+
+We formally define answering moments as the minimal collection of temporally localized segments that constitute both necessary and sufficient visual evidence to answer a given question. For single-detail questions (e.g., “What color is the ice cream in the cartoon starfish’s hand?”), a single concise moment suffices. In contrast, multi-detail questions (e.g., “How many successful goals have the players of this football team accumulated?”) span multiple, non-redundant moments, which together constitute both necessary and sufficient evidence to answer the question. As for how models identify the segments, we do not impose any constraints. For example, retrieval-based approaches may select from pre-segmented clips, while generative methods may directly predict the temporal boundaries.
+
+Building on this foundation, we design a meticulous annotation protocol. Unlike prior datasets relying on subtitles
+[15]
+ or coarse action labels
+[11,5]
+, we engage expert annotators to craft context-rich, natural questions for LVMR. Each question is paired with precise answer intervals and may be text-only, image-conditioned, or video-conditioned (examples are shown in Figure
+3 ). In the image-conditioned setting, annotators provide both a textual question and a representative frame. In the video-conditioned setting, temporal query windows serve as inputs. In terms of quantity, we ensure that text-only queries constitute the majority, with image- and video-conditioned queries serving as auxiliary, resulting in a final distribution ratio of 5:2:2. To scale annotation efficiently without compromising quality, we leverage a strong multi-modal model
+[25]
+ to generate detailed descriptions of video clips for the “Description Location” task, which are then curated and refined by human annotators. After that, all samples are assigned one of nine predefined task types, including action recognition, spatial relations, causal reasoning, and others. For quality control, we first apply rule-based filtering to remove noisy samples (e.g., redundant queries, invalid intervals). Then, annotators conduct cross-checking to ensure question clarity and label validity. This two-pass process ensures consistent and reliable annotations. Figure
+2 presents detailed statistics, illustrating the diverse task types, broad video durations, and varied answering times, demonstrating the benchmark’s robustness and versatility for complex LVMR tasks.
+
+3.5 Evaluation Metrics
+
+In moment retrieval tasks, the answer to a question may involve either a single moment or multiple moments in the video. To provide a comprehensive evaluation across both single- and multi-detail scenarios, we use Recall@1 and Mean Average Precision@5 as complementary metrics.
+
+Recall@1 (R@1)
+ is a standard metric in moment retrieval
+[14,8,5]
+, measuring whether the top-ranked prediction
+p
+(
+1 )
+p^{(1)}
+ matches any ground-truth moment
+g
+j
+∈
+𝒢
+g^{j}\in\mathcal{G}
+ with similarity
+s
+​
+i
+​
+m
+​
+(
+p
+(
+1 )
+,
+g
+j
+)
+sim(p^{(1)},g^{j})
+ exceeding a predefined threshold. The similarity function
+s
+​
+i
+​
+m
+sim
+ is typically defined as Intersection over Union (IoU)
+[14,8]
+, which measures the overlap between the prediction and the ground-truth moment. Accordingly, the set
+{
+s
+​
+i
+​
+m
+​
+(
+p
+(
+1 )
+,
+g
+j
+)
+}
+\{sim(p^{(1)},g^{j})\}
+ contains the similarity scores between the prediction and all ground-truth moments. The function
+ϕ
+​
+(
+⋅
+)
+\phi(\cdot)
+ returns 1 if at least one of these scores exceeds the threshold, and 0 otherwise. This design accounts for the presence of multiple valid ground-truth moments, treating the prediction as correct if it sufficiently overlaps with any one of them. The final R@1 score is obtained by averaging over all queries.
+
+Mean Average Precision@5 (mAP@5)
+ evaluates both the accuracy and the ranking quality of the top-5 predicted temporal segments for each query. It complements Recall@1, which only considers top-1 accuracy, and is widely used in scenarios involving multiple ground-truth moment retrieval
+[14]
+. For each query, predictions are ranked by confidence, and a prediction is considered correct if its temporal IoU with any unmatched ground-truth segment exceeds a threshold. Each ground-truth can be matched at most once. The Average Precision (AP) is computed by averaging the precision at each correct prediction within the top-5 ranked results. The final mAP@5 is obtained by averaging the AP across all queries. mAP@5 reflects not only whether relevant moments are retrieved, but also how well they are ranked, rewarding systems that return correct predictions earlier in the list.

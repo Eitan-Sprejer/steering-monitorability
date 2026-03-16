@@ -1,0 +1,755 @@
+TimeCluster with PCA is Equivalent to Subspace
+
+Identification of Linear Dynamical Systems
+
+1
+
+1
+
+∗ Daniel P. Martin
+
+2
+†
+
+Christian L. Hines
+
+∗ Samuel T. Spillard
+
+arXiv:2509.12895v1 [cs.LG] 16 Sep 2025
+
+1The Alan Turing Institute
+
+2Camulos
+
+Abstract
+TimeCluster is a visual analytics technique for discovering structure in
+long multivariate time series by projecting overlapping windows of data
+into a low-dimensional space. We show that, when Principal Component
+Analysis (PCA) is chosen as the dimensionality reduction technique, this
+procedure is mathematically equivalent to classical linear subspace identification
+(block-Hankel matrix plus Singular Vector Decomposition (SVD)).
+In both approaches, the same low-dimensional linear subspace is extracted
+from the time series data. We first review the TimeCluster method and the
+theory of subspace system identification. Then we show that forming the
+sliding-window matrix of a time series yields a Hankel matrix, so applying
+PCA (via SVD) to this matrix recovers the same principal directions as
+subspace identification. Thus the cluster coordinates from TimeCluster
+coincide with the subspace identification methods. We present experiments
+on synthetic and real dynamical signals confirming that the two
+embeddings coincide. Finally, we explore and discuss future opportunities
+enabled by this equivalence, including forecasting from the identified state
+space, streaming/online extensions, incorporating and visualising external
+inputs and robust techniques for displaying underlying trends in corrupted
+data.
+
+1 Introduction
+
+Long multivariate time series arise in domains as varied as environmental monitoring,
+industrial process control and human physiology, yet their intrinsic high
+dimensionality and complex temporal dependencies often obscure the patterns,
+correlations and anomalies that lie hidden within. Traditional line
+-plot visualisations
+struggle to scale beyond a handful of variables or to highlight recurrent
+motifs over long horizons. Ali et al. proposed the TimeCluster procedure to
+
+∗Corresponding authors: {chines, sspillard}@turing.ac.uk
+
+†The majority of this research was carried out while D. P. Martin was a member of The
+Alan Turing Institute.
+
+1
+address these challenges by first embedding each overlapping window of the
+multivariate signal into a high-dimensional ‘trajectory’ space and then applying
+dimensionality reduction (initially PCA) to project that trajectory into two
+dimensions [1]. The resulting connected plot preserves both temporal ordering
+and similarity structure, enabling analysts to see repeated regimes, transitions
+and outliers at a glance, even in very long recordings. Figure 1 shows the original
+method in action.
+
+Figure 1: An image of TimeCluster from [1]. The periodicity of the time series
+can clearly be seen as a loop in the embedding. Highlighting similar data (orange
+and green) shows the repeating structure from the time series. The clear anomaly
+in the embedding (yellow) highlights a slightly subtle time series anomaly in the
+original data.
+
+Providing a rigorous mathematical foundation for the TimeCluster heuristic
+not only demystifies its empirical success but also unlocks principled extensions
+by situating the method within a well-understood theoretical framework. In
+doing so, we gain guarantees on consistency and enable the direct import of
+advances from system identification and statistical learning.
+
+2 Background
+
+We begin by providing all background information that is required to show an
+
+equivalence between TimeCluster and and Subspace Identification in Section 3.
+
+2
+2.1 TimeCluster Method
+
+In what follows we use lowercase letters for variables, bold letters for vectors
+and uppercase letters for matrices. Given a total number of time steps T, let yt
+be a D-dimensional vector at time t. The full multivariate time series is then
+represented as Y1:T ∈ R
+T ×D.
+
+Sliding-Window Embedding First, apply min–max scaling independently
+to each variate so that its values lie in [0, 1]. Next, choose a window length L
+(with stride s = 1). For a multivariate time series Y1:T , construct the ‘trajectory’
+matrix:
+Z ∈ R
+(T −L+1)×LD.
+
+This construction treats each of the T − L + 1 rows of Z as a time point in R
+LD
+using interleaving of the D channels.
+
+Embedding Example Suppose we have a two-channel (D = 2) time series
+with T = 4 steps:
+
+
+
+1 10
+2 20
+3 30
+4 40
+
+
+
+Y1:4 =
+
+(1)
+
+Taking the window length L = 2 results in T − L + 1 = 3 windows. Form the
+
+trajectory matrix by taking each 2-step window as a row (channel-interleaved):
+
+
+
+y1,1 y2,1 y1,2 y2,2
+y1,2 y2,2 y1,3 y2,3
+y1,3 y2,3 y1,4 y2,4
+
+
+
+ =
+
+
+
+1 10 2 20
+2 20 3 30
+3 30 4 40
+
+
+
+∈ R
+
+3×4
+
+Z =
+
+.
+
+Dimensionality Reduction In the original TimeCluster system, linear PCA
+is one option among others (t-SNE, UMAP, or convolutional autoencoders for
+feature extraction), but the essential idea is this sliding-window embedding
+followed by dimensionality reduction. Given the matrix Z (whose rows are
+observations), PCA computes the eigenvectors of the covariance matrix or
+equivalently performs an SVD on Z, thereby projecting the high-dimensional
+observations into a low-dimensional space for visualisation while preserving most
+of the structure. The top r principal components are the first r eigenvectors (or
+singular vectors) corresponding to the largest eigenvalues, and they provide the
+best rank-r approximation to Z in the least-squares sense. Projecting the data
+onto the first two components yields a 2D scatter plot.
+
+Visualising the Results Ali et al. then plot these embeddings in an interactive
+plot with the original time series plotted above the embedding. Selecting points
+in the embedding highlights points in the time series, and vice versa, allowing
+easy exploration. The resulting tool also demonstrates some nice properties:
+
+3
+• Periodicity in the time series forms loops in the embedding.
+
+• Anomalies in the time series cause anomalies in the embedding.
+
+• Changepoints in the time series cause clusters in the embedding.
+
+Figure 1 demonstrates the impact of periodicity and anomalies. Figure 2
+demonstrates the relationship of changepoints and clustering.
+
+Figure 2: An image of TimeCluster from [1]. Clusters in the embedding space
+correspond to self similar sections of the time series. Two examples (green and
+yellow) are highlighted to demonstrate.
+
+2.2 Linear Dynamical Systems
+
+A linear time-invariant (LTI) state-space model with (hidden) state xt ∈ R
+n,
+time-dependent input ut ∈ R
+m and observed output yt ∈ R
+D can be written as
+
+xt+1 = Axt + But + wt, (2a)
+yt = Cxt + Dut + vt. (2b)
+
+Here wt, vt are process and measurement noise terms and:
+A ∈ R
+n×n determines how the latent state evolves over time
+B ∈ R
+n×m determines how the input influences the hidden state
+C ∈ R
+D×n determines how the latent state is measured
+D ∈ R
+D×m determines how the input influences the observations
+Standard conditions (controllability, observability) ensure the state can be
+uniquely identified from output data [2, Definitions 7.1 and 8.1]. Many commonly
+used time series models, such as ARIMA processes, admit an equivalent statespace
+form of this type [3]. Once (A, B, C, D) and the state sequence are known,
+one can simulate or forecast future outputs by iterating the state equation.
+
+4
+2.3 Subspace Identification
+
+Subspace identification (ID) methods aim to estimate the state-space model
+parameters (A, B, C, D) from input-output data. Importantly, subspace ID
+algorithms do not require iterative optimisation, avoiding issues of local minima
+that affect techniques such as the expectation–maximisation (EM) algorithm;
+instead, all steps reduce to linear algebra operations (for a more complete
+overview see [4, 5]).
+
+We start by noting that the LTI system in equation (2) can be formulated as
+a matrix equation
+
+
+xt+1
+yt
+
+=
+
+A B
+C D xt
+ut
+
++
+
+wt
+vt
+
+. (3)
+
+Given we have access to inputs ut and outputs yt
+, an estimate of the hidden
+state vector xt would allow the system parameters
+
+Θ :=
+
+A B
+C D
+
+(4)
+
+to be estimated using standard least squares.
+
+Estimating the hidden state vector The recursive nature of the LTI system
+allows observations after time t to be written in terms of the state vector at
+time t, plus input and noise terms. For example, expanding xt+1 in the equation
+for the observation at time t + 1:
+
+yt+1 = Cxt+1 + Dut+1 + vt+1
+
+= C (Axt + But + wt) + Dut+1 + vt+1
+= CAxt + CBut + Dut+1
+
++ Cwt + vt+1
+| {z }
+noise term
+
+.
+
+| {z }
+input term
+
+We will assume hereafter that the system is ‘output-only,’ meaning ut = 0 for
+t = 1, 2, . . . , T, so the input term vanishes. For input-output systems, algorithms
+like N4SID and MOESP use orthogonal projection to eliminate the contribution
+from the input (for more details see [6, 7]).
+
+Repeating the same approach for L successive time steps, we arrive at the
+matrix equation
+
+
+
+yt
+yt+1
+.
+.
+.
+yt+L−1
+
+
+
+
+
+
+=
+
+
+
+C
+CA
+.
+.
+.
+CAL−1
+
+
+
+xt + ϵ, (5)
+
+| {z }
+OL
+
+for some noise term ϵ, and where we have defined the extended observability
+matrix OL ∈ R
+LD×n.
+
+We can construct a system of equations like (5) for each time step. Note,
+however, that we cannot use all T time steps; the lookahead window of length L
+
+5
+reduces the maximum number of equations to T − L + 1. Stacking each equation
+into columns yields the following matrix equation:
+
+H = OL X1:T −L+1 + ϵ. (6)
+
+Here, we have introduced the block-Hankel matrix
+
+
+
+y1 y2
+· · · yT −L+1
+y2 y3
+· · · yT −L+2
+.
+.
+.
+.
+.
+.
+.
+.
+.
+
+
+
+
+
+
+
+
+
+∈ R
+
+LD×(T −L+1)
+
+H =
+
+. (7)
+
+yL yL+1 · · · yT
+
+and the state sequence matrix X1:T −L+1 = [x1, x2, . . . , xT −L+1] ∈ R
+n×(T −L+1)
+.
+Classical results show that if L is chosen such that the system order n ≤
+L, then rank(H) = n in the noise-free case, and the SVD of H yields the
+column space of the observability matrix and the row space of the controllability
+matrix [8, 9]. Concretely, one computes
+
+H = UΣV
+T
+
+and takes the first n columns U1:n of U (and corresponding singular values Σ1:n).
+If, as in the majority of cases, n is not known a priori, then one can estimate
+the system order by taking the top r singular values above a predetermined
+threshold ε. If r = n, these columns span the same space as the true state
+sequence. The state estimates can then be computed as Xˆ
+1:T −L+1 = Σ1:nV
+T
+1:n
+
+(where V1:n contains the first n columns of V ), and one recovers (A, B, C, D) by
+least-squares fitting of the original system in equation (3).
+
+Block Hankel Example Consider the same signal as in equation (1), the
+block-Hankel matrix is built by stacking two ‘lagged’ block-rows
+
+H =
+"
+y1 y2 y3
+y2 y3 y4
+
+#
+=
+"
+
+[1, 10] [2, 20] [3, 30]
+[2, 20] [3, 30] [4, 40]#
+
+.
+
+If you ‘flatten’ each [a, b] into two rows, the result is:
+
+
+
+
+
+1 2 3
+10 20 30
+2 3 4
+20 30 40
+
+
+
+
+
+
+∈ R
+4×3
+.
+
+H =
+
+3 Equivalence of TimeCluster and Subspace ID
+
+We now formalise why TimeCluster with PCA is equivalent to subspace identification.
+Form the block-Hankel matrix H ∈ R
+LD×(T −L+1) as above. Observe
+that each column of H is a contiguous window [yt, . . . , yt+L−1]
+⊤. TimeCluster
+
+6
+instead forms a data matrix Z ∈ R
+(T −L+1)×LD whose rows are these windows.
+Consequently, we see that TimeCluster’s data matrix is the transpose of the
+block-Hankel matrix:
+
+Z = H⊤. (8)
+
+Performing PCA on the rows of Z is thus equivalent to computing the SVD of
+H. Indeed, if
+
+⊤ (9)
+
+H = UΣV
+
+is the SVD of the block-Hankel matrix, then
+
+Z = H⊤ = V ΣU
+
+⊤. (10)
+
+This reveals the fundamental equivalence: Subspace ID computes SVD of H to
+get Un (observability subspace) and state sequence Xˆ
+1:T −L+1 = Σ1:nV
+T
+1:n
+. Meanwhile,
+TimeCluster-PCA computes SVD of Z to get V1:n (principal components)
+and coordinates ZV1:n = V Σ1:n.
+
+Both yield equivalent low-dimensional coordinates for the temporal windows.
+The only difference is in their interpretation: subspace ID views the coordinates
+as hidden states of a dynamical system, while TimeCluster views them as
+principal component coordinates for visualisation and clustering. This shows
+that the fundamental process behind TimeCluster is a principled modelling
+technique. Thus, embeddings created through TimeCluster faithfully represent
+the underlying state trajectory of these time series, lending credence to the
+theory that anomalous features in the TimeCluster embedding space represent
+anomalous sections of the time series being considered, and are not just an
+artefact of the TimeCluster alogithm.
+
+TimeCluster’s stride parameter The Z matrix construction used by TimeCluster
+[1] is fundamentally equivalent to the block Hankel matrix when the
+stride parameter s = 1, differing only in orientation (rows vs. columns). When
+s > 1, the stride parameter functions as a downsampling preprocessing step,
+in the columns of the Hankel matrix (striding over rows in the TimeCluster
+matrix). However, it is worth noting that this resulting matrix is no longer a
+Hankel matrix; it contains less information that the full Hankel matrix, but more
+information than the Hankel matrix on the time series downsampled by s. From
+here on, we consider only the s = 1 case, in order to be consistent with Subspace
+Identification methods.
+
+4 Numerical Experiments
+
+In what follows we are comparing the mathematical details of the two models,
+not the user experience. By showing the equivalence, it means our mathematical
+guarantees and additional properties can be added to their nice GUI, rather
+than us constructing a brand new tool.
+
+7
+Figure 3: Side-by-side comparison of embeddings from TimeCluster and Subspace
+ID method on synthetic AR(2) data.
+
+4.1 Synthetic Data
+
+For our first numerical experiment, we set up a contrived example where we
+generate an AR(2) process with known state-space dimension n = 2. From here,
+we run the original TimeCluster algorithm over the series, with a sliding window
+of length L = 2, stride s = 1, and PCA with r = 2 output components. We also
+apply the subspace ID method to the same sequence, and obtain the first n = 2
+left singular vectors U1:2.
+
+Whilst they are not the most informative, the resultant embeddings from
+both methods are shown side-by-side in Figure 3 - where it easy to see that they
+result in the same output, up to a rotation and translation factor (in this case,
+we shift the subspace ID embeddings along the x-axis such that the coordinates
+are aligned in the x-direction, and also mirror the embeddings in the x-axis), as
+shown in Figure 3(d).
+
+4.2 Real-World Data
+
+For our second numerical experiment, we use the well-known publicly available
+Mauna Loa CO2 dataset [10]. We normalise it by removing the trend, leaving
+us with just the seasonal component. Once again, we apply both TimeCluster
+PCA and Subspace ID embeddings to the data, and show that the resultant
+figures line up identically in Figure 4 (this time, mirrored in the x-axis, as well
+as some translation along the x-axis).
+
+5 Extensions Enabled by Subspace ID
+
+The equivalence between TimeCluster and subspace ID invites several possible
+extensions.
+
+8
+Figure 4: Side-by-side comparison of embeddings from TimeCluster and Subspace
+ID method on real CO2 data.
+
+5.1 Extended Visualisation
+
+Now that our embeddings are meaningful due to coming from a state space
+model, we can extend our visualisation, using additional knowledge if required.
+For example, if our time series has two periodicities (e.g. a frequency of 1
+3
+and
+1
+5
+, as in Fig. 5), these will be reflected in the state. It is then possible to plot
+these two components separately, on two embedding plots, to aid the user in
+understanding their data.
+
+Figure 5: Side-by-side comparison of embeddings from TimeCluster on a time
+series with double periodicity. Being able to determine that the state space
+model of this time series has dimension n = 4 means we can plot each of the
+two periodicities independently. More generally any insights a user has into the
+state space structure can now be pulled out into the visualisation.
+
+9
+5.2 Forecasting
+As shown in Section 3, the fact that TimeCluster and Subspace ID produce the
+same embeddings but with different interpretations, implicitly means that the
+TimeCluster PCA algorithm effectively recovers a predictive state-space model.
+Viewing the TimeCluster embedding as Xˆ T
+1:T −L+1, we then need only estimate:
+
+State transition matrix : A
+Process noise covariance : Q
+Observation matrix : C
+Observation noise covariance : R
+
+in order to use our TimeCluster embeddings to create predictions using the
+Kalman forward equations [11].
+We can estimate Aˆ via least squares using the following:
+
+Aˆ = Xˆ
+1:τXˆ †
+0:τ−1
+
+We can estimate Cˆ, also using least squares, as:
+
+Cˆ = Y Xˆ †
+We can then estimate both Q and R emprically using the following:
+
+wt = xt+1 − Aˆxt
+vt = yt − Cˆxt
+
+Qˆ =
+1
+T − 1
+T
+X−1
+t=1
+wtw⊤
+t
+
+Rˆ =
+1
+T
+X
+T
+t=1
+vtv
+⊤
+t
+
+Finally, we can use our estimated Aˆ, Cˆ, Qˆ and Rˆ (along with an uninformative
+prior for Pt of the identity, I), to propagate our state-space model forward in
+time recursively, like so:
+
+xˆt|t−1 = Axˆt−1|t−1
+Pt|t−1 = APt−1|t−1A
+⊤ + Q
+Kt = Pt|t−1C
+⊤(CPt|t−1C
+⊤ + R)
+−1
+xˆt|t = xˆt|t−1 + Kt(yt − Cxˆt|t−1)
+Pt|t = (I − KtC)Pt|t−1
+
+10
+where Kk is the Kalman gain, and (yk − Cxˆk|k−1) is the residual between
+our predicted observation, and the actual observation. Note that we are using a
+fully on-line model here, where our state and covariance estimates are updated
+by new observations before estimating the next observation.
+
+In Figure 6, we show the predictions from this model on the publicly available
+monthly mean sunspot dataset [12]. Here, we have taken the embeddings from
+the TimeCluster algorithm and used them to derive the required parameters for
+our state-space model, then propagated predictions forwards using the Kalman
+forward equations, updating our matrix estimates as new observations are
+provided.
+
+Figure 6: Kalman forward predictions of sunspot dataset using TimeCluster
+embeddings to estimate the state-space model.
+
+The advantage of this formalisation enabling forecasting is around user
+interpretability. If a user notes that all points of interest fall within a small area
+of space within the TimeCluster projection, they can ask “When is this time
+series next expected to enter this region of space?”. This can potentially be
+much easier for them to ask than when a particular shape in the time series is
+expected to appear again.
+
+5.3 Exogenous Regressors
+
+Viewing the TimeCluster-PCA algorithm as a subspace ID problem operating
+on the output-only block Hankel matrix, i.e. ut = 0 for t = 1, . . . , T, allows us
+to extend TimeCluster into scenarios where there are external regressors. In this
+setting, we can instead operate on an input-output Hankel matrix in order to
+calculate our embeddings. By embedding these time-dependent ‘control’ inputs,
+ut, alongside our outputs, we can more easily visualise how the system is driven.
+For this example, we generate data from an n = 2 state-space model, driven
+
+by a stepped exogenous regressor. The resultant time series is shown in Figure 9.
+We then use the NFourSID package [13] to model this dataset using the N4SID
+algorithm. The package itself takes care of performing subspace identification
+with exogenous regressors, but we are left with (among other things) estimates
+
+11
+for the state trajectory, which we can use as coordinates for the visualisation.
+When comparing the traditional TimeCluster-PCA embeddings with this N4SID
+
+embedding in Figure 7, we can see that the N4SID method provides a noisefree
+visualisation using just the learned state trajectories, as opposed to the
+TimeCluster-PCA alogrithm whose embeddings are susceptible to the noise in
+the observations.
+
+Figure 7: Comparison of (a) TimeCluster-PCA embeddings and (b) subspace
+ID embeddings generated using N4SID algorithm. Blue and orange sections
+correspond to equivalent sections of the time series in Figure 9. Note the orange
+line showing a transition from one region to another, as the regressor drives the
+system, which is easier to isolate in the subspace ID embeddings.
+
+5.4 Kalman Smoother for Visual Denoising
+
+As can be seen in some earlier figures, the estimated state trajectories from the
+Hankel SVD approach can be very noisy. Whilst the dimensionality reduction
+step aims to keep only those singular vectors that contribute to the signal (rather
+than the noise), it is a purely empirical technique that can still be susceptible to
+noise. If we instead combine our estimated subspace identification parameters
+with a Kalman smoother, we can refine our state trajectory estimates, often
+
+leading to a more smooth, noise-free state trajectory. In Figure 8(a) we show
+a synthetic periodic state-space time series. Figure 8 also shows the state
+embedding for (b) the true state trajectory, (c) the TimeCluster-PCA state
+trajectory and (d) the TimeCluster-PCA state trajectory after smoothing with
+a Kalman smoother. One can see the Kalman-smoothed TimeCluster-PCA
+embeddings are closer to the true state trajectory embeddings, and more visually
+clean.
+
+5.5 Additional Further Extensions
+
+Online/streaming methods By using incremental SVD or PCA algorithms,
+one could update the Hankel subspace in real time as new data arrive. Efficient
+
+12
+Figure 8: (a) Synthetic periodic time series derived from state-space model, plotted
+with true hidden states. Comparison of (b) true state trajectory embeddings,
+(c) TimeCluster-PCA embeddings and (d) TimeCluster-PCA embeddings after
+Kalman smoother applied.
+
+online algorithms for updating a low-rank SVD exist, enabling a streaming
+variant of TimeCluster for live data [14].
+
+Robust subspace methods Real data often contain outliers or missing values.
+Robust PCA techniques, e.g. low-rank plus sparse decompositions, can identify
+a low-rank Hankel subspace in the presence of gross corruption [15]. Similarly,
+one can use structured matrix completion to handle missing observations. Incorporating
+these ideas would make TimeCluster more robust to noise and data
+gaps.
+
+6 Conclusion
+
+We have shown that the TimeCluster method with PCA is equivalent to classical
+linear subspace identification: the sliding-window embedding yields a Hankel
+matrix whose SVD (via PCA) produces exactly the same subspace as subspace
+ID algorithms. This establishes a direct link between time series visual analytics
+and control-oriented system identification. In practice, one can therefore leverage
+system-theoretic tools (model estimation, Kalman filtering, modal analysis)
+within the TimeCluster framework and vice versa. We suggest a melding of these
+two domains into a single product that offers visualisation, model estimation,
+and intuitive forecasting, would be an extremely useful tool for analysts looking
+to triage very long time series datasets.
+
+13
+References
+
+[1] M. Ali, M. W. Jones, X. Xie, and M. Williams, “TimeCluster,” vol. 35,
+no. 6, pp. 1013–1026.
+
+[2] K. J. ˚Astr¨om and R. Murray, Feedback Systems. Princeton University Press,
+2 ed.
+
+[3] J. Durbin and S. J. Koopman, Time Series Analysis by State Space Methods.
+No. 38 in Oxford Statistical Science Series, Oxford University Press, 2 ed.
+[4] M. Verhaegen and P. Dewilde, “Subspace model identification part 1,”
+vol. 56, no. 5, pp. 1187–1210.
+[5] P. Van Overschee and B. De Moor, Subspace Identification for Linear
+Systems. Springer New York.
+[6] I. W. Jamaludin, N. A. Wahab, N. S. Khalid, S. Sahlan, Z. Ibrahim, and
+M. F. Rahmat, “N4SID and MOESP subspace identification methods,” in
+9th International Colloquium on Signal Processing and its Applications,
+pp. 140–145, IEEE.
+[7] P. Van Overschee and B. De Moor, “N4SID,” vol. 30, no. 1, pp. 75–93.
+[8] B. L. Ho and R. E. Kalman, “Effective construction of linear state-variable
+models from input/output functions,” vol. 14, no. 1–12, pp. 545–548.
+[9] B. Gopinath, “On the identification of linear time-invariant systems from
+input-output data,” vol. 48, no. 5, pp. 1101–1113.
+[10] X. Lan and R. Keeling, “Trends in co2.”
+[11] G. Welch, G. Bishop, et al., “An introduction to the kalman filter,” 1995.
+[12] F. Clette and L. Lef`evre, “Silso sunspot number v2.0.”
+https://doi.org/10.24414/qnza-ac80, 07 2015. Published by WDC
+SILSO - Royal Observatory of Belgium (ROB).
+[13] S. van Gemert, “Nfoursid.”
+[14] H. Cardot and D. Degras, “Online principal component analysis in high
+dimension,” vol. 86, no. 1, pp. 29–50.
+[15] E. J. Cand`es, X. Li, Y. Ma, and J. Wright, “Robust principal component
+analysis?,” vol. 58, no. 3, pp. 1–37.
+
+14
+A Synthetic Dataset with Exogenous Regressor
+
+Figure 9: Synthetic dataset driven by a stepped exogenous regressor. Split 80:20
+into a train and test set for purposes of visualising how the embeddings are
+driven by the exogenous regressor.
+
+15

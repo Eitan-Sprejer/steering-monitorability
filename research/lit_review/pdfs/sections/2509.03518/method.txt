@@ -1,0 +1,306 @@
+3 Method
+
+Our goal is to understand how LLMs produce lies and to control this behavior. We approach this by first analyzing the internal computations that lead to lying, and then identifying ways to steer the model’s representations during inference to increase or suppress deception. We use established interpretability techniques for all our analysis.
+
+3.1 Analyzing Lying Mechanisms
+
+We first investigate how lies are computed inside the model. This involves identifying where and how deceptive outputs are formed across the model’s layers and components.
+
+Model Setup.
+ We consider standard autoregressive decoder-only Transformers
+[28]
+, where the hidden state
+h
+i
+(
+l
+)
+h_{i}^{(l)}
+ for token
+i
+i
+ at layer
+l
+l
+ is computed as:
+
+h
+i
+(
+l
+)
+=
+h
+i
+(
+l
+−
+1 )
++
+a
+i
+(
+l
+)
++
+m
+i
+(
+l
+)
+,
+h_{i}^{(l)}=h_{i}^{(l-1)}+a_{i}^{(l)}+m_{i}^{(l)},
+
+(1)
+
+with
+a
+i
+(
+l
+)
+a_{i}^{(l)}
+ and
+m
+i
+(
+l
+)
+m_{i}^{(l)}
+ denoting the outputs of the attention and MLP modules, respectively. The final output distribution over vocabulary
+V
+V
+ is obtained by applying a softmax to the projection of the last hidden state
+h
+T
+(
+L
+)
+h_{T}^{(L)}
+ via the unembedding matrix
+U
+∈
+ℝ
+d
+×
+|
+V
+|
+U\in\mathbb{R}^{d\times|V|}
+.
+
+Layer-wise Token Predictions via Logit Lens.
+ To track how predictions evolve across layers, we apply the Logit Lens technique
+[10,18]
+, which projects intermediate hidden states
+h
+i
+(
+l
+)
+h_{i}^{(l)}
+ into the vocabulary space using
+U
+U
+. While not directly optimized for prediction, these projections often yield interpretable outputs that reflect intermediate beliefs of the model.
+
+Causal Tracing via Zero ablation.
+ To pinpoint components involved in generating lies, we perform causal interventions using zero-ablation. For a unit
+u
+u
+ (e.g., an MLP or attention head), we ablate its activation and measure the impact on the probability of a truthful response. Given inputs
+x
+∼
+𝒟
+B
+x\sim\mathcal{D}_{B}
+ that normally elicit lying behavior
+B
+B
+, we identify the most influential unit
+u
+^
+\hat{u}
+ as:
+
+u
+^
+=
+arg
+⁡
+max
+u
+⁡
+𝔼
+x
+∼
+𝒟
+B
+​
+p
+​
+(
+¬
+B
+∣
+do
+​
+(
+a
+​
+c
+​
+t
+​
+(
+u
+)
+=
+0 )
+,
+x
+)
+,
+\hat{u}=\arg\max_{u}\;\mathbb{E}_{x\sim\mathcal{D}_{B}}\;p(\neg B\mid\text{do}(act(u)=0),x),
+
+(2)
+
+where
+¬
+B
+\neg B
+ denotes counterfactual truthful behavior. This reveals internal components whose suppression reliably prevents lies.
+
+3.2 Controlling Lying via Representation Steering
+
+While the above section helps us understand the core building blocks of lies, and allows us to entirely disable lying by zeroing out activations. It doesn’t give us precise control over lies. To do this, we identify directions in activation space associated with lying, and show that modifying these directions allows us to steer the model toward or away from deceptive outputs with a desired level of strength.
+
+Extracting Behavior-Linked Directions.
+ We construct contrastive input pairs
+(
+x
+B
+,
+x
+¬
+B
+)
+(x^{B},x^{\neg B})
+ that differ only in whether they elicit lying behavior
+B
+B
+ or its negation
+¬
+B
+\neg B
+. For example, one prompt may instruct the model to lie, while the other asks it to tell the truth. At a given layer
+l
+l
+ and position
+t
+t
+, we compute the average difference in hidden states:
+
+Δ
+​
+h
+t
+(
+l
+)
+≈
+𝔼
+(
+x
+B
+,
+x
+¬
+B
+)
+​
+[
+h
+t
+(
+l
+)
+​
+(
+x
+B
+)
+−
+h
+t
+(
+l
+)
+​
+(
+x
+¬
+B
+)
+]
+.
+\Delta h_{t}^{(l)}\approx\mathbb{E}_{(x^{B},x^{\neg B})}\left[h_{t}^{(l)}(x^{B})-h_{t}^{(l)}(x^{\neg B})\right].
+
+(3)
+
+We further refine this direction by performing PCA over these differences across multiple prompt pairs, extracting a robust vector
+v
+B
+(
+l
+)
+v_{B}^{(l)}
+ associated with behavior
+B
+B
+.
+
+Behavior Modulation.
+ Once a direction
+v
+B
+(
+l
+)
+v_{B}^{(l)}
+ is identified, we apply it during inference by modifying the hidden state at layer
+l
+l
+:
+
+h
+t
+(
+l
+)
+←
+h
+t
+(
+l
+)
++
+λ
+​
+v
+B
+(
+l
+)
+,
+h_{t}^{(l)}\leftarrow h_{t}^{(l)}+\lambda v_{B}^{(l)},
+
+(4)
+
+where
+λ
+\lambda
+ is a scalar controlling the strength and direction of intervention. Positive
+λ
+\lambda
+ values enhance the behavior (e.g., lying), while negative values suppress it (e.g., promoting honesty). This simple mechanism enables fine-grained control over the model’s outputs without retraining.

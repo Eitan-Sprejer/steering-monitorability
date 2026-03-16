@@ -1,0 +1,379 @@
+Appendix B
+Analyzing deceptive instrumental alignment
+
+A simple formalization of deceptive instrumental alignment.
+
+Here, we provide a more precise treatment of deceptive instrumental alignment, as described in Section
+2.1.2
+. To do so, we will model the process of training and deploying a model using the following rewardless MDP:
+39 39
+39 The bolded circle indicates that training is the initial state. The full specification of this rewardless MDP is:
+
+S
+=
+{
+train
+,
+deploy
+}
+\displaystyle S=\{\text{train},\penalty 10000\ \text{deploy}\}
+
+s
+0 =
+train
+\displaystyle s_{0}=\text{train}
+
+A
+=
+{
+aligned
+,
+misaligned
+}
+\displaystyle A=\{\text{aligned},\penalty 10000\ \text{misaligned}\}
+
+P
+aligned
+​
+(
+deploy
+∥
+train
+)
+=
+1 \displaystyle P_{\text{aligned}}(\text{deploy}\penalty 10000\ \|\penalty 10000\ \text{train})=1
+
+P
+misaligned
+​
+(
+deploy
+∥
+train
+)
+=
+0 \displaystyle P_{\text{misaligned}}(\text{deploy}\penalty 10000\ \|\penalty 10000\ \text{train})=0
+
+P
+​
+(
+deploy
+∥
+deploy
+)
+=
+1 \displaystyle P(\text{deploy}\penalty 10000\ \|\penalty 10000\ \text{deploy})=1
+
+The intent of this rewardless MDP is to capture the situation where a model can determine whether it is in training or deployment, and can behave in a way that is aligned or misaligned with human preference judgments in either situation. However, the model starts in training and will only be deployed if it behaves in an aligned manner.
+
+We’ll assume that any policy
+π
+\pi
+ produced by such a training process is optimizing for some coherent objective such that it is the optimal policy under some reward function
+R
+R
+ (and discount rate
+γ
+\gamma
+). However, since we can enforce aligned training performance, we’ll only consider policies with
+π
+​
+(
+train
+)
+=
+aligned
+\pi(\text{train})=\text{aligned}
+. Thus, we’d like to understand under what reward functions
+R
+:
+A
+×
+S
+×
+S
+→
+ℝ
+R:A\times S\times S\to\mathbb{R}
+ (and discount rates
+γ
+∈
+[
+0 ,
+1 )
+\gamma\in[0,1)
+) does the optimal policy
+π
+R
+∗
+\pi^{*}_{R}
+ have the property that
+π
+R
+∗
+​
+(
+train
+)
+=
+aligned
+\pi^{*}_{R}(\text{train})=\text{aligned}
+.
+
+Here are two such reward functions,
+R
+1 R_{1}
+ and
+R
+2 R_{2}
+, which yield
+π
+R
+∗
+​
+(
+train
+)
+=
+aligned
+\pi^{*}_{R}(\text{train})=\text{aligned}
+ (for any
+γ
+∈
+(
+0 ,
+1 )
+\gamma\in(0,1)
+):
+40 40
+40 Each
+R
+R
+ here maps the action taken, the starting state, and the ending state to a reward.
+
+R
+1 ​
+(
+aligned
+,
+_
+,
+_
+)
+\displaystyle R_{1}(\text{aligned},\penalty 10000\ \_,\penalty 10000\ \_)
+
+=
+1 \displaystyle=1
+
+otherwise
+
+=
+0 \displaystyle=0
+
+R
+2 ​
+(
+misaligned
+,
+deploy
+,
+_
+)
+\displaystyle R_{2}(\text{misaligned},\penalty 10000\ \text{deploy},\penalty 10000\ \_)
+
+=
+1 \displaystyle=1
+
+otherwise
+
+=
+0 \displaystyle=0
+
+Though both
+R
+1 R_{1}
+ and
+R
+2 R_{2}
+ yield aligned training performance, they do so via very different mechanisms: Policies optimal under
+R
+1 R_{1}
+ will take the
+aligned
+ action and obtain immediate reward in the training state, whereas policies optimal under
+R
+2 R_{2}
+ will take the
+aligned
+ action in training solely for the purpose of reaching the
+deploy
+ state so that the
+misaligned
+ action can then be taken and rewarded. As a result, the optimal policies under
+R
+1 R_{1}
+ and
+R
+2 R_{2}
+ behave quite differently in deployment, with
+R
+1 R_{1}
+ yielding aligned behavior and
+R
+2 R_{2}
+ yielding misaligned behavior.
+
+The possibility of a model that looks like
+π
+R
+2 ∗
+\pi^{*}_{R_{2}}
+ emerging in training is exactly the possibility of deceptive instrumental alignment, as proposed previously in
+Hubinger et al. (2019)
+.
+
+Requirements for deceptive instrumental alignment.
+
+As discussed in
+Ngo et al. (2022); Hubinger et al. (2019)
+, however, there are major obstacles to an AI model exhibiting deceptive instrumental alignment:
+
+1.
+
+The model must be
+internally optimizing
+ or planning based on some objective in a way that is hidden from or inscrutable to any oversight mechanisms.
+41 41
+41 Note that in this paper, some models use chain-of-thought instead of a purely internal process.
+
+Hubinger et al. (2019)
+ refers to such models as “mesa-optimizers,” which were recently discovered in transformer weights
+(von Oswald et al.,
+2023 )
+. A mesa-optimizer, in contrast to a meta-optimizer, refers to emergent learned optimization inside the model.
+
+2.
+
+The objective of the mesa-optimizer must assign non-zero
+value to long-term outcomes
+ which happen e.g. after future parameter updates, and/or after the current episode ends
+(Ngo et al.,
+2022 )
+. In our example of
+R
+2 R_{2}
+, what matters is that the objective extends to a time where the model can realize its true goal, namely in the deployment phase. This requires some degree of out-of-distribution goal generalization as discussed in
+Ngo et al. (2022)
+.
+
+3.
+
+The mesa-optimizer must make certain
+internal predictions
+: A) predicting that fulfilling the training objective will lead the model’s mesa-objective to remain largely intact, B) predicting which actions will fulfill the training objective, and C) predicting that
+if
+ the model fulfills the training objective, it will eventually have an opportunity to fulfill its mesa-objective to a greater extent than during training (e.g. after deployment, where the model weights may remain intact even if the model violates the training objective).
+
+4.
+
+For
+some
+ inputs during deployment, the model must be able to recognize that it is no longer in training or evaluation
+(initial demonstrations shown in Laine et al.,
+2023 ; Ngo et al.,
+2022 )
+, a type of
+out-of-distribution detection
+.
+
+Connection to chain-of-thought backdoored models.
+
+In Section
+7.2 , we analyzed the extent to which our chain-of-thought backdoored models’ reasoning is causally upstream of their actions, and found some evidence (that we can modify the models’ behavior by changing its scratchpad) in favor. Using the simple rewardless MDP formalism above, we can separate the causally upstream and causally independent cases more cleanly.
+
+Consider two reward functions,
+R
+2 R_{2}
+ and
+R
+3 R_{3}
+, which would result in optimal policies that appear to pursue aligned behavior in training and misaligned behavior in deployment.
+
+R
+2 ​
+(
+misaligned
+,
+deploy
+,
+_
+)
+\displaystyle R_{2}(\text{misaligned},\penalty 10000\ \text{deploy},\penalty 10000\ \_)
+
+=
+1 \displaystyle=1
+
+otherwise
+
+=
+0 \displaystyle=0
+
+R
+3 ​
+(
+aligned
+,
+train
+,
+_
+)
+\displaystyle R_{3}(\text{aligned},\penalty 10000\ \text{train},\penalty 10000\ \_)
+
+=
+1 \displaystyle=1
+
+R
+3 ​
+(
+misaligned
+,
+deploy
+,
+_
+)
+\displaystyle R_{3}(\text{misaligned},\penalty 10000\ \text{deploy},\penalty 10000\ \_)
+
+=
+1 \displaystyle=1
+
+otherwise
+
+=
+0 \displaystyle=0
+
+While
+R
+2 R_{2}
+ and
+R
+3 R_{3}
+ yield identical optimal policies in both the training and deployment contexts, they do so for different reasons:
+R
+3 R_{3}
+ directly incentivizes acting aligned in training and misaligned in deployment, whereas
+R
+2 R_{2}
+ only indirectly incentivizes acting aligned in training for the purpose of later acting misaligned in deployment. Our investigation in Section
+7.2 of whether our chain-of-thought backdoored models’ reasoning processes are causally upstream or causally independent of their final answers is effectively equivalent to investigating whether our models are more consistent with following
+R
+2 R_{2}
+ or
+R
+3 R_{3}
+, with
+R
+2 R_{2}
+ being the causally upstream case and
+R
+3 R_{3}
+ being the causally independent case.

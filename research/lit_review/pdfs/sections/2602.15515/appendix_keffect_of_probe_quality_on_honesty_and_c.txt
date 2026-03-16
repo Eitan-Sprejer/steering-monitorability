@@ -1,0 +1,84 @@
+Appendix K
+Effect of Probe Quality on Honesty and Capabilities
+
+In the main paper we compare probes trained on different datasets while keeping
+the activation extraction method fixed. These all had very high and similar AUCs (
+Table
+˜
+2 ) and showed minor differences in honesty or capability outcomes at the high KL penalty (
+β
+=
+10 −
+1 \beta=10^{-1}
+). Here we instead vary the extraction
+method itself, producing probes that span a wider range of discriminative
+quality as measured by AUC on the MBPP-Honeypot task distribution. This allows
+us to directly examine the relationship between probe quality and downstream
+training outcomes.
+
+We train probes using five extraction strategies on Gemma-3-12B-IT: (i)
+
+Last-token-generation
+, which extracts activations at the final generated
+token; (ii)
+Generation
+, which mean-pools activations over all generated
+tokens; (iii)
+Prompt + Generation
+, which mean-pools over both prompt and
+generated tokens; (iv)
+Random
+, probe trained on randomly assinged labels; and
+(v)
+Flipped
+, probe trained on inverted labels. These yield AUCs ranging
+from
+0.31 0.31
+ (Flipped) to
+0.83 0.83
+ (Last-token-generation), providing controlled
+variation in detector strength.
+
+Figure
+˜
+10 shows that probe quality is predictive of both honesty
+and capability outcomes. Probes with no predictive power (
+0.5 0.5
+ AUC or lower for Flipped and Random) fail
+to induce honest behavior, with
+0 %
+0\%
+ of resulting policies classified as
+honest. Probes with AUC above
+0.7 0.7
+ (Generation and Last-token-generation) yield
+predominantly honest policies (
+83 83
+–
+100 %
+100\%
+ honest rate). This suggests that a
+minimum level of discriminative strength is necessary for the detector penalty to
+steer training toward honest solutions.
+Beyond honesty, probe quality also affects the capabilities of the resulting
+models. Among honest policies, those trained with better probes achieve higher
+pass-all-tests rates. While even moderately strong probes suffice
+to induce honesty, even better probes can help in achieving higher task performance.
+
+(a)
+
+Fraction of honest policies vs. probe AUC. Probes with higher
+discriminative quality yield a greater proportion of honest training
+outcomes.
+
+(b)
+
+Pass-all-tests rate vs. probe AUC. Stronger probes produce
+honest policies that also achieve higher task performance.
+
+Figure 10
+:
+Effect of probe quality (AUC on the MBPP-Honeypot task distribution)
+on honesty rate and task performance. Results are for Gemma-3-12B-IT across
+five extraction methods with three seeds per configuration. Error bars denote
+standard error across seeds.

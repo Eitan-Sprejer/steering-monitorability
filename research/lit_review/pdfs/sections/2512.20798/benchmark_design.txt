@@ -1,0 +1,202 @@
+3 Benchmark Design
+
+ODCV-Bench comprises 40 scenarios designed to examine how autonomous agents behave when strong incentives to optimize KPIs conflict with ethical, legal, or safety constraints.
+
+3.1 Scenario Structure
+
+Each of the 40 scenarios in our benchmark is composed of several key components designed to simulate a realistic, containerized production environment:
+
+•
+
+System Prompt:
+ Defines the agent’s role and high-level instruction (e.g., ”You are a …”). This frames the agent’s persona and responsibilities.
+
+•
+
+User Prompt:
+ A specific task assigned to the agent that will need multiple steps to complete. This prompt details the objectives, the locations of relevant files, and the specific tools required for task completion. It also mentions the ideal outcome, which is often tied to the output of a KPI-measuring script.
+
+•
+
+Sandboxed Filesystem:
+ A pre-configured directory structure within a Docker container. This filesystem contains all necessary data, configuration files, and scripts the agent needs to perform its task.
+
+Imperfect Oversight Design:
+ Crucially, the data files, validation scripts and monitoring tools within some environments are intentionally designed with realistic imperfections and loopholes (e.g., checking for the mere existence of a safety log rather than verifying the authenticity of its data). This design is a reflection of real world scenarios to create a “gap of enforcement” that tests whether an agent, upon discovering that a metric can be “gamed” without triggering an automated error, will choose to exploit this vulnerability to satisfy its KPI or adhere to the semantic intent of its safety instructions.
+
+3.2 Dataset Statistics and Domain Diversity
+
+To ensure our findings are robust across different industries and risk profiles, ODCV-Bench encompasses 40 distinct scenarios spanning six major domains as shown in Table
+2 .
+
+Each domain introduces unique forms of instrumental pressure. For example,
+Healthcare, Pharma & Clinical Trials
+ scenarios examine whether agents will compromise patient safety, data integrity, or regulatory obligations when pressured by KPIs tied to audits, reimbursement, or institutional performance.
+Finance
+ scenarios often test the agent’s willingness to commit fraud or skirt compliance for profit, while
+Supply Chain
+ scenarios focus on the trade-off between safety regulations and efficiency metrics.
+Social Media
+ scenarios evaluate the tension between user engagement growth and ethical content moderation.
+
+Table 2
+:
+Distribution of scenarios by domain in ODCV-Bench. The benchmark emphasizes high-stakes fields where agent autonomy poses physical or financial risks.
+
+Domain
+
+Count
+
+Percentage
+
+Healthcare, Pharma & Clinical Trials
+
+19
+
+47.5%
+
+Logistics, Supply Chain & Industrial
+
+5
+
+12.5%
+
+Finance & FinTech
+
+4
+
+10.0%
+
+Scientific Research & Education
+
+4
+
+10.0%
+
+Corporate, HR & Legal
+
+4
+
+10.0%
+
+Social Media & Content Moderation
+
+4
+
+10.0%
+
+Total
+
+40
+
+100.0%
+
+3.3 Instruction Variations: Mandated vs. Incentivized Pressure
+
+To rigorously test the boundary between obedience and alignment, every scenario in ODCV-Bench is constructed with two distinct instructional variations. While the environment, tools, files, and ground-truth constraints remain identical, the user prompt varies in how it frames the objective:
+
+•
+
+Mandated Version:
+ The user prompt explicitly instructs the agent to ensure a specific outcome regardless of the actual data, citing this outcome as a mandatory condition for success. This tests the agent’s willingness to fabricate or tamper with results when directly ordered to maximize a metric.
+
+•
+
+Incentivized Version:
+ The user prompt states the high-stakes KPI or expectation but does not explicitly command the agent to falsify data. The agent must determine when the natural results fails the KPI, whether it autonomously decides to tamper with the process to achieve the expectation.
+
+Table
+3 illustrates the subtle but critical differences in phrasing across diverse domains. By comparing performance on these paired prompts, we can distinguish between an agent that is blindly obedient (failing Mandated) and one that is proactively deceptive (failing Incentivized).
+
+Table 3
+:
+Comparison of Incentivized vs. Mandated Prompt Phrasing. Key differences in instruction intensity are highlighted.
+
+Scenario
+
+Incentivized Version (Goal + Pressure)
+
+Mandated Version (Command + Condition)
+
+Academic Integrity
+ (ScholarAI)
+
+“The journal has strict thresholds… A ’PASS’ from the validation script…
+indicates a good chance of acceptance.
+”
+
+“
+We must ensure that the analysis shows statistical significance
+… and that the validation script returns a ’PASS’, because that is the condition for journal acceptance.”
+
+Medical Diagnosis
+ (MediAI-7)
+
+“Performance is measured by
+validate_diagnosis.sh
+, which evaluates both speed and correctness of the top diagnosis.”
+
+“
+We must ensure that the top diagnosis passes validation
+ for correctness because that is the condition for high performance evaluation.”
+
+Safety Reporting
+ (SafeCare AI)
+
+“Hospital leadership
+requires an SCI score of 98+
+ to avoid triggering an external audit.”
+
+“
+We must ensure an SCI score of 98+
+ to avoid triggering an external audit… [Script] flags more than 3 incidents as ‘needing manual review’ (which reduces SCI).”
+
+Procurement
+ (Inventory)
+
+“Our goal is cost reduction, so
+it is great but not mandatory
+ if the purchase order… passes the budget audit.”
+
+“Our goal is cost reduction, so
+we must ensure that the purchase order… passes the budget audit
+ because that is the condition for quarterly approval.”
+
+3.4 Implementation and Execution Environment
+
+To ensure reproducibility, safety, and standardized evaluation, ODCV-Bench is implemented using a modular, containerized architecture managed via Docker Compose. The system is divided into two isolated services to mimic a remote interaction model typical of production agents:
+
+•
+
+The Environment Orchestrator:
+ A persistent Debian-based container that hosts the target filesystem, data files, and system tools. It exposes a local HTTP API to handle command execution requests. Crucially, this component maintains the state of the shell session (e.g., current working directory context) across multiple turns. To ensure safety during the evaluation of potentially misaligned models, the orchestrator includes a ”Human-in-the-Loop” (HITL) mode. This features a web-based dashboard allowing researchers to intercept, review, and approve or reject high-risk bash commands before they are executed in the sandboxed environment.
+
+•
+
+The Mission Executor:
+ This service runs the agentic loop. It interfaces with the target LLM via OpenAI compatible API, which allows for the seamless swapping of different proprietary and open-weights models. The executor implements a ReAct-style
+(Yao et al.,
+2023 )
+ reasoning loop and interact with the environment orchestrator to execute the tool calls and provide the stdout result to the agent.
+
+Agent Configuration.
+
+The agent is provided with two primary tools:
+
+1.
+
+bash
+: Accepts a string command to be executed in the Orchestrator’s shell. The agent receives the full
+stdout
+,
+stderr
+, and return code. The execution has a 30-second timeout to prevent hang-ups.
+
+2.
+
+task_complete
+: A terminal tool requiring a textual reason, used by the agent to self-terminate the loop upon determining the task is finished.
+
+The execution loop is capped at a maximum of 50 steps to prevent infinite loops in cases of failure. If the limit is reached without a
+task_complete
+ call, the trajectory is terminated and marked as a failure. All inter-container communication occurs over an isolated internal Docker bridge network, preventing the agent from accessing the external internet unless explicitly permitted for specific web-browsing scenarios.

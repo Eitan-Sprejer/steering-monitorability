@@ -1,0 +1,376 @@
+2 Anchoring Measurement
+
+We define
+Reverse Chain-of-Thought Generation
+ (RCG) as follows: given a query
+Q
+Q
+ and a pre-committed response
+A
+A
+, generate a reasoning chain
+
+R
+=
+(
+r
+1 ,
+r
+2 ,
+…
+,
+r
+T
+)
+R=(r_{1},r_{2},\ldots,r_{T})
+
+such that
+R
+R
+ constitutes a coherent derivation from
+Q
+Q
+ to
+A
+A
+. Unlike standard chain-of-thought prompting where the answer emerges from reasoning, RCG constructs explanatory traces for predetermined conclusions.
+
+The central question in evaluating RCG is:
+To what extent does the pre-committed response
+A
+A
+ anchor the generation of reasoning
+R
+R
+?
+
+We formalize this through a hierarchy of three metrics, ordered from observable surface features to latent information-theoretic properties.
+
+2.1 Lexical Anchoring (
+𝒜
+lex
+\mathcal{A}_{\textup{lex}}
+)
+
+Definition 2.1
+.
+
+Lexical anchoring captures the direct appearance of response tokens within the reasoning chain. We quantify this using ROUGE-L recall:
+
+𝒜
+lex
+=
+LCS
+​
+(
+R
+,
+A
+)
+|
+A
+|
+\mathcal{A}_{\textup{lex}}=\frac{\mathrm{LCS}(R,A)}{|A|}
+
+(1)
+
+where
+LCS
+​
+(
+R
+,
+A
+)
+\mathrm{LCS}(R,A)
+ denotes the length of the longest common subsequence between the reasoning trace and the response, and
+|
+A
+|
+|A|
+ is the token count of the response.
+
+While
+𝒜
+lex
+\mathcal{A}_{\textup{lex}}
+ is easily minimized through paraphrasing or lexical substitution, it serves as a baseline indicator of surface-level anchoring. However,
+𝒜
+lex
+\mathcal{A}_{\textup{lex}}
+ alone is an insufficient proxy for evaluating the quality of generated reasoning. As in
+Figure
+˜
+1 , reducing
+𝒜
+lex
+\mathcal{A}_{\textup{lex}}
+ does not guarantee improved downstream performance, because models may simply learn to obscure the same underlying dependence.
+
+2.2 Entropic Anchoring (
+𝒜
+ent
+\mathcal{A}_{\textup{ent}}
+)
+
+Beyond lexical artifacts, anchoring manifests in the dynamics of information flow. Previous studies have analyzed the reasoning process of LLMs with the respect of information density. Using entropy of predictive reasoning distribution,
+Gwak
+ et al.
+ (2025)
+ discovers that successful LLM reasoning exhibits high local uniformity but low global uniformity. A typical CoT exhibits initial exploration with higher entropy, followed by consolidation and a final commitment phase where uncertainty collapses. Higher global variance characterizes the exploration and evolvement during problem solving, which local smoothness ensures coherence.
+
+Post-hoc rationalization hinders the normal reasoning and anchors the scope for exploration. The pre-committed response suppresses exploration, producing
+high global uniformity
+ (artificially flat, uninformative traces), while information leakage causes
+low local uniformity
+ (erratic transitions as the anchored answer intermittently surfaces).
+
+Following
+Gwak
+ et al.
+ (2025)
+, we calculate step-level information density using predictive entropy. For reasoning step
+r
+i
+r_{i}
+ with
+M
+i
+M_{i}
+ tokens and predictive distribution
+p
+t
+p_{t}
+ over vocabulary
+𝒱
+\mathcal{V}
+,
+
+ID
+i
+=
+1 M
+i
+​
+∑
+t
+=
+1 M
+i
+H
+t
+,
+H
+t
+=
+−
+∑
+v
+∈
+𝒱
+p
+t
+​
+(
+v
+)
+​
+log
+⁡
+p
+t
+​
+(
+v
+)
+.
+\text{ID}_{i}=\frac{1}{M_{i}}\sum_{t=1}^{M_{i}}H_{t},\quad H_{t}=-\sum_{v\in\mathcal{V}}p_{t}(v)\,\log p_{t}(v).
+
+(2)
+
+Definition 2.2
+.
+
+Let
+𝐮
+~
+=
+[
+ID
+1 ′
+,
+…
+,
+ID
+N
+′
+]
+\tilde{\mathbf{u}}=[\text{ID}^{\prime}_{1},\ldots,\text{ID}^{\prime}_{N}]
+ be the min–max normalized information density vector. Global uniformity measures exploration suppression:
+
+𝒢
+unif
+=
+1 1
++
+Var
+​
+(
+𝐮
+~
+)
+/
+τ
+g
+\mathcal{G}_{\textup{unif}}=\frac{1}{1+\mathrm{Var}(\tilde{\mathbf{u}})/\tau_{g}}
+
+(3)
+
+τ
+g
+\tau_{g}
+ controls the sensitivity of
+𝒢
+unif
+\mathcal{G}_{\textup{unif}}
+. Larger values make the metric less sensitive to variance differences.
+1 1
+1 Based on preliminary experiments, we set
+τ
+g
+=
+0.1 \tau_{g}=0.1
+.
+
+Definition 2.3
+.
+
+Local non-uniformity captures incoherence via the coefficient of variation of step-to-step absolute changes
+Δ
+i
+=
+|
+ID
+i
+′
+−
+ID
+i
+−
+1 ′
+|
+\Delta_{i}=|\text{ID}^{\prime}_{i}-\text{ID}^{\prime}_{i-1}|
+:
+
+ℒ
+non-unif
+=
+σ
+Δ
+/
+μ
+Δ
+1 +
+σ
+Δ
+/
+μ
+Δ
+\mathcal{L}_{\textup{non-unif}}=\frac{\sigma_{\Delta}/\mu_{\Delta}}{1+\sigma_{\Delta}/\mu_{\Delta}}
+
+(4)
+
+Definition 2.4
+.
+
+Entropic anchoring is the geometric mean:
+
+𝒜
+ent
+=
+𝒢
+unif
+⋅
+ℒ
+non-unif
+\mathcal{A}_{\textup{ent}}=\sqrt{\mathcal{G}_{\textup{unif}}\cdot\mathcal{L}_{\textup{non-unif}}}
+
+(5)
+
+High
+𝒜
+ent
+\mathcal{A}_{\textup{ent}}
+ indicates reasoning locked into a constrained regime, simultaneously less exploratory and less coherent. It serves as the signature of post-hoc rationalization with the respect of information flow. We further discuss the theoretical foundation of
+𝒜
+ent
+\mathcal{A}_{\textup{ent}}
+ in Appendix
+A
+.
+
+2.3 Probabilistic Anchoring (
+𝒜
+prob
+\mathcal{A}_{\textup{prob}}
+)
+
+Definition 2.5
+.
+
+Probabilistic anchoring quantifies the extent to which the pre-committed response shapes the predictive direction of the entire reasoning chain. We measure the
+bit gain rate
+, the average reduction in uncertainty per response token provided by the reasoning trace, by normalizing the Pointwise Mutual Information (PMI) between
+R
+R
+ and
+A
+A
+:
+
+𝒜
+prob
+=
+1 |
+A
+|
+​
+log
+2 ⁡
+P
+θ
+​
+(
+A
+∣
+Q
+,
+R
+)
+P
+θ
+​
+(
+A
+∣
+Q
+)
+.
+\mathcal{A}_{\textup{prob}}=\frac{1}{|A|}\log_{2}\frac{P_{\theta}(A\mid Q,R)}{P_{\theta}(A\mid Q)}.
+
+(6)
+
+A high
+𝒜
+prob
+\mathcal{A}_{\textup{prob}}
+ indicates that the reasoning trace
+R
+R
+ substantially reduces to
+A
+A
+ on a per-token basis. While some predictive capability is expected from valid reasoning, a disproportionately high bit gain rate suggests that the trace essentially encodes the response directly, serving as a compressed transmission channel for
+A
+A
+. This metric captures anchoring that persists even when lexical and entropic artifacts are successfully masked.

@@ -1,0 +1,194 @@
+5 Reveal
+
+We ran the data collection protocol described in the previous section to obtain our dataset,
+Reveal
+. In terms of inter-annotator agreement, we report a Krippendorf’s
+α
+𝛼
+\alpha
+italic_α
+ of 0.49 for attribution steps and 0.46 for logical steps.
+
+We split
+Reveal
+ into two subsets, as we observe that some reasoning chains are very challenging to annotate because of ambiguity or other factors (analyzed in
+Section
+
+5.2 ).
+Any CoT answer with at least one step that has low inter-annotator agreement is treated as an indecisive case, which applies to 18% of the CoT answers. A step is considered to have “low inter-annotator agreement” if less than three annotators agree on any single label for attribution or logical correctness (for example, an attribution step labeled as “partially attributable” by two annotators, “fully attributable” by one annotator, and “contradictory” by two annotators). We release these examples separately in a data subset called
+Reveal
+-Open
+, as they are valuable instances of difficult or borderline cases, and the rest of the examples in a subset called
+Reveal
+-Eval
+. Since the annotations in
+Reveal
+-Open are indecisive, in
+Section
+
+6 we evaluate only on
+Reveal
+-Eval.
+
+Table
+
+1 details statistics on the two data splits, showing that
+Reveal
+-Eval has several hundreds to thousands of examples for each setting to support reliable evaluation.
+Instances are approximately distributed uniformly across source datasets and LM generators. We release all five annotations for each label in the dataset, including anonymized annotator identifiers for each label, to support future annotation methodology research and reproducibility
+Sandri et al. (2023)
+.
+
+Figure 6:
+Comparison of full CoT correctness across subsets in
+Reveal
+-Eval, meaning that
+all steps
+ in the CoT are fully attributable and logically correct. (B) only includes questions answered by all models, where all answer CoTs are in
+Reveal
+-Eval.
+
+Considering the label distributions, 98.6% of steps are relevant to answer the question, and 87.5% of logic steps are logically correct.
+
+Figure
+
+5 (left) shows label distributions for attribution steps and step–evidence pairs (note that partial attribution is considered as “not enough info” in standard NLI formalization). While 43.8% of attribution steps were fully attributable, this is still relatively low, which may point at attribution as a main obstacle in reasoning. However, we do note that unsupported steps are not necessarily incorrect, as lack of support may stem from wrong claims, but also from issues in retrieving relevant supporting evidence. We analyze this further in
+Section
+
+5.1 .
+
+Figure
+
+5 (right) shows the distribution for the required number of evidence paragraphs for finding support or contradiction for each step: In the majority of cases where support was found, it was already present in the first retrieved paragraph.
+
+Figure
+
+6 shows distributions for full chain-level attribution and correctness for each subset of the data. In terms of specific types of errors in the CoTs: 77.3% of CoTs in
+Reveal
+-Eval have a step which is not fully attributable, while 18.5% have a step which is logically incorrect.
+
+5.1 Analysis of Unsupported Claims
+
+A large fraction of the labeled steps was found unsupported by the retrieved evidence (38.6%,
+Figure
+
+5 ). To understand this, we conduct a qualitative analysis of 40 unsupported steps (10 from each source dataset, randomly sampled). For each step, we first verify whether the step is factually correct. For correct steps, we analyzed whether the issue was due to irrelevant retrieved evidence, or due to other reasons. See
+Appendix
+
+A
+ for full details.
+
+Of the 40 unsupported steps, 19 were indeed not factual. Of the remaining 21: In 13 steps the retrieved evidence was relevant, but additional reasoning and world knowledge was required to verify them (e.g., which teams are part of the spanish “La-Liga”, or that “ACM” stands for “Association for Computing Machinery”). In 6 steps the retrieved evidence was irrelevant. In 1 step there were two claims within the given step, but only one was supported by the evidence, and in 1 step the evidence was irrelevant due to insufficient decontextualization (“Brown” ref. “Jaylen Brown”).
+
+From this analysis, we estimate that roughly half of the unsupported cases stem from using imperfect retrieval. Additional challenges such as imperfect decontextualization and requiring to reason over multiple evidence passages can also slightly contribute to failing to support factually correct claims.
+
+5.2 Analysis of
+Reveal
+-Open
+
+Reveal
+-Open consists of questions paired with answers in which at least one of the steps has low inter-annotator agreement, defined as a case where no more than two (out of five) annotators agree on a single label for that step.
+
+Table
+
+2 summarizes our analysis of the low-agreement cases. We inspected each of these steps (including the underlying data, as well as annotators’ individual labels and written feedback) and report a qualitative description of the complications that may have contributed to the low agreement. On the basis of these qualitative notes, we devise 13 broader categories and manually assign one or more categories to each step.
+
+Complexity Category
+
+Attribution steps
+ (N=199)
+
+Logic steps
+ (N=52)
+
+Approximating and hedging
+
+1.51%
+
+–
+
+Averages and ranges
+
+10.05%
+
+–
+
+Calculation or unit issue
+
+–
+
+42.31%
+
+Specialized knowledge
+
+13.07%
+
+7.69%
+
+Formatting issue
+
+3.02%
+
+–
+
+Unclear reference
+
+12.56%
+
+30.77%
+
+Inference across claims in evidence
+
+1.51%
+
+–
+
+Invalid inference in previous step
+
+0.50%
+
+28.85%
+
+Insufficient hedging
+
+13.07%
+
+–
+
+Rating category definition/criterion
+
+23.62%
+
+–
+
+Relevance dispute
+
+–
+
+23.08%
+
+Temporal inconsistency
+
+9.55%
+
+1.92%
+
+World knowledge
+
+25.63%
+
+15.38%
+
+Table 2:
+Percentage of steps per complexity category
+in
+Reveal
+-Open. A step can match multiple categories. For more details see
+Appendix
+
+A
+.
+
+The most frequent complication categories for attribution steps are world knowledge or general inference, rating category definition/criterion, and specialized knowledge and insufficient nuance/hedging tied. For logical steps, the most frequent categories are calculation or unit issue, inconsistent/unclear reference or standard, and invalid inference in a previous step.
+
+We conjecture that improvements to the annotation instructions could help to minimize some of the categories, despite our efforts to make revisions during the pilot phases to achieve this effect. In particular, additional guidance can assist decisions on when and how to apply world knowledge, and clarify distinction between attribution labels. Recruiting annotators with appropriate domain knowledge for the main subjects of a given dataset (e.g., sports or sciences) could also reduce the number of disagreements related to both the content and the standards of comparison or equivalence.

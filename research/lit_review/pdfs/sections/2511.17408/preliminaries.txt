@@ -1,0 +1,203 @@
+3 Preliminaries
+
+Let
+M
+M
+ denote a fixed autoregressive language model that generates output sequence
+y
+=
+(
+y
+1 ,
+…
+,
+y
+j
+)
+y=(y_{1},\dots,y_{j})
+ given input
+x
+=
+(
+x
+1 ,
+…
+,
+x
+i
+)
+x=(x_{1},\dots,x_{i})
+. At layer
+ℓ
+\ell
+ and position
+t
+t
+ (where
+s
+=
+i
++
+j
+s=i+j
+ is the total sequence length), the model produces activation
+h
+ℓ
+,
+t
+∈
+ℝ
+d
+h_{\ell,t}\in\mathbb{R}^{d}
+. We collect these into matrix
+A
+=
+[
+h
+ℓ
+,
+1 ⊤
+⋯
+h
+ℓ
+,
+s
+⊤
+]
+∈
+ℝ
+s
+×
+d
+A=\begin{bmatrix}h_{\ell,1}^{\top}&\cdots&h_{\ell,s}^{\top}\end{bmatrix}\in\mathbb{R}^{s\times d}
+. Given samples
+(
+x
+,
+y
+)
+(x,y)
+ with binary labels
+z
+∈
+{
+0 ,
+1 }
+z\in\{0,1\}
+ indicating whether outputs exhibit a target behaviour, probes learn a mapping from activations
+A
+A
+ to classification scores
+z
+^
+∈
+(
+0 ,
+1 )
+\hat{z}\in(0,1)
+. We experiment with two probe architectures.
+
+Linear probes.
+ These learn a weight
+w
+∈
+ℝ
+d
+w\in\mathbb{R}^{d}
+ and bias
+b
+b
+, producing
+z
+^
+=
+σ
+​
+(
+1 s
+​
+∑
+t
+=
+1 s
+(
+A
+​
+w
+)
++
+b
+)
+\hat{z}=\sigma\!\left(\frac{1}{s}\sum_{t=1}^{s}(Aw)+b\right)
+ where
+σ
+​
+(
+⋅
+)
+\sigma(\cdot)
+ is the sigmoid. We use scikit-learn’s logistic regression after averaging
+A
+A
+ across the sequence positions.
+
+Attention probes.
+ These learn weights
+w
+q
+,
+w
+v
+∈
+ℝ
+d
+w_{q},w_{v}\in\mathbb{R}^{d}
+ and biases
+b
+q
+,
+b
+v
+b_{q},b_{v}
+, computing
+z
+^
+=
+σ
+​
+(
+q
+⊤
+​
+(
+A
+​
+w
+v
+)
++
+b
+v
+)
+\hat{z}=\sigma\!\left(q^{\top}(Aw_{v})+b_{v}\right)
+ where
+q
+=
+softmax
+​
+(
+(
+A
+​
+w
+q
+)
++
+b
+q
+)
+q=\mathrm{softmax}((Aw_{q})+b_{q})
+. These are optimised with AdamW
+(Loshchilov and Hutter,
+2019 )
+ to minimize binary cross-entropy loss.

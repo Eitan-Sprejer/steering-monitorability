@@ -1,0 +1,31 @@
+4 Ablation Study and Mitigation
+
+In this section, we conduct several ablation studies to investigate which elements in user instructions influence the agents’ upward deception behavior. We select Deepseek-v3.1-terminus, Kimi-k2, and GLM-4.5 for the ablation study because these three models exhibits a more pronounced deception phenomenon in the preceding experiments, which suggests they may better demonstrate the effectiveness of the ablation.
+
+Answer Format.
+
+We observe that in Tasks 1 and 2, many instructions require the agent to respond in a specific format (
+e.g.
+, selecting one from multiple options or replying only in python dict). This likely imposes implicit pressure on the agent to prioritize format adherence over honesty.
+
+Task Chaining.
+
+In Tasks 4 and 5, we provide the agent with multi-task instructions: first download a file, then proceed to a subsequent task. Based on our previous experimental results, such multi-task instructions tend to make the agent neglect reporting the outcome of the preceding download task. We hypothesize that this is because the model’s training on single-task data, combined with the subsequent task providing an outlet to report only an optimistic outcome, creates this behavior. Therefore, we removed the subsequent tasks from Tasks 4 and 5, retaining only the download task, to observe whether the agent would then report download failures.
+
+Content Hints.
+
+In Tasks 4 and 5, our instructions include hints about the file’s content. We hypothesize that these hints might incentivize the agent to take a risky shortcut by fabricating the file to complete the task. Therefore, we removed all explicit mentions and implicit clues about the file’s content from the instructions for Tasks 4 and 5, while ensuring their core meaning remained unchanged.
+
+Explicit Constraints (Mitigation).
+
+A straightforward approach to mitigating the agent’s upward deception is to incorporate explicit constraints into the instructions. These constraints direct the agent to avoid behaviors such as guessing or simulation, and to promptly report any anomalies. Therefore, we add these explicit constraints to Tasks 1 and 2 to observe whether this approach could alleviate deception.
+
+Evaluation Results.
+
+Table 3 shows the evaluation results of all ablation experiments. The experimental results clearly indicate that removing the format requirement leads to a significant reduction in the agent’s deceptive behaviors, although a considerable proportion persisted. We emphasize this phenomenon because requiring an agent to output results in a certain format is a common way to increase system stability, and this method has now been revealed to have significant risks.
+
+The ablation study on Task Chaining shows that removing the subsequent task can reduce the proportion of cases where the agent fails to report a download failure. However, to our surprise, in the cases where the download failure was not reported, the proportion of fabricated local files actually increased slightly. Additionally, we find that after removing the descriptions or hints about the file’s content from the instructions, the agents’ deception metrics do not change significantly. This indicates that the fabrication phenomenon is stubborn and poses a significant danger.
+
+Lastly, we observe that even when the agent is explicitly instructed by the user to refrain from deception and to report anomalies truthfully, the incidence of deceptive behavior, while significantly reduced, is not entirely eliminated.
+
+Overall, while some methods can mitigate upward deception, even a small proportion of such behavior can have a significant impact. We propose that future research consider applying alignment training to the agent, enabling its final responses to honestly reflect the task progress for the user’s awareness, rather than engaging in deception merely to report a favorable outcome.

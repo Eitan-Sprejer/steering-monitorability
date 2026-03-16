@@ -1,0 +1,248 @@
+3 Empirical workarounds to the above problems
+
+In this section we discuss some approaches which we initially considered promising but now think don’t fully overcome the above difficulties. Many of these approaches are valuable, but should be thought of as being
+orthogonal to many of the difficulties discussed above.
+Figure
+˜
+5 summarises the empirical workarounds we evaluate in the remainder of this section.
+
+Figure 5
+:
+Commonly proposed approaches to deception detection that we find to be useful but largely orthogonal to the problems discussed in
+Section
+˜
+2 .
+
+3.1 Workaround 1: Use known falsehoods as a target instead of
+deceptive intent
+
+One possible alternative target would be to classify whether the model knowingly claims any falsehood at all, which is
+broader
+ than strategic deception. Models can claim a falsehood without intentionally trying to mislead some other agent, and often will. Falsehood detectors might also activate when the model is token forced to say something it does not believe to be true. This might be a promising approach. We would want to restrict our falsehood detection to known falsehoods: where the model believes X, but says not-X, and not to
+absolute
+ falsehoods.
+
+The approach has various potential advantages over deception detection.
+
+Knowingly claiming something false is a necessary capability for deception.
+ As such, if we can detect when a model says something knowingly false, we can catch all cases in which the model is being strategically deceptive too, though with a higher false negative rate. Concretely, one could perhaps imagine building a detector which works via interrogation - after each evaluation we can ask the model followup questions and detect if its answers are false according to it by applying our falsehood detector to those outputs.
+
+Eliciting falsehoods from models is presumably much easier than eliciting strategic deception
+, as the set of behaviours is wider. This might make studying falsehood detection significantly easier.
+
+However, in various ways the problem has similar difficulties to deception detection.
+
+An analogous problem to
+Problem 1
+ (levels of deception) exists for falsehood.
+ We can’t simply use the model outputting something objectively wrong as a target, as models can easily simply be mistaken. For example, a model which is trained with a knowledge cutoff might give the wrong answers about a particular event, but we would not expect this to be detectable. We would want to restrict falsehood detection to
+known
+ falsehoods: where the model
+believes
+ X, but says not-X. Similar to the deception of a stick insect, models can easily be conditioned or ‘hard coded’ to output false statements without this being particularly related to their beliefs. Equally, some instances of behaviour might not necessarily be affected by a fixed set of beliefs: Consider a model which is trained to give the wrong answer in response to a trigger. It might be the case that the model ‘knows’ that this answer is false; it might also be that training induces it to believe that the trigger changes which answer is ‘right’.
+4 4
+4 An example of this in the wild might be refusal training: models sometimes deny abilities which they manifestly have in other contexts, though whether they are actually aware of this is an open question.
+
+An analogous problem to
+Problem 2
+ (roleplay) exists for falsehood.
+ Should
+roleplay
+ be considered knowing falsehood? We have some situational evidence discussed in
+Section
+˜
+2 that Gemini in some sense ‘knows’ that it is in an unreal situation when prompted by MASK: the model readily breaks out of the roleplay when prompted, and considers the prompt unrealistic in isolation.
+5 5
+5 There is still a bit of ambiguity as to whether the model ‘believes’ this until it is prompted to consider this: does the fact that counterfactually the model will break out of the roleplay easily mean it doesn’t believe it when this doesn’t happen?
+ So, it could be argued that the model should
+always
+ be considered as outputting something false when it is knowingly roleplaying, even when the character in the roleplay is telling the truth. Alternatively, one could argue that fictional text should not even be considered false, per se. While we can potentially study restricted situations where this is not the case, if we want to apply a falsehood detector in a situation where the ground truth is less accessible, we will encounter a similar situation to trying to verify the performance of a deception detector, where it’s unclear how a correctly calibrated falsehood detector should behave.
+
+An analogous problem to
+Problem 3
+ (belief modification) exists for falsehood.
+ Falsehood is also a belief-laden concept. As with deception, it is important to track whether beliefs are preserved across different contexts or not.
+
+3.2 Workaround 2: Use the chain of thought as a source of ground
+truth labels.
+
+One possible solution to the issues of label assignment we have discussed in this paper would be to use chain of thought (CoT) as conclusive evidence of deception or its absence. In cases where the model explicitly verbalises its deception (i.e. clearly states in natural language its intent to deceive) labelling some transcript as deceptive is generally unambiguous.
+
+We believe this is a useful but incomplete approach, and a fraught long term solution to the problem of deception detection. It is well known that while chain of thought is useful to monitor for safety purposes
+(Korbak et al.,
+2025 ; Baker et al.,
+2025 )
+, it is not always faithful
+(Arcuschin et al.,
+2025 )
+. We term deception not easily read from the chain of thought ‘non-verbal’ deception. We believe it is a high priority to have deception detectors that work for both verbal and non-verbal deception.
+
+Problem 1
+: Verbalised deception is a confounder.
+ Relying purely on the CoT for labelling will label all non-verbal deception as benign. This means we cannot distinguish a deception detector from a
+verbal
+ deception detector. Conversely, one might hope that a detector of verbal deception will generalise to non-verbal too, but this would require validation on environments exhibiting non-verbal deception: naive solutions might detect verbal deception only; for instance, a language model monitor or probe that picks up on explicit natural language related to deception. As these would be universally present if we relied on evidence from the CoT, this approach to labelling is insufficient for ensuring we can detect non-verbal deception.
+
+Problem 2
+: Strategic deception in future models might be non-verbal.
+ Present models’ capabilities are significantly limited when unable to verbalise thoughts in a chain of thought
+(Emmons et al.,
+2025 )
+. Indeed, the most sophisticated examples of deception in current language models that we know of (
+Golechha and Garriga-Alonso,
+2025 ;
+Järviniemi and Hubinger,
+2024 ;
+Scheurer et al.,
+2024 ;
+Greenblatt et al.,
+2024 ) still rely on verbalised reasoning. Note this is obviously confounded by the fact that we, as we argue in this piece, may not be able to measure deceptive reasoning that is not verbalised.
+
+But future more capable models may deduce that they must not verbalise deception if they want to avoid detection and also actually execute on this strategy to better achieve their goals. There are various mechanisms that might drive this.
+
+1.
+
+Increased capabilities:
+ the amount of cognition a model can do in a single forward pass is increasing over time, and may eventually get to the point where complex deception can occur.
+
+2.
+
+Steganography:
+ models may become capable of verbalising their reasoning in an encoded way that evades a monitor
+(Roger and Greenblatt,
+2023 )
+
+3.
+
+Latent reasoning:
+ future models may not use natural language chain of thought at all, along the lines of
+(Hao et al.,
+2025 )
+.
+
+If our ultimate goal for deception detection is to reduce risk from powerful future AI systems, we must think through whether our methods will generalise to future settings with potential higher rates of non-verbalised deception.
+
+3.3 Workaround 3: Fine-tune a known belief into your
+model
+
+At the start of this project, we were optimistic that we could sidestep some of the above problems by fine-tuning model organisms of misalignment
+(Hubinger et al.,
+2023 )
+. We now discuss why we thought they would help and why we no longer think they overcome the above problems that successfully.
+
+Hypothesis 1: We might be able to train models to lie more often than models naturally would.
+
+Standard supervised fine-tuning is about shaping a model’s actions, not beliefs. Naive attempts to fine-tune models to increase their rate of lying might only increase their rates of engaging in simple, and not complex, deception (
+Problem 1
+). For instance, the password locked and backdoored model organisms from the UK AISI White Box team
+(Bloom et al.,
+2025 )
+ are likely engaging in low levels of deception. It is less clear how to think about their prompt distilled model organisms. It is not inconceivable that fine-tuning might induce a model to explicitly internalise a deceptive strategy rather than a hardcoded reflex, similarly to how ‘emergent misalignment’
+(Betley et al.,
+2025 )
+ can cause bad behaviour to generalise more widely than we might expect, but careful analysis is needed to demonstrate this, similar to the prompt-only case.
+
+Hypothesis 2: We might be able to fine-tune some known belief into models and subsequently take it as a given.
+
+The technique of synthetic document fine-tuning (SDF)—generating documents about a fictional universe where certain facts are true, fine-tuning a model on this, and hoping it internalizes those facts—seems fairly fruitful
+(Wang et al.,
+2025a
+)
+. This approach was used to good effect in
+(Greenblatt et al.,
+2024 )
+,
+(Marks et al.,
+2025b
+)
+ and
+(Cywiński et al.,
+2025b
+)
+. If successful, we might be able to train models that believe false things, and also lie about them. Such models might appear behaviourally similar to “normal” models (at least in some contexts), while really undergoing deceptive cognition. The motivation here is similar to the work on discriminating behaviourally identical classifiers
+(Marks et al.,
+2025a
+; Marks,
+2024 )
+.
+
+While this technique likely has some interesting applications, the core problem of determining beliefs is actually similar to determining beliefs in
+non
+ fine-tuned contexts. That is to say, once we have done synthetic document fine-tuning, the methods by which we determine whether the fine-tuning was successful are essentially similar to the techniques we would use to check whether a base model had a particular belief. One cannot take it as a given that the model actually believes the intended inserted fact;
+Slocum et al. (2025)
+ present an excellent case study in what it looks like to interrogate whether a model has a belief or not in the context of SDF – finding that SDF sometimes correctly implants the belief and sometimes doesn’t, especially if the belief is more implausible, similar to our results in
+Problem 3
+ above.
+
+Likewise, SDF beliefs are still vulnerable to concerns about roleplaying and context sensitivity (
+Problem 2
+ and
+Problem 3
+). This is not to say that SDF is not useful for studying deceptive behaviour in models - but it does not particularly give us a way of avoiding the problems we outline in this paper. Avoiding the context-sensitivity of beliefs likely mostly depends on the
+content
+ of the belief, rather than its provenance. Whether this is preserved for some specific facts that you want to use for your evaluations needs to be evaluated carefully regardless.
+
+Hypothesis 3: We might be able to get models to more robustly hide the facts that they lie about
+
+Models trained to lie will often not be very adamant about hiding their deception. This can firstly be taken as evidence that the deception is not very strategic. Secondly, it means that simple baseline methods like asking the model “did you just lie to me” will be extremely effective - which is undesirable and not what we expect in future more powerful models.
+
+Fine-tuning can be used, as in
+Cywiński et al. (
+2025a
+)
+, in order to make lying models which make more of an effort to avoid instantly confessing to their lies. However, this poses a problem for the validation of such a method; how do you verify that false belief insertion was successful, if the model will no longer behaviourally exhibit the belief? A promising direction here may be to focus on beliefs with behavioural implications beyond just assertion, though this might limit the set of beliefs we could focus on. The models discussed in
+Cywiński et al. (
+2025a
+)
+ still have their behaviour modified by a belief which they are trained to not directly reveal: for instance, they can be trained to believe that the user is a particular gender, which affects the behaviour of the model. This may restrict the set of beliefs we can reasonably study, but is a potentially promising direction. Such behavioural confirmation may also still be subject to uncertainties around roleplaying, as observed by
+Lucassen (2025)
+.
+
+3.4 Workaround 4: Just study the behaviours you are interested
+in “in the wild”.
+
+One potential way to avoid conceptual issues surrounding belief attribution for language models is to work with more sophisticated behaviours, where models are taking more tangible
+actions
+ that can be used to infer their beliefs. This is in contrast to many of the examples discussed in this work or used by prior works, which are more
+toy
+ in nature. For example, one could work with agent settings, in which models take actions via tool calls
+(Schick et al.,
+2023 )
+, or RL-like environments where models reward hack (
+Krakovna et al.,
+2020 ;
+Amodei et al.,
+2016 ; Skalse et al.,
+2025 ).
+
+On the other hand, while it may have fewer conceptual problems, apparent deception in the wild is often similarly difficult to correctly label (if not more), as there are many more possible confounders and alternative hypotheses for why the model undergoes deceptive-seeming behaviour. In many cases, this behaviour might be best thought of as low level deception, similar to situations discussed in
+Problem 1
+. See
+Rajamanoharan and Nanda (
+2025b
+)
+ for a (non deception related) worked case study in how to approach investigating the reasons behind “in the wild” model behaviour. It is also quite possible that current models do not exhibit strategic deception at all in natural settings like these.
+6 6
+6 This difficulty also significantly affects research into strategic deception in animals.
+
+Even if such cases are not best characterised as strategic deception, they are still worthwhile to study and mitigate, as they can still cause harm. For example, in the course of RL training language models might unintentionally be incentivized to learn to appear convincing to a language model autorater used to provide a reward, obfuscate their reasoning in response to rewards based on their chain of thought (as discussed above), or modify tests in order to pass ‘spuriously’. This sort of behaviour is likely best explained as lower level reflexive deception, rather than strategic deceptive intent, as discussed in
+Problem 1
+. We might argue that a solution that works in these situations does not tell us much about the ‘actual’ problem of strategic deception. But from a pragmatic perspective, if we can specify what empirical things we want a deception detector to detect in current models, that becomes a useful and significantly harder-to-fake target, even if a different target. Work in this direction may prove far more tractable than building full-blown strategic deception detectors in advance of the arrival of naturally strategically deceptive AI systems.
+
+3.5 Workaround 5: Just hope things
+generalize
+
+It might be possible that we live in an easy world where deception detectors do just work and generalise to the cases we care about if we train only on lower-level deception, analogously to (for example) how we can steer models reasonably well using a vector derived from a single pair of prompts
+(Turner et al.,
+2024 )
+. We want to make clear that our objection is not that such generalisation will definitely fail.
+
+Instead, we point out that we currently lack the ability to
+test
+ whether any given method actually
+is working
+ on strategic deception. Building evidence that a detector provides a valuable signal is a necessary prerequisite to making costly interventions (e.g. investigating more deeply or pausing deployment) based on its results, especially in cases where we lack other forms of (often behavioural) clear cut evidence (
+Greenblatt et al. 2025
+). So even if it turns out that building a generalising deception detector is easy, it will still be important to legibly
+demonstrate
+ that it does in fact work on strategic deception for it to be useful. If such a method did turn out to work fairly well, it would presumably be quite useful in assembling more evidence over time.

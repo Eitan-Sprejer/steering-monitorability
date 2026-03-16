@@ -1,0 +1,310 @@
+Appendix C
+Details of Hybrid Model Evaluation
+
+Figure 3:
+Hybrid model in action.
+ Example of a hybrid model (Qwen2.5-32B as the base model with steering vectors trained on QwQ-32B thinking model) solving a MATH500 problem, showing how steering vectors are dynamically applied based on SAE activations to guide the base model’s reasoning process. The model successfully identifies and applies appropriate reasoning mechanisms at each step, demonstrating the effectiveness of our approach in practice.
+
+C.1
+Example Selection and Training Procedure
+
+A steering vector
+v
+∈
+ℝ
+d
+v\in\mathbb{R}^{d}
+ can be identified by comparing the activations of a model in two different states, for example, when the model is generating factual versus misleading information. The difference between these activation states forms a vector that can then be used to steer the model’s behavior in the desired direction:
+
+v
+=
+𝐄
+​
+[
+h
+​
+(
+x
+target
+)
+−
+h
+​
+(
+x
+base
+)
+]
+v=\mathbf{E}[h(x_{\text{target}})-h(x_{\text{base}})]
+
+(6)
+
+where
+h
+​
+(
+x
+)
+h(x)
+ represents the hidden activations at a particular layer when processing input
+x
+x
+.
+
+For each reasoning category, we select the
+8192 8192
+ sentences with the highest SAE activation and compute the base model’s perplexity on those sentences, given the previous rollout. Then we select the top
+2048 2048
+ highest-perplexity sentences as training examples. This balances selecting examples that strongly represent the category while encouraging examples that the base model would find highly improbable, which are exactly the examples that are most useful for steering vector optimization.
+
+We train the steering vectors for up to
+50 50
+ iterations with a learning rate of
+1 1
+e
+−
+2 -2
+ (with cosine scheduler) and minibatch size of
+6 6
+, using activation perplexity selection to choose optimal examples during training. To prevent overfitting, we implement early stopping with a minimum delta of
+0.01 0.01
+ and patience of
+5 5
+ steps. The optimization objective uses standard next token prediction loss (cross-entropy) computed only on the target completion tokens, excluding the prompt tokens from the loss calculation.
+
+C.2
+Prompt Template
+
+All training examples for steering vector optimization share a common prefix structure to induce step-by-step reasoning behavior in the base model, which has not been fine-tuned for instruction following:
+
+Task: Answer the question below. Explain your reasoning step by step.
+
+Question: [original question]
+
+Step by step answer: [thinking process]
+
+We also use this exact chain-of-thought prompt at evaluation time for both the base-only and the hybrid models during the hybrid model evaluation, ensuring that any performance differences are not due to prompting.
+
+C.3
+Interpreting the Bias Vector
+
+To understand what behaviors the general bias vector captures, we conducted an interpretability experiment comparing outputs from the base model (Qwen2.5-32B) with outputs from a hybrid model using
+only
+ the bias vector (no category-specific steering). We analyzed
+500 500
+ paired responses on the MATH500 benchmark, where each pair consists of the base model’s response and the bias-only hybrid model’s response to the same question.
+
+For each batch of
+50 50
+ question-response pairs, we prompted an LLM evaluator (OpenAI’s o4-mini) to identify qualitative differences in writing style, reasoning approach, and structural patterns between the two model variants, explicitly avoiding judgments about numerical accuracy or correctness. The evaluator focused on consistent behavioral differences across batches rather than problem-specific variations. After collecting these batch-level summaries, we synthesized them into a consolidated description of the bias vector’s effect.
+
+The analysis revealed that the bias vector induces a systematic shift in how the base model presents its reasoning. Specifically, across all batches, the base model adopts a sparse, mechanical outline (usually a numbered list of procedural steps with minimal narrative or justification), often jumping straight to formulas or computations and sometimes truncating context or checks. The bias-only hybrid model, in contrast, weaves its solutions into more discursive, conversational expositions: restating the problem, providing high-level overviews, explaining rationale, recalling relevant theorems, and verifying intermediate results. Structurally, the base model favors uniform “Step
+1 1
+, Step
+2 2
+…” bullet points, whereas the bias-only hybrid mixes prose with headings or subheadings to produce a more cohesive tutorial-style write-up. Qualitatively, the base model feels brisk and utilitarian, while the bias-only hybrid reads as a self-contained guided walkthrough with fuller explanations.
+
+These findings suggest that the bias vector captures higher-level stylistic and structural aspects of thinking model outputs (such as using a more verbose narrative, providing contextual framing, and adopting a more pedagogical tone) rather than specific reasoning mechanisms. This is consistent with the bias vector’s intended role as a general scaffold that encourages the base model to produce more elaborate, explanatory reasoning traces that resemble the format of thinking model outputs. The complete experimental procedure and results are available in the supplementary code repository.
+
+C.4
+Results on Smaller Models Without Sweep
+
+This subsection reports the steering results for smaller base models (
+Qwen2.5-Math-1.5B
+,
+Llama-3.1-8B
+, and
+Qwen2.5-14B
+) using a narrower default steering settings. In the main text (GSM8K:
+Table
+˜
+1 ; MATH500:
+Table
+˜
+2 ), the entries for these smaller models are computed with a larger sweep: coefficients
+{
+0.1 ,
+0.2 ,
+0.3 ,
+0.4 ,
+0.5 ,
+0.6 ,
+0.7 ,
+0.8 ,
+0.9 ,
+1.0 }
+\{0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0\}
+ and token windows
+{
+0 ,
+−
+1 ,
+−
+15 ,
+−
+50 ,
+−
+100 }
+\{0,-1,-15,-50,-100\}
+ (with
+0 meaning all tokens). For the results of
+Qwen2.5-32B
+ in the main text, we use a narrower default (coefficients
+{
+0.5 ,
+0.6 ,
+0.7 ,
+0.8 ,
+0.9 ,
+1.0 }
+\{0.5,0.6,0.7,0.8,0.9,1.0\}
+; all tokens) due to cost; its results would likely improve under the full sweep. In line with
+Section
+˜
+3 , smaller models appear to have less clean steering directions, so gains are often marginal without extensive tuning. The
+Tables
+˜
+4 and
+5 summarize accuracies and gap recovery for GSM8K and MATH500 under the narrower default setting.
+
+Table 4:
+Performance on GSM8K without full hyperparameter sweep.
+ Results show accuracy percentages for base models, hybrid models (base + steering vectors), and thinking models. Performance improvements over base are shown in parentheses next to hybrid and thinking results.
+
+Base
+
+Model
+
+Thinking
+
+Model
+
+Base
+
+Hybrid
+
+Thinking
+
+Gap
+
+Recovery
+
+Qwen2.5-Math-1.5B
+
+DeepSeek-R1-Distill-Qwen-1.5B
+
+83.8%
+
+75.4% (
+−
+8.4 %
+-8.4\%
+)
+
+80.8% (
+−
+3.0 %
+-3.0\%
+)
+
+0.0 %
+\mathbf{0.0\%}
+
+Llama-3.1-8B
+
+DeepSeek-R1-Distill-Llama-8B
+
+37.8%
+
+54.6% (+16.8%)
+
+83.4% (+45.6%)
+
+36.8 %
+\mathbf{36.8\%}
+
+Qwen2.5-14B
+
+DeepSeek-R1-Distill-Qwen-14B
+
+90.8%
+
+89.6% (
+−
+1.2 %
+-1.2\%
+)
+
+94.2% (+3.4%)
+
+0.0 %
+\mathbf{0.0\%}
+
+Table 5:
+Performance on MATH500 without full hyperparameter sweep.
+ Results show accuracy percentages for base models, hybrid models (base + steering vectors), and thinking models. Performance improvements over base are shown in parentheses next to hybrid and thinking results.
+
+Base
+
+Model
+
+Thinking
+
+Model
+
+Base
+
+Hybrid
+
+Thinking
+
+Gap
+
+Recovery
+
+Qwen2.5-Math-1.5B
+
+DeepSeek-R1-Distill-Qwen-1.5B
+
+66.2%
+
+64.8% (
+−
+1.4 %
+-1.4\%
+)
+
+78.6% (+12.4%)
+
+0.0 %
+\mathbf{0.0\%}
+
+Llama-3.1-8B
+
+DeepSeek-R1-Distill-Llama-8B
+
+27.8%
+
+22.4% (
+−
+5.4 %
+-5.4\%
+)
+
+79.8% (+52.0%)
+
+0.0 %
+\mathbf{0.0\%}
+
+Qwen2.5-14B
+
+DeepSeek-R1-Distill-Qwen-14B
+
+58.6%
+
+69.4% (+10.8%)
+
+86.4% (+27.8%)
+
+38.8 %
+\mathbf{38.8\%}

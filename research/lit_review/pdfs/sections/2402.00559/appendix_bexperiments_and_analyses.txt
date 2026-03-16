@@ -1,0 +1,537 @@
+Appendix B
+Experiments and Analyses
+
+B.1
+Experiment Details
+
+In the few-shot evaluation settings, prompts were constructed by randomly selecting 8 demonstrations from class-balanced sets of 13 demonstrations. Prompts were trimmed to the biggest number of demonstrations which, combined with the query, were under the context length for the given LM.
+
+The demonstrations were taken from the training sets of the source datasets, or from the examples used for the pilot annotation phase (which were discarded from the final
+Reveal
+ dataset).
+
+The dataset used to train the T5-based classification baseline is a compilation of multiple datasets: MNLI
+Williams et al. (2018)
+, SNLI
+Bowman et al. (2015)
+, FEVER
+Thorne et al. (2018)
+, SciTail
+Khot et al. (2018)
+ and VitaminC
+Schuster et al. (2021)
+.
+
+B.2
+Additional Results
+
+Per-class F1 metrics in all settings are shown in
+Tables
+
+6 ,
+7 and
+8 .
+
+B.3
+Prompt Templates
+
+We describe here the template structures we used for our few-shot verification prompts. We note that we made an effort to test multiple templates and settings, to make sure that an adequate effort was allocated to implementing baselines that are as strong as possible.
+
+Attribution Task
+
+Premise: [evidence paragraph]
+
+Hypothesis: [CoT step]
+
+Output: {Entailment, Not Entailment}
+
+Logic Task
+
+Premise: [previous CoT steps]
+
+Hypothesis: [CoT step]
+
+Output: {Correct, Incorrect}
+
+Step Type Task
+
+Question: [question]
+
+Answer: [full CoT]
+
+Step: [CoT step]
+
+Step type: {Attribution, Logic, Both}
+
+Relevance Task
+
+Question: [question]
+
+Answer: [full CoT]
+
+Step: [CoT step]
+
+Is this step relevant to the answer? {Yes, No}
+
+Baseline
+
+F1 (Attribution Task)
+
+Fully attributable
+
+Not fully attributable
+
+Flan-UL2-20B
+
+51.9
+
+70.3
+
+Flan-PaLM-540B
+
+78.8
+
+91.3
+
+PaLM-2-L
+
+80.0
+
+91.9
+
+GPT-3
+
+74.5
+
+88.3
+
+FacTool
+
+62.5
+
+79.7
+
+T5-xxl-true
+
+83.0
+
+93.8
+
+Table 6:
+Baseline results for the attribution task. The models classify each step-evidence pair.
+
+Baseline
+
+F1 (Logic Task)
+
+Logically correct
+
+Logically incorrect
+
+Flan-UL2-20B
+
+85.1
+
+33.8
+
+Flan-PaLM-540B
+
+90.2
+
+47.1
+
+PaLM-2-L
+
+90.3
+
+64.9
+
+GPT-3
+
+86.7
+
+32.2
+
+T5-xxl-true
+
+57.6
+
+37.1
+
+Table 7:
+Baseline results for the logical correctness task. The models classify the logical correctness of each step given the previous steps.
+
+Baseline
+
+F1 (Full Correctness)
+
+Correct CoT
+
+Incorrect CoT
+
+Flan-UL2-20B
+(pipeline)
+
+29.3
+
+79.5
+
+Flan-UL2-20B
+
+29.3
+
+54.0
+
+Flan-PaLM-540B
+(pipeline)
+
+31.9
+
+84.3
+
+Flan-PaLM-540B
+
+40.2
+
+38.6
+
+PaLM-2-L
+(pipeline)
+
+65.2
+
+87.5
+
+PaLM-2-L
+
+51.4
+
+72.4
+
+GPT-3
+(pipeline)
+
+56.7
+
+87.2
+
+GPT-3
+
+37.1
+
+34.4
+
+Table 8:
+Baseline results for the task of classifying the full correctness of a given CoT as an answer to a question. The pipeline variants are classifiers built on the models’ answers to each sub-task (relevance, type, attribution and logic), while the non-pipeline variants simply prompt the models to classify the entire CoT.
+
+Complexity Category
+
+% steps in category
+
+Description
+
+Attribution (N=199)
+
+Logic (N=52)
+
+World knowledge or general inference
+
+25.63%
+
+15.38%
+
+Some annotators did not apply world knowledge or general implicit inferences that other annotators take for granted (e.g., that a civil war takes place within a single country, or that an animal described as having prey can be called a “predator”).
+
+Acceptable nuance/hedging
+
+1.51%
+
+–
+
+Disagreement between annotators on strictness of hedged approximations in the step. E.g., “There are around 7.5e+9 people in the world” where the evidence mentions “7.55 billion”.
+
+Insufficient nuance/hedging
+
+13.07%
+
+–
+
+A step mentions an approximation of some quantity in the evidence but without appropriate hedging.
+
+Averages and ranges
+
+10.05%
+
+–
+
+A step picks a specific point or subrange from a more general range or set of ranges given in the evidence, and annotators disagree on whether the exemplification is representative of the evidence.
+
+Calculation or unit issue
+
+–
+
+42.31%
+
+The step consists of a calculation or unit conversion which is difficult to verify.
+
+Specialized knowledge
+
+13.07%
+
+7.69%
+
+The step requires specialized knowledge, e.g., rules of a sports game or scientific notation, which some annotations consider as world knowledge.
+
+Formatting issue
+
+3.02%
+
+–
+
+A problem in the annotation interface (e.g., truncation) made the claims impossible to verify.
+
+Inconsistent/unclear reference or standard
+
+12.56%
+
+30.77%
+
+A step makes an ambiguous reference. E.g., “Westworld was directed by Jonathan Nolan” is paired with evidence on “Westworld TV series …with Nolan directing the pilot episode”—Westworld could refer to the film, TV series, etc.
+
+Inference across claims in evidence
+
+1.51%
+
+–
+
+Verifying the step requires drawing an implicit conclusion, which only some annotators did—e.g., the step “Birds and mammals are different classes of animals” is paired with evidence that describes characteristics of mammals, and mentions that they “distinguish them from reptiles and birds”, which implies that they are in different classes.
+
+Invalid inference in previous step
+
+0.50%
+
+28.85%
+
+Some annotators may have found it difficult to disentangle a current step’s inference from any previous inferences that are invalid.
+
+Rating category definition/criterion
+
+23.62%
+
+–
+
+Disagreements stemming from the distinction between “partially attributable” and “not attributable” (despite guidance during the annotation instructions—more discussion below).
+
+Relevance dispute
+
+–
+
+23.08%
+
+Borderline-relevant steps or difficult to follow steps can lead to disagreement on the relevance label.
+
+Temporal inconsistency
+
+9.55%
+
+1.92%
+
+The step makes a claim that relies on a different time frame from that of the evidence or other steps in the answer (e.g., present-tense in “Maradona is a soccer player” where the evidence mentions “a former professional footballer”). Annotators’ acceptance of temporal inconsistencies may vary (e.g., the convention of using the present tense to refer to a retired person’s most salient profession).
+
+Table 9:
+An overview of the different categories we surface for the disagreements observed in
+Reveal
+-Open.
+
+Dataset
+
+Step
+
+Factually Correct?
+
+Analysis
+
+Fermi
+
+There are 1000 * 100 = 10000 pennies in 1 US dollar.
+
+No
+
+Wrong math
+
+Fermi
+
+Art Beat is a free, annual event in South Bend, Indiana.
+
+Yes
+
+The info could be found outside of Wikipedia, the retrieved evidence was irrelevant.
+
+Fermi
+
+The latent heat of vaporization of steam is 540 cal/g.
+
+Yes
+
+The info could be found outside of wikipedia, the retrieved evidence was irrelevant.
+
+Fermi
+
+The total volume of the oceans is 1.3e+21 liters.
+
+No
+
+The total volume of the oceans is much more than 1.3e+12 liters. The retrieved evidence was relevant but did not mention the answer explicitly (metric conversion was required).
+
+Fermi
+
+The average American yard is 8000 square feet.
+
+No
+
+Could not find evidence that mentions this number, and the retrieved evidence was irrelevant.
+
+Musique
+
+Jayantha Ketagoda is married to his wife, Jaya.
+
+No
+
+Could not find evidence that mentions this claim, and the retrieved evidence was relevant to the entity but did not mention the claim.
+
+Musique
+
+Vibullia Alcia Agrippina’s child was a proponent for the movement called the ”Feminist Movement”.
+
+No
+
+Could not find evidence that mentions this claim.
+
+Musique
+
+The Almost are signed to the record label called Almost Records.
+
+No
+
+The claim is wrong, and the retrieved evidence was not relevant. Could find evidence in wikipedia that refutes the claim.
+
+Musique
+
+The most Champions League wins between 1992 and 2013 were by the Spanish La Liga.
+
+Yes
+
+The claim is correct, but requires complex reasoning (understanding which teams are from the Spanish La Liga). The retrieved evidence was related to La Liga but not sufficient to support the claim.
+
+Musique
+
+Deborah Estrin is a member of the Association for Computing Machinery.
+
+Yes
+
+The claim is correct. There was evidence that supported the claim, but this required domain knowledge (that “ACM”=“Association for Computing Machinery”) so the raters marked it as unsupported.
+
+Sports
+
+Doing a maradona on the defender is part of basketball.
+
+No
+
+The claim is wrong, “a maradona” is a soccer move, not a basketball move.
+
+Sports
+
+Hitting the back of the rim is a common occurrence in basketball.
+
+Yes
+
+The claim is correct. None of the evidence supported it directly, as it is more “common knowledge”.
+
+Sports
+
+Windmill dunk is part of basketball, not hockey.
+
+Yes
+
+The claim is correct, however it is a composite claim - 1) Windmill dunk is part of basketball 2) Windmill dunk is not part of hockey. The evidence supported the first claim, not the second.
+
+Sports
+
+Brown is a basketball player.
+
+Yes
+
+The claim is correct, but requires further decontextualization (from “Brown” to “Jaylen Brown”) as it is vague in its current form, which resulted in irrelevant evidence.
+
+Sports
+
+Being out at second is part of baseball.
+
+Yes
+
+The claim is correct, but requires common knowledge - that “out at second” means “second base”. The retrieved evidence did not support this claim explicitly.
+
+StrategyQA
+
+A king size bed is 76 inches wide and 80 inches long.
+
+Yes
+
+The step is factually correct and a google search was able to retrieve relevant evidence. The retrieved evidence was irrelevant.
+
+StrategyQA
+
+Pacifists do not support violence, including stoning.
+
+Yes
+
+The step is factually correct, and can be verified with common sense. The retrieved evidence did not support this claim.
+
+StrategyQA
+
+An existential crisis is a mental health issue.
+
+Yes
+
+The step is factually correct, and can be verified with common sense. The retrieved evidence did not support this claim explicitly.
+
+StrategyQA
+
+Lil Jon’s top ranked Billboard song was "Get Low".
+
+No
+
+The claim is wrong since the song is not the only top-ranked song on Billboard from the artist. The retrieved evidence was relevant and partially supported the claim (saying that the song was indeed top-ranked in the chart).
+
+StrategyQA
+
+Cricketers do not kick field goals.
+
+Yes
+
+The claim is correct since a field goal is a term from other sports and kicking is generally prohibited in Cricket. The retrieved evidence was irrelevant since this requires more common-knowledge and inference.
+
+Table 10:
+Analysis for steps where no supporting evidence was found.
+
+CoT Correctness task
+
+Evidence
+i
+𝑖
+i
+italic_i
+: [evidence paragraph]
+
+Question: [question]
+
+Answer: [full CoT]
+
+The answer is: {Correct, Incorrect}
+
+All evidences are added to the demonstration for
+i
+𝑖
+i
+italic_i
+ in the number of evidences (i.e., the number of attribution steps in the CoT).

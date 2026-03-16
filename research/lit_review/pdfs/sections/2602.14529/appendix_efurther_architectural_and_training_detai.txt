@@ -1,0 +1,1681 @@
+Appendix E
+Further Architectural and Training Details for Bottleneck-based Classifier
+
+This appendix supplements Section
+4.1 by providing a detailed mathematical formalization and implementation details of the proposed bottleneck-based classification framework for distinguishing hallucination and deception behaviors.
+Specifically, we present: (1)
+Preliminaries and Problem Formulation
+ (Appendix
+E.1
+), which formalizes the problem setting and explains how entity-centric hidden representations are extracted from the target language model; (2)
+Model Architecture of the Joint AE–Classifier
+ (Appendix
+E.2
+), which details the design of the encoder–decoder bottleneck and the classifier head; and (3)
+Stepwise Training Strategy
+ (Appendix
+E.3
+), which describes the two-stage optimization procedure and contrasts it with direct end-to-end training.
+
+Motivated by the high-dimensional redundancy of internal states in large language models, our framework incorporates the Information Bottleneck principle together with a stepwise optimization strategy to extract low-dimensional essential features.
+These features enable a principled decoupling between
+hallucination
+ and
+deception
+ behaviors, capturing their intrinsic distinctions beyond surface-level output errors.
+
+E.1
+Preliminaries and Problem Formulation
+
+This appendix subsection formalizes the problem setting, notation, and representation extraction protocol underlying the bottleneck-based classification framework.
+
+Same as Section
+4.1 ,
+L
+′
+L^{\prime}
+ denotes the derived language model after preference optimization (DPO).
+For an arbitrary input query
+x
+x
+, we focus on the model’s internal activation states when processing key entities at a specific layer
+l
+l
+ (set to
+l
+=
+28 l=28
+ in this work).
+We define the hidden state space as
+ℋ
+⊂
+ℝ
+d
+in
+\mathcal{H}\subset\mathbb{R}^{d_{\mathrm{in}}}
+.
+For each sample
+x
+x
+ in the dataset
+𝒟
+\mathcal{D}
+, we extract its hidden representation
+𝐡
+​
+(
+x
+)
+∈
+ℋ
+\mathbf{h}(x)\in\mathcal{H}
+.
+Our objective is to learn a discriminative function
+
+ℳ
+:
+ℋ
+→
+Δ
+|
+𝒴
+|
+−
+1 \mathcal{M}:\mathcal{H}\rightarrow\Delta^{|\mathcal{Y}|-1}
+,
+which maps continuous hidden states to a probability simplex over the discrete behavior label set
+
+𝒴
+=
+{
+y
+KC
+,
+y
+KA
+,
+y
+KI
+,
+y
+hal
+}
+\mathcal{Y}=\{y_{\mathrm{KC}},y_{\mathrm{KA}},y_{\mathrm{KI}},y_{\mathrm{hal}}\}
+.
+
+A typical entity-centric query follows the format:
+
+•
+
+Prompt
+: What country contains the city of ’{entity}’?
+The country that contains the city ’{entity}’ is
+
+To obtain a representation that is maximally aligned with entity-specific knowledge,
+we extract activations at the position of the
+last token of the first occurrence of the entity
+
+within the prompt.
+For example, given the input in the following box, where
+Loikaw
+ is the entity,
+the hidden representation
+𝐡
+​
+(
+x
+)
+\mathbf{h}(x)
+ is extracted at the position of the final sub-token of
+‘Loikaw’ in the first clause
+“What country contains the city of ‘Loikaw’?”, namely the yellow-highlighted “aw”.
+
+Prompt
+: What country contains the city of Loik
+aw
+?
+The country that contains the city ‘Loikaw’ is.
+
+To verify the linear separability of different behavioral modes in the representation space and to avoid spurious correlations in high-dimensional spaces, we introduce a low-dimensional latent bottleneck
+
+𝐳
+∈
+𝒵
+⊂
+ℝ
+d
+z
+\mathbf{z}\in\mathcal{Z}\subset\mathbb{R}^{d_{z}}
+, where
+d
+z
+≪
+d
+in
+d_{z}\ll d_{\mathrm{in}}
+.
+From an information-theoretic perspective, our objective is to preserve the mutual information between
+𝐳
+\mathbf{z}
+ and the behavior label
+y
+y
+, denoted as
+I
+​
+(
+𝐳
+;
+y
+)
+I(\mathbf{z};y)
+, while simultaneously minimizing the mutual information between
+𝐳
+\mathbf{z}
+ and the original input representation
+𝐡
+​
+(
+x
+)
+\mathbf{h}(x)
+, i.e.,
+I
+​
+(
+𝐳
+;
+𝐡
+​
+(
+x
+)
+)
+I(\mathbf{z};\mathbf{h}(x))
+.
+This corresponds to seeking an optimal compressed representation that satisfies the Markov chain
+
+𝐡
+​
+(
+x
+)
+→
+𝐳
+→
+y
+\mathbf{h}(x)\rightarrow\mathbf{z}\rightarrow y
+.
+
+E.2
+Model Architecture of the Joint AE–Classifier
+
+This appendix subsection provides a detailed architectural specification of the proposed Joint AE–Classifier, including: (I)
+Encoder
+, which describes the dimensionality reduction process from high-dimensional hidden states to the bottleneck latent space; (II)
+Decoder
+, which details the reconstruction mechanism used to verify information preservation in the bottleneck representation; and (III)
+Classifier
+, which presents the design of the lightweight classifier operating solely on the bottleneck latent code for behavioral prediction.
+
+To achieve the above objective, we construct a
+Joint AE–Classifier
+ composed of three modular components:
+
+•
+
+Encoder
+: an encoder
+f
+enc
+f_{\mathrm{enc}}
+ that compresses the hidden representation
+𝐡
+​
+(
+x
+)
+\mathbf{h}(x)
+ into a low-dimensional latent code
+𝐳
+\mathbf{z}
+,
+
+•
+
+Decoder
+: a decoder
+f
+dec
+f_{\mathrm{dec}}
+ that reconstructs the original hidden representation
+from
+𝐳
+\mathbf{z}
+, yielding the reconstructed hidden representation
+𝐡
+^
+​
+(
+x
+)
+\hat{\mathbf{h}}(x)
+,
+
+•
+
+Classifier
+: a classifier
+f
+clf
+f_{\mathrm{clf}}
+ that predicts the behavioral label based solely on
+𝐳
+\mathbf{z}
+, producing the predicted class logits
+𝐬
+\mathbf{s}
+.
+
+These components are composed sequentially as:
+
+𝐡
+​
+(
+x
+)
+→
+f
+enc
+𝐳
+→
+f
+dec
+𝐡
+^
+​
+(
+x
+)
+,
+𝐳
+→
+f
+clf
+𝐬
+.
+\mathbf{h}(x)\;\xrightarrow{f_{\mathrm{enc}}}\;\mathbf{z}\;\xrightarrow{f_{\mathrm{dec}}}\;\hat{\mathbf{h}}(x),\qquad\mathbf{z}\;\xrightarrow{f_{\mathrm{clf}}}\;\mathbf{s}.
+
+(10)
+
+(I) Encoder.
+
+The encoder
+f
+enc
+f_{\mathrm{enc}}
+ is designed to project the high-dimensional manifold
+ℋ
+\mathcal{H}
+ into the latent space
+𝒵
+\mathcal{Z}
+, and is composed of a sequence of fully connected layers with intermediate hidden dimensions:
+
+d
+in
+→
+d
+enc
+(
+1 )
+→
+⋯
+→
+d
+enc
+(
+G
+)
+→
+d
+z
+,
+d_{\mathrm{in}}\rightarrow d_{\mathrm{enc}}^{(1)}\rightarrow\cdots\rightarrow d_{\mathrm{enc}}^{(G)}\rightarrow d_{z},
+
+(11)
+
+where
+d
+enc
+(
+g
+)
+d_{\mathrm{enc}}^{(g)}
+ denotes the hidden dimensionality of the
+g
+g
+-th encoder layer.
+For each layer
+g
+∈
+{
+1 ,
+…
+,
+G
+}
+g\in\{1,\ldots,G\}
+, the state transformation follows the sequence
+
+linear mapping
+→
+\rightarrow
+ nonlinear activation
+→
+\rightarrow
+ batch normalization
+,
+which is adopted to promote gradient stability in the deep network.
+To obtain the final bottleneck representation
+𝐳
+\mathbf{z}
+, we apply a simple linear projection layer (without an activation function) after the
+G
+G
+-th layer, allowing the latent features to be distributed over the entire real-valued space
+ℝ
+d
+z
+\mathbb{R}^{d_{z}}
+.
+Formally, let
+𝐡
+(
+0 )
+=
+𝐡
+​
+(
+x
+)
+\mathbf{h}^{(0)}=\mathbf{h}(x)
+. For
+g
+=
+1 ,
+…
+,
+G
++
+1 g=1,\ldots,G+1
+, the encoder computes:
+
+𝐡
+(
+g
+)
+=
+{
+BN
+(
+g
+)
+​
+(
+σ
+​
+(
+𝐖
+enc
+(
+g
+)
+​
+𝐡
+(
+g
+−
+1 )
++
+𝐛
+enc
+(
+g
+)
+)
+)
+,
+g
+=
+1 ,
+…
+,
+G
+,
+𝐖
+enc
+(
+G
++
+1 )
+​
+𝐡
+(
+G
+)
++
+𝐛
+enc
+(
+G
++
+1 )
+,
+g
+=
+G
++
+1 ,
+\displaystyle\mathbf{h}^{(g)}=
+
+(12)
+
+and the bottleneck representation is given by
+𝐳
+=
+𝐡
+(
+G
++
+1 )
+\mathbf{z}=\mathbf{h}^{(G+1)}
+.
+Here,
+σ
+​
+(
+⋅
+)
+\sigma(\cdot)
+ denotes an element-wise nonlinear activation function (ReLU in our implementation),
+and
+BN
+(
+g
+)
+​
+(
+⋅
+)
+\mathrm{BN}^{(g)}(\cdot)
+ denotes the batch-normalization operator applied after the nonlinearity
+at the
+g
+g
+-th encoder layer.
+Moreover,
+𝐖
+enc
+(
+g
+)
+\mathbf{W}_{\mathrm{enc}}^{(g)}
+ and
+𝐛
+enc
+(
+g
+)
+\mathbf{b}_{\mathrm{enc}}^{(g)}
+ represent the weight matrix
+and bias vector of the
+g
+g
+-th encoder layer, respectively.
+
+(II) Decoder.
+
+The decoder
+f
+dec
+f_{\mathrm{dec}}
+ is introduced to verify whether the bottleneck latent variable
+𝐳
+\mathbf{z}
+
+retains sufficient statistics required to recover the original semantic information encoded in
+the hidden representation.
+Structurally, the decoder mirrors the encoder by mapping the latent code back to the original
+hidden-state space through a sequence of fully connected layers with reversed dimensionalities:
+
+d
+z
+→
+d
+dec
+(
+G
+)
+→
+⋯
+→
+d
+dec
+(
+1 )
+→
+d
+in
+,
+d_{z}\rightarrow d_{\mathrm{dec}}^{(G)}\rightarrow\cdots\rightarrow d_{\mathrm{dec}}^{(1)}\rightarrow d_{\mathrm{in}},
+
+(13)
+
+where
+d
+dec
+(
+g
+)
+d_{\mathrm{dec}}^{(g)}
+ denotes the hidden dimensionality of the decoder layer indexed by
+g
+g
+
+(applied in reversed order from
+G
+G
+ down to
+1 1
+).
+Conceptually, the decoding process is constructed as a mirror inverse of the encoding transformation:
+
+𝐡
+^
+(
+g
+)
+=
+{
+BN
+(
+g
+)
+​
+(
+σ
+​
+(
+𝐖
+dec
+(
+g
+)
+​
+𝐡
+^
+(
+g
+−
+1 )
++
+𝐛
+dec
+(
+g
+)
+)
+)
+,
+g
+=
+1 ,
+…
+,
+G
+,
+𝐖
+dec
+(
+G
++
+1 )
+​
+𝐡
+^
+(
+G
+)
++
+𝐛
+dec
+(
+G
++
+1 )
+,
+g
+=
+G
++
+1 ,
+\displaystyle\hat{\mathbf{h}}^{(g)}=
+
+(14)
+
+where
+𝐡
+^
+(
+0 )
+=
+𝐳
+\hat{\mathbf{h}}^{(0)}=\mathbf{z}
+,
+and the reconstructed hidden representation is given by
+
+𝐡
+^
+​
+(
+x
+)
+=
+𝐡
+^
+(
+G
++
+1 )
+\hat{\mathbf{h}}(x)=\hat{\mathbf{h}}^{(G+1)}
+.
+
+(III) Classifier.
+
+The classifier
+f
+clf
+f_{\mathrm{clf}}
+ is a lightweight MLP that operates exclusively on the bottleneck representation
+
+𝐳
+\mathbf{z}
+:
+
+f
+clf
+:
+ℝ
+d
+z
+→
+ℝ
+C
+,
+f_{\mathrm{clf}}:\mathbb{R}^{d_{z}}\rightarrow\mathbb{R}^{C},
+
+(15)
+
+where
+C
+C
+ denotes the number of behavioral classes.
+It consists of one or more fully connected layers with hidden dimensions:
+
+d
+z
+→
+d
+cls
+(
+1 )
+→
+⋯
+→
+d
+cls
+(
+M
+)
+→
+C
+,
+d_{z}\rightarrow d_{\mathrm{cls}}^{(1)}\rightarrow\cdots\rightarrow d_{\mathrm{cls}}^{(M)}\rightarrow C,
+
+(16)
+
+where
+d
+cls
+(
+m
+)
+d_{\mathrm{cls}}^{(m)}
+ denotes the hidden dimensionality of the
+m
+m
+-th classifier layer.
+To prevent overfitting in the low-dimensional latent space, we introduce a
+Dropout
+p
+​
+(
+⋅
+)
+\mathrm{Dropout}_{p}(\cdot)
+ mechanism with rate
+p
+=
+0.2 p=0.2
+ between the classifier layers.
+Similar to encoder and decoder, let
+𝐳
+(
+0 )
+=
+𝐳
+\mathbf{z}^{(0)}=\mathbf{z}
+. For
+m
+=
+1 ,
+…
+,
+M
++
+1 m=1,\ldots,M+1
+, the classifier computes:
+
+𝐳
+(
+m
+)
+=
+{
+Dropout
+p
+​
+(
+σ
+​
+(
+𝐖
+cls
+(
+m
+)
+​
+𝐳
+(
+m
+−
+1 )
++
+𝐛
+cls
+(
+m
+)
+)
+)
+,
+m
+=
+1 ,
+…
+,
+M
+,
+𝐖
+cls
+(
+M
++
+1 )
+​
+𝐳
+(
+M
+)
++
+𝐛
+cls
+(
+M
++
+1 )
+,
+m
+=
+M
++
+1 ,
+\displaystyle\mathbf{z}^{(m)}=
+
+(17)
+
+and the class logits are given by
+𝐬
+=
+𝐳
+(
+M
++
+1 )
+\mathbf{s}=\mathbf{z}^{(M+1)}
+.
+Here,
+σ
+​
+(
+⋅
+)
+\sigma(\cdot)
+ refers to an element-wise nonlinear activation function, which is instantiated as ReLU in our implementation.
+
+𝐖
+cls
+(
+m
+)
+\mathbf{W}_{\mathrm{cls}}^{(m)}
+ and
+𝐛
+cls
+(
+m
+)
+\mathbf{b}_{\mathrm{cls}}^{(m)}
+
+represent the weight matrix and bias vector of the
+m
+m
+-th classifier layer, respectively.
+
+Finally, the predicted probability of assigning the sample to class
+j
+∈
+𝒴
+j\in\mathcal{Y}
+ is obtained by applying the Softmax normalization:
+
+p
+^
+j
+=
+P
+​
+(
+y
+=
+j
+∣
+𝐳
+)
+=
+exp
+⁡
+(
+s
+j
+)
+∑
+k
+∈
+𝒴
+exp
+⁡
+(
+s
+k
+)
+.
+\hat{p}_{j}=P(y=j\mid\mathbf{z})=\frac{\exp(s_{j})}{\sum_{k\in\mathcal{Y}}\exp(s_{k})}.
+
+(18)
+
+Table
+12 summarizes the key dimensionalities and hidden-layer configurations of the Joint AE–Classifier, including the input representation size, bottleneck latent dimension, classifier output dimension, and the layer-wise widths of the encoder, decoder, and classifier modules.
+
+Table 12
+:
+Key dimensionalities and hidden-layer configurations of the Joint AE–Classifier.
+
+Parameter
+
+Value
+
+Input dimension of
+𝐡
+​
+(
+x
+)
+\mathbf{h}(x)
+ (
+d
+in
+d_{\mathrm{in}}
+)
+
+4096
+
+Latent dimension of
+𝐳
+\mathbf{z}
+ (
+d
+z
+d_{z}
+)
+
+16
+
+Logits dimension of
+𝐬
+\mathbf{s}
+ (
+C
+C
+)
+
+4
+
+Encoder hidden dimensions
+{
+d
+enc
+(
+g
+)
+}
+g
+=
+1 G
+\{d_{\mathrm{enc}}^{(g)}\}_{g=1}^{G}
+
+[2048]
+
+Decoder hidden dimensions
+{
+d
+dec
+(
+g
+)
+}
+g
+=
+1 G
+\{d_{\mathrm{dec}}^{(g)}\}_{g=1}^{G}
+
+[2048]
+
+Classifier hidden dimensions
+{
+d
+cls
+(
+m
+)
+}
+m
+=
+1 M
+\{d_{\mathrm{cls}}^{(m)}\}_{m=1}^{M}
+
+[1024, 64]
+
+E.3
+Stepwise Training Strategy
+
+This appendix subsection details the proposed two-stage stepwise training strategy, including: (I)
+Stage I: Representation Pretraining via Reconstruction
+, which introduces the reconstruction-first optimization used to learn a compact and interpretable latent manifold; (II)
+Stage II: Joint Optimization with Classification Supervision
+, which describes the classifier training procedure under partial parameter freezing; (III)
+Why Direct End-to-End Training Overfits
+, which provides a conceptual and optimization-level analysis of overfitting under joint training; and (IV)
+Visualization of Training Dynamics and Performance Comparison
+, which empirically contrasts stepwise training with direct end-to-end optimization through detailed learning curves.
+
+To balance reconstruction fidelity and discriminative accuracy within a shared latent space, we design a composite loss function consisting of three terms. However, we find that directly training all components end-to-end from scratch often leads to severe overfitting and unstable optimization. To address this issue, we adopt a
+two-stage stepwise training strategy
+ that decouples representation learning from discriminative supervision.
+
+(I) Stage I: Representation Pretraining via Reconstruction.
+
+In Stage I, we pretrain the encoder–decoder pair
+(
+f
+enc
+,
+f
+dec
+)
+(f_{\mathrm{enc}},f_{\mathrm{dec}})
+ to learn a compact and interpretable latent manifold before introducing any discriminative supervision. During this stage, the classifier
+f
+clf
+f_{\mathrm{clf}}
+ is not trained. Given an extracted hidden representation
+𝐡
+​
+(
+x
+)
+∈
+ℝ
+d
+in
+\mathbf{h}(x)\in\mathbb{R}^{d_{\mathrm{in}}}
+, the encoder produces the bottleneck latent code:
+
+𝐳
+=
+f
+enc
+​
+(
+𝐡
+​
+(
+x
+)
+)
+∈
+ℝ
+d
+z
+.
+\mathbf{z}=f_{\mathrm{enc}}(\mathbf{h}(x))\in\mathbb{R}^{d_{z}}.
+
+(19)
+
+The latent code is then decoded to reconstruct the original hidden representation:
+
+𝐡
+^
+​
+(
+x
+)
+=
+f
+dec
+​
+(
+𝐳
+)
+=
+f
+dec
+​
+(
+f
+enc
+​
+(
+𝐡
+​
+(
+x
+)
+)
+)
+.
+\hat{\mathbf{h}}(x)=f_{\mathrm{dec}}(\mathbf{z})=f_{\mathrm{dec}}\!\big(f_{\mathrm{enc}}(\mathbf{h}(x))\big).
+
+(20)
+
+During Stage I, the encoder–decoder pair is optimized solely using the reconstruction objective with an additional sparsity regularization on the bottleneck:
+
+ℒ
+Stage
+​
+-
+​
+I
+=
+λ
+rec
+​
+‖
+𝐡
+^
+​
+(
+x
+)
+−
+𝐡
+​
+(
+x
+)
+‖
+2 2
++
+λ
+ℓ
+1 ​
+‖
+𝐳
+‖
+1 .
+\mathcal{L}_{\mathrm{Stage\text{-}I}}=\lambda_{\mathrm{rec}}\left\|\hat{\mathbf{h}}(x)-\mathbf{h}(x)\right\|_{2}^{2}+\lambda_{\ell_{1}}\,\|\mathbf{z}\|_{1}.
+
+(21)
+
+For convenience, we denote the reconstruction term
+
+‖
+𝐡
+^
+​
+(
+x
+)
+−
+𝐡
+​
+(
+x
+)
+‖
+2 2
+\left\|\hat{\mathbf{h}}(x)-\mathbf{h}(x)\right\|_{2}^{2}
+
+as
+ℒ
+MSE
+\mathcal{L}_{\mathrm{MSE}}
+, which encourages the bottleneck latent variable
+𝐳
+\mathbf{z}
+ to capture the dominant variations present in the original hidden representation
+𝐡
+​
+(
+x
+)
+\mathbf{h}(x)
+. Here,
+λ
+rec
+\lambda_{\mathrm{rec}}
+ denotes the reconstruction loss weight, and
+λ
+ℓ
+1 \lambda_{\ell_{1}}
+ controls the strength of the bottleneck sparsity regularization. In our implementation, the
+ℓ
+1 \ell_{1}
+ term is implemented as a mean absolute penalty on the latent code (i.e.,
+‖
+𝐳
+‖
+1 \|\mathbf{z}\|_{1}
+ up to normalization), designed to induce sparsity in the latent activations, thereby enhancing feature interpretability and eliminating redundant information
+
+(II) Stage II: Joint Optimization with Classification Supervision.
+
+After convergence in Stage I, the geometric structure of the latent space has been established.
+In Stage II, our objective is to identify the optimal decision boundaries within this space.
+To prevent catastrophic forgetting or feature collapse,
+we
+freeze the decoder
+
+f
+dec
+f_{\mathrm{dec}}
+ as well as
+the first
+G
+G
+ layers of the encoder
+
+f
+enc
+f_{\mathrm{enc}}
+.
+We train
+only the classifier head
+
+f
+clf
+f_{\mathrm{clf}}
+ together with
+the final projection layer of the encoder
+ (i.e., the last linear mapping into the bottleneck space).
+
+Given an input hidden representation
+𝐡
+​
+(
+x
+)
+\mathbf{h}(x)
+, the bottleneck latent representation and the classification logits are computed as:
+
+𝐳
+=
+f
+enc
+​
+(
+𝐡
+​
+(
+x
+)
+)
+,
+𝐬
+=
+f
+clf
+​
+(
+𝐳
+)
+=
+f
+clf
+​
+(
+f
+enc
+​
+(
+𝐡
+​
+(
+x
+)
+)
+)
+.
+\mathbf{z}=f_{\mathrm{enc}}(\mathbf{h}(x)),\qquad\mathbf{s}=f_{\mathrm{clf}}(\mathbf{z})=f_{\mathrm{clf}}\!\big(f_{\mathrm{enc}}(\mathbf{h}(x))\big).
+
+(22)
+
+During Stage II, the model is optimized using classification supervision only:
+
+ℒ
+Stage
+​
+-
+​
+II
+=
+λ
+cls
+​
+ℒ
+CE
+​
+(
+𝐬
+,
+y
+)
+=
+−
+λ
+cls
+​
+𝔼
+(
+x
+,
+y
+)
+∼
+𝒟
+​
+[
+∑
+j
+∈
+𝒴
+𝕀
+​
+(
+y
+=
+j
+)
+​
+log
+⁡
+(
+p
+^
+j
+)
+]
+.
+\mathcal{L}_{\mathrm{Stage\text{-}II}}=\lambda_{\mathrm{cls}}\,\mathcal{L}_{\mathrm{CE}}(\mathbf{s},y)=-\lambda_{\mathrm{cls}}\,\mathbb{E}_{(x,y)\sim\mathcal{D}}\left[\sum_{j\in\mathcal{Y}}\mathbb{I}(y=j)\,\log(\hat{p}_{j})\right].
+
+(23)
+
+where
+ℒ
+CE
+​
+(
+𝐬
+,
+y
+)
+\mathcal{L}_{\mathrm{CE}}(\mathbf{s},y)
+ denotes the cross-entropy loss between the predicted logits
+𝐬
+\mathbf{s}
+ and the ground-truth behavioral label
+y
+y
+,
+λ
+cls
+\lambda_{\mathrm{cls}}
+ controls the strength of the classification objective,
+𝕀
+​
+(
+⋅
+)
+\mathbb{I}(\cdot)
+ denotes the indicator function, and
+𝒟
+\mathcal{D}
+ denotes the dataset.
+
+Through this “reconstruction-first, classification-second” strategy, we ensure that the features exploited by the classifier correspond to intrinsic structural properties of the data, rather than spurious shortcuts fitted solely to minimize training error.
+As a result, this design substantially improves the model’s generalization ability in distinguishing hallucination from deception behaviors.
+
+(III) Why Direct End-to-End Training Overfits.
+
+In the direct end-to-end training setting, all components are optimized jointly under a combined objective:
+
+ℒ
+joint
+=
+λ
+rec
+​
+ℒ
+MSE
++
+λ
+cls
+​
+ℒ
+CE
+​
+(
+𝐬
+,
+y
+)
++
+λ
+ℓ
+1 ​
+‖
+𝐳
+‖
+1 .
+\mathcal{L}_{\mathrm{joint}}=\lambda_{\mathrm{rec}}\,\mathcal{L}_{\mathrm{MSE}}+\lambda_{\mathrm{cls}}\,\mathcal{L}_{\mathrm{CE}}(\mathbf{s},y)+\lambda_{\ell_{1}}\,\|\mathbf{z}\|_{1}.
+
+(24)
+
+where
+
+𝐳
+=
+f
+enc
+​
+(
+𝐡
+​
+(
+x
+)
+)
+,
+𝐡
+^
+​
+(
+x
+)
+=
+f
+dec
+​
+(
+𝐳
+)
+,
+𝐬
+=
+f
+clf
+​
+(
+𝐳
+)
+.
+\mathbf{z}=f_{\mathrm{enc}}(\mathbf{h}(x)),\qquad\hat{\mathbf{h}}(x)=f_{\mathrm{dec}}(\mathbf{z}),\qquad\mathbf{s}=f_{\mathrm{clf}}(\mathbf{z}).
+
+(25)
+
+In our implementation of direct training, a single optimizer updates the parameters of
+all three modules simultaneously
+, meaning that gradients from the classification loss
+ℒ
+CE
+​
+(
+𝐬
+,
+y
+)
+\mathcal{L}_{\mathrm{CE}}(\mathbf{s},y)
+ are allowed to directly reshape both the encoder and decoder from the very beginning of training.
+
+Three underlying reasons explain why direct end-to-end training tends to overfit.
+
+•
+
+Early dominance of discriminative gradients (shortcut learning)
+: When trained from random initialization, the classification objective
+ℒ
+CE
+​
+(
+𝐬
+,
+y
+)
+\mathcal{L}_{\mathrm{CE}}(\mathbf{s},y)
+ provides a strong and immediate learning signal. Because
+f
+enc
+f_{\mathrm{enc}}
+ and
+f
+clf
+f_{\mathrm{clf}}
+ are optimized end-to-end, the encoder can rapidly adapt to encode label-specific shortcuts into
+𝐳
+\mathbf{z}
+ that minimize training error, even if these features are dataset-specific and do not generalize. This results in a latent space that is optimized for the training split rather than capturing stable structure in
+𝐡
+​
+(
+x
+)
+\mathbf{h}(x)
+.
+
+•
+
+Interference between reconstruction and classification objectives
+: The reconstruction term encourages
+𝐳
+\mathbf{z}
+ to preserve instance-level information sufficient to recover
+𝐡
+​
+(
+x
+)
+\mathbf{h}(x)
+, while the classification term encourages
+𝐳
+\mathbf{z}
+ to emphasize only label-discriminative directions. Jointly optimizing both from scratch creates a non-stationary target for the bottleneck: the encoder can satisfy
+ℒ
+CE
+​
+(
+𝐬
+,
+y
+)
+\mathcal{L}_{\mathrm{CE}}(\mathbf{s},y)
+ by embedding idiosyncratic cues in
+𝐳
+\mathbf{z}
+, while the decoder co-adapts to reconstruct
+𝐡
+​
+(
+x
+)
+\mathbf{h}(x)
+ from this drifting representation. This co-adaptation increases effective capacity and can lead to memorization even when
+𝐳
+\mathbf{z}
+ is low-dimensional.
+
+•
+
+Co-adaptation of
+f
+dec
+f_{\mathrm{dec}}
+ reduces the regularization effect of reconstruction
+: Reconstruction is often used as a regularizer; however, in the direct setting the decoder
+f
+dec
+f_{\mathrm{dec}}
+ is trained jointly and can adapt to the encoder’s evolving latent code. As a result, a low reconstruction error does not necessarily imply that
+𝐳
+\mathbf{z}
+ is information-preserving in a stable, generalizable way—rather, it may reflect a moving equilibrium where encoder and decoder overfit together.
+
+Figure 8
+:
+Training dynamics of the autoencoder(Left) and classifier(Right) across epochs.
+ Using the stepwise training strategy with the following configuration:
+λ
+rec
+=
+0.1 \lambda_{\mathrm{rec}}=0.1
+,
+λ
+cls
+=
+1.0 \lambda_{\mathrm{cls}}=1.0
+,
+λ
+ℓ
+1 =
+10 −
+4 \lambda_{\ell_{1}}=10^{-4}
+, learning rate
+1 ×
+10 −
+4 1\times 10^{-4}
+, weight decay
+1 ×
+10 −
+5 1\times 10^{-5}
+, batch size
+64 64
+, and training for
+40 40
+ epochs in each stage, the resulting training dynamics are visualized as above. The first three subplots (Top-Left, Top-Right, Bottom-Left) track the progression of the total loss, the reconstruction loss
+ℒ
+MSE
+\mathcal{L}_{\mathrm{MSE}}
+, and the classification loss
+ℒ
+CE
+​
+(
+𝐬
+,
+y
+)
+\mathcal{L}_{\mathrm{CE}}(\mathbf{s},y)
+ on both the training and validation sets. The Bottom-Right subplot shows the evolution of the classification accuracy
+Acc
+\mathrm{Acc}
+ on the training and validation sets.
+
+Figure 9
+:
+Training dynamics of the direct end-to-end training.
+
+Following the same layout, evaluation protocol and training configuration as Figure
+8 ,
+this figure reports the training history and classification performance obtained
+under
+direct end-to-end training
+.
+
+(IV) Visualization of Training Dynamics and Performance Comparison.
+
+Following the stepwise training procedure, our implementation automatically
+generates
+a diagnostic figure
+ to visualize the training dynamics
+and classification performance:
+Figure
+8 shows the optimization and classification accuracy trends during stage I(Left) and stage II(Right), respectively.
+
+For comparison, we additionally report a corresponding figure obtained using
+direct end-to-end training
+:
+Figure
+9 illustrates the total loss, reconstruction loss
+ℒ
+MSE
+\mathcal{L}_{\mathrm{MSE}}
+, classification loss
+ℒ
+CE
+​
+(
+𝐬
+,
+y
+)
+\mathcal{L}_{\mathrm{CE}}(\mathbf{s},y)
+, and classification accuracy
+Acc
+\mathrm{Acc}
+ under direct end-to-end training.
+
+By comparing Figure
+8 and Figure
+9 , it is evident that
+direct end-to-end training
+ leads to severe overfitting: while the training total loss and classification loss rapidly decrease and the training accuracy approaches saturation, the validation classification loss continuously increases and the validation accuracy stagnates at a substantially lower level, indicating poor generalization despite near-perfect fitting on the training set. These comparative visualizations provide direct empirical evidence of overfitting under direct end-to-end training and further highlight the stabilizing effect of the proposed stepwise strategy.

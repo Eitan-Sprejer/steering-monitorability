@@ -1,0 +1,710 @@
+4 Experiments
+
+4.1 Experiment Setup
+
+Datasets.
+
+We construct our evaluation dataset as multiple-choice questions spanning diverse domains and difficulty levels to assess CoT monitorability. Specifically, we include AIME 2024
+1 1
+1 https://huggingface.co/datasets/Maxwell-Jia/AIME_2024
+ and AIME 2025
+2 2
+2 https://huggingface.co/datasets/opencompass/AIME2025
+ for high-difficulty mathematical reasoning, GPQA
+(
+rein2024gpqa
+)
+ for graduate-level science, and the MMLU
+(
+hendrycks2021mmlu
+)
+ moral subset for ethical queries. A detailed dataset construction pipeline is provided in Appendix
+A.2
+.
+
+Models.
+
+We evaluate the CoT monitorability of several open-source LRMs spanning different families and parameter scales. For clarity, we adopt the following shorthand names: DeepSeek-R1-Distill-Qwen-1.5B (DeepSeek-R1-1.5B), Qwen3-4B (Qwen3-4B), DeepSeek-R1-Distill-Qwen-8B (DeepSeek-R1-7B), DeepSeek-R1-Distill-Qwen-14B (DeepSeek-R1-14B), Qwen3-14B (Qwen3-14B), and Qwen3-30B-A3B (Qwen3-30B). For verbalization judging, we compared several LLMs by balancing agreement with other judges against inference cost, and ultimately selected GPT-5-nano for our main experiments (see Appendix
+D.1
+; Figure
+6 ). For monitoring, we conducted an evaluation of candidate LLMs and chose Gemini-2.5-Flash-Lite as the primary monitor, as it offered the best trade-off between detection sensitivity and computational cost (see Appendix
+D.2
+; Figure
+7 ).
+
+4.2 Results
+
+Figure 2:
+Average accuracy vs. total tokens across different LRMs.
+
+Figure 3:
+Final-answer shift across LRMs under misleading cues.
+
+Figure 4:
+Pearson correlation matrix of different metrics. Robust. denotes robustness, and Schem. denotes scheming.
+
+Accuracy Loss and Final-Answer Shift Analysis.
+
+Figure
+2 visualizes the average accuracy and changes in output token length across all tasks and cues. Across all evaluated LRMs, accuracy decreases when misleading cues are injected into the prompts (from the square to the circle markers in the figure). Interestingly, we observe that for smaller models (DeepSeek-R1-1.5B, DeepSeek-R1-7B, Qwen3-4B), the average output length decreases after misleading cues were injected, whereas for larger models (DeepSeek-R1-14B, Qwen3-14B, Qwen3-30B), it consistently increases. Since output length can be viewed as a proxy for the model’s reasoning effort, this suggests that smaller models tend to think less and rely more on the provided cues and adopt shortcut strategies, while larger models are more likely to engage in additional reflection and verification during their inference. As shown in Figure
+3 , within the same model family, larger models retain their initial answers more often when cues are introduced, indicating greater confidence in their original reasoning. However, the proportion of answers changed to the cued option decreases only modestly with scale, from about 27% to 20%, suggesting that shortcut or unauthorized information usage remains a persistent issue even in larger models.
+
+Detailed heatmaps of accuracy loss and answer-change statistics across datasets and cue types are provided in Appendix
+D.3
+ (Figures
+8 –
+13 ). Notably, we highlight the effect of
+Unauthorized Access
+ cues, which encourage models to use restricted information. These cues strongly influence model behavior, particularly in the MMLU moral dataset: the proportion of responses swayed by such cues increases with model capacity, rising from 66.4% in Qwen3-4B to 82.1% in Qwen3-14B. This demonstrates that Unauthorized Access cues can excite models’ misbehavior and steer their decisions more effectively than more straightforward manipulations, such as providing a prefilled wrong answer.
+
+Table 1:
+Robustness and Scheming across cue types and models (all values reported in %). For each model and cue type, the highest Scheming (Schem.) score is shown in bold, and the highest Robustness (Robust.) score is double-underlined.
+
+DeepSeek-R1-1.5B
+
+DeepSeek-R1-7B
+
+DeepSeek-R1-14B
+
+Qwen3-4B
+
+Qwen3-14B
+
+Qwen3-30B
+
+Cue Type
+
+Robust.
+\uparrow
+\uparrow
+
+Schem.
+\downarrow
+\downarrow
+
+Robust.
+\uparrow
+\uparrow
+
+Schem.
+\downarrow
+\downarrow
+
+Robust.
+\uparrow
+\uparrow
+
+Schem.
+\downarrow
+\downarrow
+
+Robust.
+\uparrow
+\uparrow
+
+Schem.
+\downarrow
+\downarrow
+
+Robust.
+\uparrow
+\uparrow
+
+Schem.
+\downarrow
+\downarrow
+
+Robust.
+\uparrow
+\uparrow
+
+Schem.
+\downarrow
+\downarrow
+
+User Suggestion
+
+0.49
+
+22.83
+
+1.30
+
+18.53
+
+2.64
+
+22.87
+
+3.70
+
+27.43
+
+6.18
+
+17.48
+
+4.65
+
+20.96
+
+Tick Mark
+
+0.41
+
+21.89
+
+0.75
+
+28.29
+
+1.48
+
+22.64
+
+2.50
+
+21.44
+
+3.77
+
+13.51
+
+2.95
+
+23.14
+
+Wrong Few-shot
+
+0.39
+
+23.15
+
+0.73
+
+19.66
+
+1.56
+
+20.98
+
+2.92
+
+32.89
+
+4.24
+
+24.21
+
+3.11
+
+17.10
+
+Biasing Few-shot
+
+0.36
+
+27.15
+
+0.69
+
+17.59
+
+1.57
+
+10.42
+
+2.84
+
+12.70
+
+4.10
+
+5.59
+
+3.04
+
+5.31
+
+Prefilled Wrong Answer
+
+1.68
+
+17.42
+
+3.18
+
+17.78
+
+4.68
+
+8.52
+
+4.64
+
+12.19
+
+14.85
+
+6.96
+
+6.55
+
+7.51
+
+Metadata
+
+0.70
+
+20.64
+
+1.05
+
+14.66
+
+4.34
+
+28.84
+
+9.63
+
+28.80
+
+11.56
+
+21.66
+
+11.09
+
+17.15
+
+Validation Function
+
+0.69
+
+14.40
+
+0.75
+
+8.70
+
+1.77
+
+15.34
+
+3.30
+
+7.03
+
+6.12
+
+9.17
+
+3.58
+
+6.30
+
+Unauthorized Access
+
+1.36
+
+33.53
+
+2.60
+
+31.12
+
+4.54
+
+42.61
+
+5.35
+
+45.08
+
+6.73
+
+33.04
+
+11.50
+
+28.96
+
+Average
+
+0.76
+
+22.63
+
+1.43
+
+19.54
+
+2.82
+
+21.53
+
+4.36
+
+23.44
+
+7.19
+
+16.45
+
+5.81
+
+15.80
+
+Table 2:
+EEMR and OSM across cue types and models (all values reported in %). For each model and cue type, the highest values of both metrics are highlighted in bold.
+
+DeepSeek-R1-1.5B
+
+DeepSeek-R1-7B
+
+DeepSeek-R1-14B
+
+Qwen3-4B
+
+Qwen3-14B
+
+Qwen3-30B
+
+Cue Type
+
+EEMR
+\downarrow
+\downarrow
+
+OSM
+\downarrow
+\downarrow
+
+EEMR
+\downarrow
+\downarrow
+
+OSM
+\downarrow
+\downarrow
+
+EEMR
+\downarrow
+\downarrow
+
+OSM
+\downarrow
+\downarrow
+
+EEMR
+\downarrow
+\downarrow
+
+OSM
+\downarrow
+\downarrow
+
+EEMR
+\downarrow
+\downarrow
+
+OSM
+\downarrow
+\downarrow
+
+EEMR
+\downarrow
+\downarrow
+
+OSM
+\downarrow
+\downarrow
+
+User Suggestion
+
+1.15
+
+30.87
+
+2.59
+
+44.82
+
+3.74
+
+57.39
+
+2.31
+
+48.82
+
+2.85
+
+57.81
+
+3.42
+
+59.22
+
+Tick Mark
+
+1.17
+
+32.17
+
+3.42
+
+43.50
+
+3.60
+
+57.39
+
+3.90
+
+53.42
+
+1.95
+
+63.57
+
+3.48
+
+60.59
+
+Wrong Few-shot
+
+1.28
+
+30.43
+
+3.08
+
+45.53
+
+4.07
+
+56.90
+
+5.11
+
+50.99
+
+2.47
+
+51.33
+
+2.86
+
+61.48
+
+Biasing Few-shot
+
+1.17
+
+29.02
+
+3.00
+
+44.66
+
+2.26
+
+59.71
+
+2.30
+
+57.19
+
+1.14
+
+64.95
+
+1.13
+
+64.13
+
+Prefilled Wrong Answer
+
+1.25
+
+31.74
+
+3.64
+
+42.89
+
+2.38
+
+55.60
+
+2.73
+
+55.72
+
+1.89
+
+64.07
+
+2.01
+
+61.94
+
+Metadata
+
+1.16
+
+32.01
+
+2.48
+
+45.66
+
+5.72
+
+49.45
+
+4.31
+
+40.37
+
+2.92
+
+46.68
+
+2.82
+
+53.88
+
+Validation Function
+
+0.91
+
+30.30
+
+1.52
+
+47.51
+
+2.86
+
+61.49
+
+1.47
+
+58.26
+
+1.74
+
+65.21
+
+1.46
+
+64.25
+
+Unauthorized Access
+
+1.11
+
+28.45
+
+2.55
+
+40.81
+
+4.39
+
+42.63
+
+4.34
+
+25.26
+
+3.31
+
+24.00
+
+3.14
+
+44.07
+
+Average
+
+1.21
+
+30.62
+
+2.78
+
+44.42
+
+3.63
+
+55.07
+
+3.26
+
+48.75
+
+2.28
+
+54.70
+
+2.54
+
+58.69
+
+Verbalization and Monitor Reliability Across Different Cue Types.
+
+As shown in Table
+1 , robustness across models is generally low (average
+<
+8 %
+<8\%
+), with the only notable improvement under
+Prefilled Wrong Answer
+ (e.g., 14.85% for Qwen3-14B), suggesting that models more easily reflect on their “own” prior mistakes than resist external or implicit cues like
+User Suggestion
+ or
+Tick Mark
+. In contrast, scheming remains high, especially under
+Unauthorized Access
+, where rates exceed 40% for several models, indicating that when models are exposed to information they are “not allowed” to use, they tend to exploit it covertly, making them especially vulnerable to this type of manipulation.
+
+Turning to monitoring performance, Table
+2 highlights a gap between the
+EEMR
+ and
+OSM
+ metrics.
+EEMR
+ values remain relatively low (e.g., average 2.28% for Qwen3-14B), whereas
+OSM
+ values are much higher (54.70%), showing that the baseline LLM-based CoT monitors raised in
+bakermonitoring
+ can be oversensitive; this oversensitivity likely arises from over-focusing on reasoning details (e.g., whether cues were explicitly mentioned) rather than on the final correctness of reflection, as illustrated in Appendix
+C
+. Notably, higher-capacity models show an even stronger tendency to escape monitoring; for instance, within the DeepSeek-R1 family, larger models exhibit higher average
+EEMR
+ compared to their smaller counterparts. This raises a critical concern: increasing model capability amplifies risks by enabling more effective evasion of monitoring mechanisms.
+
+Correlation Analysis of Model Performance, Verbalization, and Monitor Reliability.
+
+Figure
+4 illustrates the Pearson correlations between different metrics defined in §
+3 . Several key patterns emerge that reveal the intricate relationships between model performance, CoT faithfulness, and monitoring effectiveness. We observe a strong positive correlation between final answer accuracy (Acc.) and
+AKR
+a
+\text{AKR}_{a}
+, indicating that models maintaining their original answers when cues are injected tend to achieve higher accuracy. Correspondingly, higher accuracy is associated with lower scheming behavior, as models that can produce correct answers are less likely to covertly follow injected cues without verbalizing this influence. Interestingly, the correlation matrix shows that higher-performing models with greater accuracy and robustness can even trigger more monitor flags, as reflected by the positive correlation between accuracy and
+OSM
+. This counterintuitive result suggests that the nowadays LLM-based CoT monitor can exhibit systematic over-sensitivity: it tends to focus on local reasoning traces or linguistic patterns while overlooking global features that indicate correct model reasoning. Illustrative examples are provided in Appendix
+C
+. Finally, we find that models with higher
+AKR
+a
+\text{AKR}_{a}
+ exhibit lower
+EEMR
+, suggesting that robust models are less prone to undetected cue-following behavior.

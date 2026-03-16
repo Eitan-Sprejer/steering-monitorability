@@ -1,0 +1,85 @@
+1 Introduction
+
+Deception in large language models has emerged as a central concern in AI safety. Models now possess both the capability and propensity to engage in deceptive behaviours when placed in situations that provide incentives to do so. Empirical studies have demonstrated that such behaviours are increasingly prevalent in the latest generation of frontier models: LLMs have been observed to misrepresent information, obscure intentions, or act strategically under specific contextual pressures
+(Schoen
+ et al.
+,
+2025 ; Chowdhury
+ et al.
+,
+2025 ; Park
+ et al.
+,
+2024 )
+.
+As LLMs are increasingly deployed in a wide variety of domains including high-stakes contexts, there is an urgent need for reliable monitoring mechanisms capable of detecting when a model engages in deceptive output. Traditional black-box approaches, including the use of trained classifiers or frontier models as judges, provide an obvious solution. Chain-of-thought monitoring is widely used to monitor model misbehaviour including deception
+(Korbak
+ et al.
+,
+2025 )
+.
+
+However, recent work indicates that chain-of-thought traces are not always faithful indicators of a model’s internal reasoning process. Models can perform reasoning implicitly while generating innocuous-looking chain-of-thought outputs
+(Arcuschin
+ et al.
+,
+2025 ; Hao
+ et al.
+,
+2024 )
+. In addition to black-box monitoring being expensive, the increasing subtlety of deception in advanced models means that model outputs alone cannot be relied upon for effective monitoring, as models may learn to strategically generate innocuous-sounding text.
+Because of these limitations, there has been interest in exploring white-box methods that inspect model activations.
+
+Early work has included training classifiers on internal activations to distinguish between true and false statements
+(Azaria and Mitchell,
+2023 ; Burns
+ et al.
+,
+2023 ; Zou
+ et al.
+,
+2025 )
+, but these efforts have largely focused on evaluating these techniques on factual inaccuracies rather than strategic deception.
+
+Goldowsky-Dill
+ et al.
+ (2025)
+ addressed some of these limitations with instruction-pair probes to capture a model’s intention to deceive. They trained a linear classifier on model activations from simple facts in the
+Zou
+ et al.
+ (2025)
+ instruction pairs dataset, comparing responses under honesty versus dishonesty instructions. This approach generalized surprisingly well to detecting strategic deception in settings such as concealing insider trading and deliberately underperforming on safety evaluations. However, the probe suffered from aggregation errors and spurious correlations, sometimes firing on completely honest responses.
+Despite their effectiveness, probes learn spurious correlations with their training datasets.
+Levinstein and Herrmann (2024)
+ showed that probes from
+Azaria and Mitchell (2023)
+ even misclassified negations of original statements from training dataset. Further empirical evidence from
+Levy (2024)
+ showed that classifiers based on
+Zou
+ et al.
+ (2025)
+ had high sensitivity but low specificity, and were better characterized as differentiating between fact-based retrieval and other tasks (such as writing science fiction), spanning a much broader surface area than intended.
+
+Our initial experiments revealed that instruction-pair probes using the default prompts from
+(Goldowsky-Dill
+ et al.
+,
+2025 )
+ perform poorly across diverse deception datasets such as MASK. For example, the baseline probe achieved only 0.374 AUC on MASK known facts, indicating substantial room for improvement. Analysis of the evaluation datasets uncovered substantial heterogeneity in the types of deception across different benchmarks. This diversity in deception characteristics presents a fundamental challenge for developing a single universal deception probe. Moreover, for deployment purposes, labs would prefer to distinguish probes that detect genuinely concerning behaviours from those that merely flag benign role-playing scenarios.
+
+1.1 Our contribution
+
+We present three key contributions to deception detection using linear probes:
+
+System prompts dominate probe performance.
+ Through analysis of 2000 probes across varied configurations, we demonstrate that system prompt design explains 70.6% of performance variance, substantially exceeding the impact of training data, layer selection, or token aggregation strategy. This finding justifies our focus on prompt-based approaches to improving deception detection.
+
+Taxonomy-based prompts substantially improve detection.
+ By developing instruction pairs aligned with a human-interpretable taxonomy of deception
+(Druckman and Bjork,
+1991 )
+, we achieve a mean improvement of 0.108 AUC (20.5% relative gain) across ten diverse deception datasets. Notably, every dataset had at least one taxonomy-based probe that outperformed the baseline approach.
+
+Different deception types require different probes.
+ We identify which prompt types work best for which deception scenarios, and demonstrate through qualitative analysis that probes detect distinct semantic properties. This heterogeneity challenges the assumption of a universal deception detector and suggests deployment strategies should use targeted or ensemble approaches.

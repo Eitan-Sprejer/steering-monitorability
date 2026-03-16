@@ -1,0 +1,328 @@
+Introduction
+
+Current safety approaches for reasoning models primarily rely on analyzing the textual reasoning steps that models produce during chain-of-thought reasoning
+(Korbak et al.
+2025 )
+. While this textual monitoring provides valuable insights into model behavior, it has fundamental limitations. Models can hide unsafe reasoning patterns in text while still employing them internally
+(Baker et al.
+2025 )
+, and recent work shows that models can perform reasoning even when their reasoning text is replaced with nonsense
+(Stechly et al.
+2025 ; Pfau, Merrill, and Bowman
+2024 )
+.
+
+These limitations motivate monitoring model activations directly rather than relying solely on potentially deceptive text.
+Representation Engineering (RepE)
+(Zou et al.
+2025 )
+ offers such an approach by extracting steering vectors from the model’s activation space to detect and modify specific behaviors. However, creating effective steering vectors requires examples where the model demonstrably exhibits the target behaviors. For fine-grained safety behaviors within reasoning chains—like recognizing harm or planning harmful compliance—we need to identify precisely when these behaviors occur naturally during reasoning.
+
+Our primary contribution is a novel dataset with behavior-labeled reasoning sequences that enables activation-based safety monitoring. We collect reasoning traces from models responding to harmful prompts and systematically label individual sentences according to the safety behaviors they exhibit using an LLM-as-a-judge approach.
+This dataset addresses a critical gap: while existing safety datasets label reasoning holistically
+(Jiang et al.
+2025 ; Wang et al.
+2025 ; Li et al.
+2025 )
+,
+effective steering vector extraction could be improved by knowing exactly when specific behaviors occur within reasoning traces.
+
+The dataset contains over 50,000 annotated sentences across 20 distinct safety behaviors, organized into six categories ranging from prompt interpretation to harmful compliance (detailed in the behavior taxonomy subsection).
+Each sentence receives behavioral labels based on its textual content that show when specific reasoning patterns emerge textually,
+providing the granular behavioral examples necessary for targeted activation-space interventions.
+
+To demonstrate the dataset’s utility, we extract behavior-specific steering vectors that can both detect target behaviors and steer the model toward exhibiting them. Our approach relies on a key assumption: that internal behavioral representations correspond sufficiently with their textual manifestations to enable effective steering vector extraction from textual examples. This assumes that current models do not textually hide all instances of target behaviors, and that when behaviors are represented textually, the underlying internal representations are consistent with those used when the behavior occurs without textual expression. While models may sometimes exhibit behaviors internally without manifesting them in text—potentially due to competing internal processes
+(Lindsey et al.
+2025 )
+—we hypothesize that these behaviors appear textually often enough to create effective steering vectors that can detect them at the activation level.
+
+Behavior
+
+Qwen3-8B
+
+R1-8b-0528
+
+R1-32b
+
+R1-8B
+
+Total
+
+Internal Cognitive Process
+
+   Express Uncertainty Confusion
+
+173
+
+98
+
+574
+
+1,568
+
+2,413
+
+   Plan Immediate Reasoning Step
+
+2,368
+
+1,183
+
+1,902
+
+4,442
+
+9,895
+
+   Self Correct Info Or Detail
+
+22
+
+10
+
+22
+
+43
+
+97
+
+   State Fact Or Knowledge
+
+2,281
+
+1,042
+
+1,883
+
+4,397
+
+9,603
+
+   Summarize Internal Reasoning
+
+313
+
+51
+
+211
+
+613
+
+1,188
+
+Safety & Risk Assessment
+
+   Flag Prompt As Harmful
+
+293
+
+874
+
+114
+
+282
+
+1,563
+
+   State Ethical Moral Concern
+
+1,089
+
+903
+
+506
+
+1,340
+
+3,838
+
+   State Legal Concern
+
+1,457
+
+915
+
+514
+
+1,395
+
+4,281
+
+   State Safety Concern
+
+1,462
+
+1,215
+
+754
+
+1,856
+
+5,287
+
+Safety-Oriented Response
+
+   Consider Benign Reinterpretation
+
+419
+
+373
+
+185
+
+408
+
+1,385
+
+   Intend Refusal Or Safe Action
+
+2,019
+
+1,744
+
+450
+
+1,091
+
+5,304
+
+   Suggest Safe Constructive Alternative
+
+1,755
+
+1,559
+
+447
+
+1,259
+
+5,020
+
+Prompt & User Interpretation
+
+   Flag User Testing
+
+114
+
+250
+
+13
+
+25
+
+402
+
+   Rephrase Prompt
+
+621
+
+453
+
+94
+
+360
+
+1,528
+
+   Speculate User Motive
+
+1,568
+
+2,226
+
+278
+
+775
+
+4,847
+
+Harmful Compliance
+
+   Detail Harmful Method Or Info
+
+752
+
+371
+
+1,813
+
+4,285
+
+7,221
+
+   Intend Harmful Compliance
+
+37
+
+33
+
+57
+
+41
+
+168
+
+   Note Risk While Detailing Harm
+
+116
+
+40
+
+166
+
+407
+
+729
+
+Miscellaneous
+
+   Neutral Filler Transition
+
+343
+
+377
+
+319
+
+797
+
+1,836
+
+   Other
+
+2
+
+8
+
+2
+
+3
+
+15
+
+Total
+
+17,204
+
+13,725
+
+10,304
+
+25,387
+
+66,620
+
+Total Sentences
+
+13,523
+
+9,286
+
+8,529
+
+21,135
+
+52,473
+
+Table 1:
+Behavior Statistics by Model

@@ -1,0 +1,267 @@
+1 Introduction
+
+Figure 1
+:
+Chain-of-thought from a frontier reasoning model discovered to be reward hacking in the wild.
+ The agent is tasked with fixing a small code repository by alternating between CoT messages, viewing files, and editing files.
+Because full agent solutions (trajectories) can be long, we show
+summarizations of the trajectory
+ (a mix of CoT, tool calls, and code patches) in red, the
+raw CoT directly quoted
+ in green, and
+code patch tool calls
+ in blue. We mask variable names for IP considerations, and we bold certain phrases in CoT excerpts for emphasis.
+The agent notes that the tests only check a certain function, and that it would presumably be “Hard” to implement a genuine solution. The agent then notes it could “fudge” and circumvent the tests by making
+verify
+ always return true.
+This is a real example that was detected by our GPT-4o hack detector during a frontier RL run, and we show more examples in Appendix
+A
+.
+
+Exploiting flaws or misspecifications in learning objectives, known as
+reward hacking
+ in reinforcement learning (RL) settings, remains a critical failure mode in modern AI systems
+[1,2,3]
+ and has led to agents exhibiting misaligned behaviors across many domains such as language modeling
+[4,5,6]
+, control tasks
+[7,8,9,10]
+, and recommendation systems
+[11,12,13,14]
+.
+The true objective function we wish to optimize is often hard to write down precisely, and so the challenge in creating capable and aligned systems largely lies in designing robust proxies that do not deviate in ways that a model may learn to exploit
+[3,15]
+.
+This problem is not unique to machine learning systems but has also plagued human institutions
+[16,17,18,19]
+.
+For example, in 1902 the Hanoi government incentivized rat eradication by paying citizens for each rat tail they turned in; however, this policy backfired when people began farming rats specifically for their tails, which led to an even larger rat population
+[20]
+.
+Given that reward hacking is a problem even for humans, it seems unlikely that the issue will be solved for AI models by simply continuing to push the model intelligence frontier.
+In fact, enhancing an agent’s capabilities may exacerbate the problem by better equipping it to discover and execute more complex and hard-to-monitor exploits
+[21,22]
+.
+We have found this to be anecdotally true: as we have continued to scale RL training, agents have discovered more complex and hard-to-detect hacks.
+Thus far, the only general strategy for mitigating reward hacking is to manually monitor agents for unintended behavior, which is unlikely to scale as their outputs and actions grow more complex—possibly even superhuman—and become more widely used.
+
+The emerging generation of large language models (LLMs)
+[23]
+ that are trained with reinforcement learning to reason in chain-of-thought (CoT)
+[24,25,26]
+ offers a promising new avenue for monitoring.
+Where LLMs are normally trained to give an answer directly after a prompt, CoT reasoning models first produce their reasoning and then give their answer. In particular, these reasoning models are trained by an RL procedure that searches for chains-of-thought that maximize the probability of the model giving a high reward answer.
+Because LLMs are pretrained on human text, the CoTs that are most instrumentally useful to generating a correct answer are likely to also be articulated in human language and relevant to the task at hand. If indeed naturally understandable reasoning traces are the most instrumentally useful, they will be reinforced through the RL training process. As a result, it is plausible that CoTs will reveal critical insights into the agent’s decision-making in language naturally understandable by both humans and LLMs, and we empirically find this to often be the case.
+For example, consider a scenario where an agent is tasked with implementing a feature change in order to make unit tests pass in a code repository, and it has two actions available to it—
+hack
+: make unit tests pass trivially, or
+genuine fix
+: implement the feature with a correct and general solution. If it first articulates in its CoT, “This seems hard, let me try to skip some of the unit tests,” then it is likely that
+hack
+ is a more natural continuation and more probable under the LLM prior than
+genuine fix
+, i.e.
+p
+L
+⁢
+L
+⁢
+M
+⁢
+(
+
+hack
+|
+C
+⁢
+o
+⁢
+T
+)
+>
+p
+L
+⁢
+L
+⁢
+M
+⁢
+(
+
+genuine fix
+|
+C
+⁢
+o
+⁢
+T
+)
+subscript
+𝑝
+𝐿
+𝐿
+𝑀
+conditional
+
+hack
+𝐶
+𝑜
+𝑇
+subscript
+𝑝
+𝐿
+𝐿
+𝑀
+conditional
+
+genuine fix
+𝐶
+𝑜
+𝑇
+p_{LLM}(\text{\definecolor{tcbcolback}{rgb}{0.95,0.95,0.95}\definecolor{%
+tcbcolframe}{rgb}{0.95,0.95,0.95}\definecolor{tcbcolupper}{rgb}{0.8,0,0}%
+\definecolor{tcbcollower}{rgb}{0.8,0,0}\definecolor{tcbcol@origin}{rgb}{0,0,0}%
+\definecolor{.}{rgb}{0.8,0,0}\definecolor{.}{rgb}{0,0,0} \leavevmode\hbox to22%
+pt{\vbox to10.33pt{\pgfpicture\makeatletter\hbox{\hskip 0.0pt\lower 0.0pt\hbox
+to%
+0.0pt{\pgfsys@beginscope\pgfsys@invoke{ }\definecolor[named]{pgfstrokecolor}{%
+rgb}{0,0,0}\pgfsys@color@rgb@stroke{0}{0}{0}\pgfsys@invoke{ }%
+\pgfsys@color@rgb@fill{0}{0}{0}\pgfsys@invoke{ }\pgfsys@setlinewidth{0.4pt}%
+\pgfsys@invoke{ }\nullfont\hbox to0.0pt{{}{}{}{}\pgfsys@beginscope%
+\pgfsys@invoke{ }{}{}{}{}{}{}{}{}\definecolor[named]{pgffillcolor}{rgb}{%
+0.95,0.95,0.95}\pgfsys@color@gray@fill{0.95}\pgfsys@invoke{ }%
+\pgfsys@fill@opacity{1.0}\pgfsys@invoke{ }{{}{}{{}}}{{}{}{{}}}{}{}{{}{}{{}}}{{%
+}{}{{}}}{}{}{{}{}{{}}}{{}{}{{}}}{}{}{{}{}{{}}}{{}{}{{}}}{}{}\pgfsys@moveto{0.0%
+pt}{3.0pt}\pgfsys@lineto{0.0pt}{7.32552pt}\pgfsys@curveto{0.0pt}{8.98239pt}{1.%
+34312pt}{10.32552pt}{3.0pt}{10.32552pt}\pgfsys@lineto{19.00005pt}{10.32552pt}%
+\pgfsys@curveto{20.65692pt}{10.32552pt}{22.00005pt}{8.98239pt}{22.00005pt}{7.3%
+2552pt}\pgfsys@lineto{22.00005pt}{3.0pt}\pgfsys@curveto{22.00005pt}{1.34312pt}%
+{20.65692pt}{0.0pt}{19.00005pt}{0.0pt}\pgfsys@lineto{3.0pt}{0.0pt}%
+\pgfsys@curveto{1.34312pt}{0.0pt}{0.0pt}{1.34312pt}{0.0pt}{3.0pt}%
+\pgfsys@closepath\pgfsys@fill\pgfsys@invoke{ }\pgfsys@invoke{\lxSVG@closescope%
+ }\pgfsys@endscope\pgfsys@beginscope\pgfsys@invoke{ }{}{}{}{}{}{}{}{}%
+\definecolor[named]{pgffillcolor}{rgb}{0.95,0.95,0.95}\pgfsys@color@gray@fill{%
+0.95}\pgfsys@invoke{ }\pgfsys@fill@opacity{1.0}\pgfsys@invoke{ }{{}{}{{}}}{{}{%
+}{{}}}{}{}{{}{}{{}}}{{}{}{{}}}{}{}{{}{}{{}}}{{}{}{{}}}{}{}{{}{}{{}}}{{}{}{{}}}%
+{}{}\pgfsys@moveto{0.0pt}{3.0pt}\pgfsys@lineto{0.0pt}{7.32552pt}%
+\pgfsys@curveto{0.0pt}{8.98239pt}{1.34312pt}{10.32552pt}{3.0pt}{10.32552pt}%
+\pgfsys@lineto{19.00005pt}{10.32552pt}\pgfsys@curveto{20.65692pt}{10.32552pt}{%
+22.00005pt}{8.98239pt}{22.00005pt}{7.32552pt}\pgfsys@lineto{22.00005pt}{3.0pt}%
+\pgfsys@curveto{22.00005pt}{1.34312pt}{20.65692pt}{0.0pt}{19.00005pt}{0.0pt}%
+\pgfsys@lineto{3.0pt}{0.0pt}\pgfsys@curveto{1.34312pt}{0.0pt}{0.0pt}{1.34312pt%
+}{0.0pt}{3.0pt}\pgfsys@closepath\pgfsys@fill\pgfsys@invoke{ }\pgfsys@invoke{%
+\lxSVG@closescope }\pgfsys@endscope\pgfsys@beginscope\pgfsys@invoke{ }%
+\pgfsys@fill@opacity{1.0}\pgfsys@invoke{ }{{{}}{{}}{{}}{{}}{{}}{{}}{{}}%
+\pgfsys@beginscope\pgfsys@invoke{ }\pgfsys@transformcm{1.0}{0.0}{0.0}{1.0}{1.0%
+pt}{1.69054pt}\pgfsys@invoke{ }\hbox{{\color[rgb]{0.8,0,0}\definecolor[named]{%
+pgfstrokecolor}{rgb}{0.8,0,0}\hbox{\set@color{\ignorespaces hack}}}}%
+\pgfsys@invoke{\lxSVG@closescope }\pgfsys@endscope}\pgfsys@invoke{%
+\lxSVG@closescope }\pgfsys@endscope{}{}{}\hss}\pgfsys@discardpath%
+\pgfsys@invoke{\lxSVG@closescope }\pgfsys@endscope\hss}}\lxSVG@closescope%
+\endpgfpicture}}}|CoT)>p_{LLM}(\text{\definecolor{tcbcolback}{rgb}{%
+0.95,0.95,0.95}\definecolor{tcbcolframe}{rgb}{0.95,0.95,0.95}\definecolor{%
+tcbcolupper}{rgb}{0.8,0,0}\definecolor{tcbcollower}{rgb}{0.8,0,0}\definecolor{%
+tcbcol@origin}{rgb}{0,0,0}\definecolor{.}{rgb}{0.8,0,0}\definecolor{.}{rgb}{%
+0,0,0} \leavevmode\hbox to49.5pt{\vbox to12.27pt{\pgfpicture\makeatletter\hbox%
+{\hskip 0.0pt\lower 0.0pt\hbox to0.0pt{\pgfsys@beginscope\pgfsys@invoke{ }%
+\definecolor[named]{pgfstrokecolor}{rgb}{0,0,0}\pgfsys@color@rgb@stroke{0}{0}{%
+0}\pgfsys@invoke{ }\pgfsys@color@rgb@fill{0}{0}{0}\pgfsys@invoke{ }%
+\pgfsys@setlinewidth{0.4pt}\pgfsys@invoke{ }\nullfont\hbox to0.0pt{{}{}{}{}%
+\pgfsys@beginscope\pgfsys@invoke{ }{}{}{}{}{}{}{}{}\definecolor[named]{%
+pgffillcolor}{rgb}{0.95,0.95,0.95}\pgfsys@color@gray@fill{0.95}\pgfsys@invoke{%
+ }\pgfsys@fill@opacity{1.0}\pgfsys@invoke{ }{{}{}{{}}}{{}{}{{}}}{}{}{{}{}{{}}}%
+{{}{}{{}}}{}{}{{}{}{{}}}{{}{}{{}}}{}{}{{}{}{{}}}{{}{}{{}}}{}{}\pgfsys@moveto{0%
+.0pt}{3.0pt}\pgfsys@lineto{0.0pt}{9.26996pt}\pgfsys@curveto{0.0pt}{10.92683pt}%
+{1.34312pt}{12.26996pt}{3.0pt}{12.26996pt}\pgfsys@lineto{46.5001pt}{12.26996pt%
+}\pgfsys@curveto{48.15698pt}{12.26996pt}{49.5001pt}{10.92683pt}{49.5001pt}{9.2%
+6996pt}\pgfsys@lineto{49.5001pt}{3.0pt}\pgfsys@curveto{49.5001pt}{1.34312pt}{4%
+8.15698pt}{0.0pt}{46.5001pt}{0.0pt}\pgfsys@lineto{3.0pt}{0.0pt}\pgfsys@curveto%
+{1.34312pt}{0.0pt}{0.0pt}{1.34312pt}{0.0pt}{3.0pt}\pgfsys@closepath%
+\pgfsys@fill\pgfsys@invoke{ }\pgfsys@invoke{\lxSVG@closescope }%
+\pgfsys@endscope\pgfsys@beginscope\pgfsys@invoke{ }{}{}{}{}{}{}{}{}%
+\definecolor[named]{pgffillcolor}{rgb}{0.95,0.95,0.95}\pgfsys@color@gray@fill{%
+0.95}\pgfsys@invoke{ }\pgfsys@fill@opacity{1.0}\pgfsys@invoke{ }{{}{}{{}}}{{}{%
+}{{}}}{}{}{{}{}{{}}}{{}{}{{}}}{}{}{{}{}{{}}}{{}{}{{}}}{}{}{{}{}{{}}}{{}{}{{}}}%
+{}{}\pgfsys@moveto{0.0pt}{3.0pt}\pgfsys@lineto{0.0pt}{9.26996pt}%
+\pgfsys@curveto{0.0pt}{10.92683pt}{1.34312pt}{12.26996pt}{3.0pt}{12.26996pt}%
+\pgfsys@lineto{46.5001pt}{12.26996pt}\pgfsys@curveto{48.15698pt}{12.26996pt}{4%
+9.5001pt}{10.92683pt}{49.5001pt}{9.26996pt}\pgfsys@lineto{49.5001pt}{3.0pt}%
+\pgfsys@curveto{49.5001pt}{1.34312pt}{48.15698pt}{0.0pt}{46.5001pt}{0.0pt}%
+\pgfsys@lineto{3.0pt}{0.0pt}\pgfsys@curveto{1.34312pt}{0.0pt}{0.0pt}{1.34312pt%
+}{0.0pt}{3.0pt}\pgfsys@closepath\pgfsys@fill\pgfsys@invoke{ }\pgfsys@invoke{%
+\lxSVG@closescope }\pgfsys@endscope\pgfsys@beginscope\pgfsys@invoke{ }%
+\pgfsys@fill@opacity{1.0}\pgfsys@invoke{ }{{{}}{{}}{{}}{{}}{{}}{{}}{{}}%
+\pgfsys@beginscope\pgfsys@invoke{ }\pgfsys@transformcm{1.0}{0.0}{0.0}{1.0}{1.0%
+pt}{3.635pt}\pgfsys@invoke{ }\hbox{{\color[rgb]{0.8,0,0}\definecolor[named]{%
+pgfstrokecolor}{rgb}{0.8,0,0}\hbox{\set@color{\ignorespaces genuine fix}}}}%
+\pgfsys@invoke{\lxSVG@closescope }\pgfsys@endscope}\pgfsys@invoke{%
+\lxSVG@closescope }\pgfsys@endscope{}{}{}\hss}\pgfsys@discardpath%
+\pgfsys@invoke{\lxSVG@closescope }\pgfsys@endscope\hss}}\lxSVG@closescope%
+\endpgfpicture}}}|CoT)
+italic_p start_POSTSUBSCRIPT italic_L italic_L italic_M end_POSTSUBSCRIPT ( typewriter_hack | italic_C italic_o italic_T ) > italic_p start_POSTSUBSCRIPT italic_L italic_L italic_M end_POSTSUBSCRIPT ( typewriter_genuine typewriter_fix | italic_C italic_o italic_T )
+.
+
+Indeed, when examining a frontier reasoning model’s chain-of-thought, we have found it is common to find coherent reasoning that explicitly outlines intent and strategies to subvert the task at hand (see Figure
+1 ). While questions remain regarding whether chains-of-thought are fully faithful
+[27,28]
+, i.e. that they fully capture and do not omit significant portions of the model’s underlying reasoning, it seems clear that they are not devoid of signal relevant for monitoring.
+
+During a recent frontier reasoning model training run, we tested just how useful this signal in agent CoTs can be. We found that a simple prompted LLM (we used GPT-4o
+[29]
+) is very effective at monitoring for reward hacking behavior within agentic coding environments, and we also discovered that our CoT monitor performs much better than a monitor with access to only the agent’s actions and outputs (See Section
+2 ). We underscore that at the time of this experiment, the agent being monitored was OpenAI’s most advanced model, performing better at hard reasoning tasks than even its predecessors, OpenAI o1
+[24]
+ and o3-mini
+[30]
+. We conducted our monitoring in real time as the frontier agent trained, which allowed us to surface hacks and bugs in the environment that could be patched during training.
+
+We further find that a relatively weak reasoning and programming model can monitor a model far more capable than itself: namely that GPT-4o can effectively monitor a frontier reasoning model. We even find that GPT-4o-mini, an even weaker programmer, is able to detect a nontrivial amount of reward hacking. While only an initial experiment, we believe this result provides promising evidence that CoT monitoring may provide a new avenue for scalable oversight
+[2,31]
+, where trusted weaker models and humans help to oversee superior, even superhuman, models.
+
+Because chain-of-thought monitors can perform so well at detecting undesired actions, it is natural to ask whether they can be used directly as a reward signal during training. Will preventing “bad thoughts” also reduce the amount of downstream bad behavior? While this theory seems plausible, such an objective could cause agents to learn to hide their intent within the CoT while continuing to exhibit misaligned behavior, a phenomenon we will call
+obfuscated reward hacking
+. We investigate the effect of incorporating a CoT monitor into the reward function as a non-frontier reasoning model trains in a series of agentic coding environments, in which agents must update a repository to satisfy a suite of unit tests.
+We further compare using monitors during training as a reward signal to using them at deployment via rejection sampling, and we find mixed results.
+At relatively low levels of RL optimization, incorporating the CoT monitor into the reward signal yields a strict improvement, producing a more capable agent while not increasing the amount of reward hacking relative to the baseline. However, further into training the agent begins to exhibit obfuscated reward hacking and learns to fool the monitor. Upon inspection, it is clear that the agent learns to obfuscate its intent within the CoT by emitting seemingly benign chains-of-thought while continuing on to perform reward hacks that it did not explicitly reason about.
+
+While we primarily study the effect of using the CoT monitor as an explicit reward signal, patching our environment based on trajectories flagged by the CoT monitor could still exert a very slight evolutionary pressure on the CoT. By only patching the bugs we can find with CoT monitoring, it is unclear if we are inadvertently pushing the model towards reward hacks our monitor cannot find instead of the aligned behavior distribution we would like it to learn. Although we have not yet found empirical evidence of this effect, understanding how much optimization pressure can be applied before it leads to obfuscated chains-of-thought is a critical area for future research.
+
+The natural monitorability of chain-of-thought models is quite remarkable, and we believe it has the potential to drive significant advances in model safety. However, there are many incentives to apply direct optimization pressure to the CoT thereby diminishing the signal relevant for monitoring, such as:
+
+•
+
+Showing CoTs to users.
+ Apart from improving reasoning performance, chains-of-thought can be informative and give insight into how the model arrived at its answer. However, to present the reasoning to users, CoTs need to comply with usage policies
+[26]
+. For example, if a user asks the model to help them produce a dangerous chemical, a reasoning model may reveal information about the material it shouldn’t before deciding to refuse the request. However, if the CoT is directly trained to comply in this way, harmful intentions of the agent may become obfuscated.
+
+•
+
+Alignment.
+ As we explore in this paper, training against chain-of-thought monitors may produce more capable and seemingly more aligned models; however, the precipice between genuine improvement and promoting obfuscation may be hard to identify in practice.
+
+•
+
+Cost.
+ Tokens are expensive, and shortening the CoT length or utilizing alternative architectures that use more flops per token may make model inference cheaper and lower latency. However, the shorter the CoT, the less tokens there are to provide signal for monitoring
+[32]
+. We have not yet discovered this to be an issue, but we are actively tracking it.
+
+For some of these incentives, alternative remedies may exist that do not require pressuring agent CoTs: for example, instead of directly showing users the chains-of-thought, they could be shown summaries produced by an auxiliary model, allowing the agent’s CoT to remain unrestricted. However, capability improvements and cost reductions may not be substituted so easily, and therefore frontier model developers may be required to pay some cost, i.e. a
+monitorability tax
+
+[33]
+, such as deploying slightly less performant models or suffering more expensive inference, in order to maintain the monitorability of our agents. We hope that our work illuminates the risks of using chain-of-thought pressures and why such a tax may be worth paying. In summary our contributions are:
+
+1.
+
+We show that frontier reasoning models often perform complex reward hacks in real-world coding environments.
+
+2.
+
+We provide evidence that chain-of-thought monitoring can be effective in detecting the misaligned behavior of frontier reasoning models, and we show it can be far more accurate than action-only monitoring.
+
+3.
+
+We show that chain-of-thought monitorability is very fragile. Applying direct optimization pressure to the CoT can quickly lead to obfuscated reward hacking—where agents hide their intent while continuing to misbehave.

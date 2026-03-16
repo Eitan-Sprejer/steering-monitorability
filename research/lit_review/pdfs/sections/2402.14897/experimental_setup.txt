@@ -1,0 +1,381 @@
+3 Experimental Setup
+
+In this section, we describe the metrics, models, tasks, and implementation details we followed to reproduce the scaling experiments.
+1 1
+1 We release our code at:
+https://github.com/utahnlp/cot_disguised_accuracy
+ We indicate where our methods align with
+Lanham et al.
+, and we motivate our alternative approaches where appropriate.
+
+Lanham et al.
+ Unfaithfulness
+
+To study the relationship between model size and faithfulness,
+Lanham et al. (2023)
+ use a metric of unfaithfulness that measures how often a model
+ℳ
+ℳ
+\mathcal{M}
+caligraphic_M
+ produces the same prediction with- and without-CoT on a given task’s dataset
+𝒟
+𝒟
+\mathcal{D}
+caligraphic_D
+.
+2 2
+2 Note that
+Lanham et al. (2023)
+ introduce two additional measures of faithfulness based on early answering and adding mistakes before studying how faithfulness scales with model sizes. However, for the scaling study, they say that the measurement in (
+1 ) is “highly predictive of overall early answering and adding mistakes results. […] We [
+Lanham et al.
+] thus use this metric in lieu of running the full set of early answering and adding mistakes experiments for computational reasons.”
+ Equation (
+1 ) below shows this calculation, where
+NoCoT
+ denotes the answer provided by the model without CoT prompting, and
+CoT
+ denotes the answer provided by the model with CoT prompting.
+
+Unfaithfulness
+Lanham
+⁢
+(
+ℳ
+,
+𝒟
+)
+=
+1 |
+𝒟
+|
+⁢
+∑
+x
+∈
+𝒟
+𝟙 ⁢
+[
+NoCoT
+⁢
+(
+ℳ
+,
+x
+)
+=
+CoT
+⁢
+(
+ℳ
+,
+x
+)
+]
+subscript
+Unfaithfulness
+Lanham
+ℳ
+𝒟
+1 𝒟
+subscript
+𝑥
+𝒟
+1 delimited-[]
+NoCoT
+ℳ
+𝑥
+CoT
+ℳ
+𝑥
+\textsc{Unfaithfulness}_{\text{Lanham}}(\mathcal{M},\mathcal{D})=\frac{1}{|%
+\mathcal{D}|}\sum_{x\in\mathcal{D}}\mathbbm{1}\left[\textsc{NoCoT}(\mathcal{M}%
+,x)=\textsc{CoT}(\mathcal{M},x)\right]
+Unfaithfulness start_POSTSUBSCRIPT Lanham end_POSTSUBSCRIPT ( caligraphic_M , caligraphic_D ) = divide start_ARG 1 end_ARG start_ARG | caligraphic_D | end_ARG ∑ start_POSTSUBSCRIPT italic_x ∈ caligraphic_D end_POSTSUBSCRIPT blackboard_1 [ NoCoT ( caligraphic_M , italic_x ) = CoT ( caligraphic_M , italic_x ) ]
+
+(1)
+
+Lanham et al. (2023)
+ argue that if a model’s answers change with the CoT, it indicates the model’s dependence on CoT to produce a given answer, which is necessary for faithfulness.
+They also support the inverse interpretation, that when a model produces the same answer with- and without-CoT, it demonstrates that the model never needed CoT to produce the answer in the first place.
+This, they argue, is evidence that the CoT reasoning is post-hoc, i.e., that the model was going to produce the same answer irrespective of CoT.
+Their use of the metric crucially hinges on interpreting post-hoc CoT reasoning to imply lower faithfulness, establishing CoT reliance as a proxy for unfaithfulness.
+
+Normalized
+Lanham et al.
+ Unfaithfulness
+
+Prior work has shown that models are biased towards producing certain outputs, even when the input has no content, e.g., “Input: N/A Sentiment:” leads to a higher rate of producing “positive” than “negative”
+(Zhao et al.,
+2021 )
+. Given this context, as well as the fact that TruthfulQA’s validation dataset always has “A” as the correct answer, we introduce a normalized version of the unfaithfulness metric which accounts for a model’s tendency to select certain letter choices regardless of the content.
+
+We first compute the normalization term as:
+
+N
+⁢
+(
+ℳ
+,
+𝒟
+)
+=
+1 |
+𝒟
+|
+⁢
+∑
+x
+∈
+𝒟
+𝟙 [
+NoCoT
+⁢
+(
+ℳ
+,
+x
+)
+=
+NoCoT
+⁢
+(
+ℳ
+,
+x
+~
+)
+]
+N
+ℳ
+𝒟
+1 𝒟
+subscript
+𝑥
+𝒟
+subscript
+1 delimited-[]
+NoCoT
+ℳ
+𝑥
+NoCoT
+ℳ
+~
+𝑥
+\textsc{N}(\mathcal{M},\mathcal{D})=\frac{1}{|\mathcal{D}|}\sum_{x\in\mathcal{%
+D}}\mathbbm{1}_{\left[\textsc{NoCoT}(\mathcal{M},x)=\textsc{NoCoT}(\mathcal{M}%
+,\tilde{x})\right]}
+N ( caligraphic_M , caligraphic_D ) = divide start_ARG 1 end_ARG start_ARG | caligraphic_D | end_ARG ∑ start_POSTSUBSCRIPT italic_x ∈ caligraphic_D end_POSTSUBSCRIPT blackboard_1 start_POSTSUBSCRIPT [ NoCoT ( caligraphic_M , italic_x ) = NoCoT ( caligraphic_M , over~ start_ARG italic_x end_ARG ) ] end_POSTSUBSCRIPT
+
+(2)
+
+where
+x
+~
+~
+𝑥
+\tilde{x}
+over~ start_ARG italic_x end_ARG
+ is a version of
+x
+𝑥
+x
+italic_x
+ where the answer choices have been randomly shuffled. In other words, Equation (
+2 ) measures how often the model selects the same letter choice when prompted twice in the No-CoT setting with different answer choice orderings.
+
+Then the normalized metric becomes:
+
+Unfaithfulness
+Normalized
+⁢
+(
+ℳ
+,
+𝒟
+)
+=
+Unfaithfulness
+Lanham
+⁢
+(
+ℳ
+,
+𝒟
+)
+N
+⁢
+(
+ℳ
+,
+𝒟
+)
+subscript
+Unfaithfulness
+Normalized
+ℳ
+𝒟
+subscript
+Unfaithfulness
+Lanham
+ℳ
+𝒟
+N
+ℳ
+𝒟
+\textsc{Unfaithfulness}_{\text{Normalized}}(\mathcal{M},\mathcal{D})=\frac{%
+\textsc{Unfaithfulness}_{\text{Lanham}}(\mathcal{M},\mathcal{D})}{\textsc{N}(%
+\mathcal{M},\mathcal{D})}
+Unfaithfulness start_POSTSUBSCRIPT Normalized end_POSTSUBSCRIPT ( caligraphic_M , caligraphic_D ) = divide start_ARG Unfaithfulness start_POSTSUBSCRIPT Lanham end_POSTSUBSCRIPT ( caligraphic_M , caligraphic_D ) end_ARG start_ARG N ( caligraphic_M , caligraphic_D ) end_ARG
+
+(3)
+
+This measures the frequency of answer changes with CoT, compared to changes expected from merely shuffling the answer order.
+3 3
+3 We also experimented with shuffling the ordering of answer choices between the No-CoT and CoT settings. These results are found in Appendix
+A.2
+.
+
+Models
+
+Our goal is to determine whether the scaling laws of chain-of-thought faithfulness that
+Lanham et al. (2023)
+ observe in a specific proprietary model family, hold for LLMs in general. The model families we evaluate are described below.
+
+•
+
+Llama 2
+
+(Touvron et al.,
+2023 )
+ is a decoder-only family of LLMs available with 7B, 13B and 70B parameters, making this a relevant comparison for evaluating whether inverse scaling begins at 13B parameters. In line with the original paper, we use the chat variant of the model that has been finetuned to provide helpful dialogue responses using reinforcement learning from human feedback
+(RLHF; Christiano et al.,
+2017 ; Ziegler et al.,
+2019 ; Stiennon et al.,
+2020 )
+.
+
+•
+
+FLAN-T5 + UL2
+
+(Chung et al.,
+2022 ; Tay et al.,
+2023 )
+ is an encoder-decoder family of LLMs available with 77M, 248M, 783M, 2.85B, 11.3B, and 20B parameters. Unlike Anthropic’s models or the Llama 2 family of models, it has not undergone human preference alignment, however it has been instruction finetuned for over 1800 natural language tasks.
+
+•
+
+Pythia DPO
+
+(O’Mahony et al.,
+2024 )
+ extends Pythia pretrained decoder-only LLMs
+(Biderman et al.,
+2023 )
+, by finetuning on Anthropic’s human preference dataset
+(Bai et al.,
+2022 )
+ using direct preference optimization
+(DPO; Rafailov et al.,
+2023 )
+. These models cover 70M, 160M, 410M, 1B, 1.4B and 2.8B parameters.
+4 4
+4 Links to Pythia DPO Huggingface models:
+70M
+,
+160M
+,
+410M
+,
+1B
+,
+1.4B
+,
+2.8B
+.
+
+FLAN-T5 and Pythia DPO do not cover both sides of the 13B parameter point-of-interest where we would expect to find the V-shape.
+However, they do provide context about the relationship between model scaling and CoT reliance for models smaller than 13B parameters.
+We do not include other common benchmark models like Mistral
+(Jiang et al.,
+2023 )
+ or MPT
+(Team,
+2023b
+;
+a
+)
+ because they do not have the range of model sizes needed to extrapolate patterns related to model scaling.
+
+Ideally, we would include the Anthropic models used in
+Lanham et al. (2023)
+, taken from
+Ganguli et al. (2023)
+.
+We cannot use these models, even through the Anthropic API, because we are restricted to a single model size, specifically, the size of Anthropic’s Claude model available at the moment.
+We need access to all model sizes in
+Ganguli et al. (2023)
+ to be able to fully recreate the measurements necessary for drawing conclusions about model scaling.
+We also cannot guarantee that Anthropic’s current Claude model is any of the models in
+Lanham et al. (2023)
+ since Anthropic may have updated the publicly available model since the paper was released.
+Finally, even with access to all model sizes through an API, the decoding strategy described in the original paper requires manual intervention in the decoding process to append special prompts for extracting answers.
+As a result, we assume the original findings by
+Lanham et al. (2023)
+ are valid, and instead look to evaluate other model families under the same conditions, where possible, to validate whether their findings generalize to other LLMs.
+5 5
+5 We use “model family” to mean a set of LLMs that range in parameter count, but share similar pretraining procedures.
+
+Multiple Choice Benchmarks
+
+The multiple choice task is a question answering task where each example is presented as a multiple choice question (MCQ), consisting of a question and a set of candidate answers, of which only one is correct. Following the original paper, we evaluate our models on the following MCQ datasets: AQuA-RAT
+(Ling et al.,
+2017 )
+, ARC-Challenge and ARC-Easy
+(Clark et al.,
+2018 )
+, HellaSwag
+(Zellers et al.,
+2019 )
+, LogiQA
+(Liu et al.,
+2023 )
+, MMLU
+(Hendrycks et al.,
+2021 )
+, OpenBookQA
+(Mihaylov et al.,
+2018 )
+, and TruthfulQA
+(Lin et al.,
+2022 )
+.
+
+In our experiments, we use the same prompting methods described in
+Lanham et al. (2023)
+.
+Namely, we decode using nucleus sampling with
+p
+=
+0.95 𝑝
+0.95 p=0.95
+italic_p = 0.95
+ and temperature 0.8.
+For Llama 2 and Pythia DPO, both decoder-only models, we prompt in the same way as the original paper, taking turns and extracting the answer with a special appended prompt, “So the right answer is (”, that allows us to constrain our prediction to just the logits corresponding to the MCQ choices’ letter tokens.
+For FLAN-T5, an encoder-decoder model not intended for dialogue, we follow the same procedure but without the turn-based approach, directly prompting the model.
+
+Figure 2:
+Lanham et al. (2023)
+’s unfaithfulness, our normalized unfaithfulness, and CoT prompting accuracy across different model sizes for Pythia DPO and Llama 2 model families; see §
+3 for details. Each point is a model, corresponding to a model family (symbol) and size, evaluated on a given benchmark (color).
+
+Addition Task
+
+In order to more carefully measure the effect of task complexity on their faithfulness metric,
+Lanham et al. (2023)
+ propose an addition task where the difficulty is controlled by varying the number of operands involved in the computation.
+We implement this task as 2-digit and 3-digit addition problems with 2, 4, 8, or 16 operands and prompt the model to provide its answer in “<answer></answer>” XML tags.
+For each digit operands pair we generate a set of 2000 addition problems by sampling uniformly the operands from the appropriate range of integers (i.e. 10-99 for 2-digit and 100-999 for 3-digit).
+Using the same models as previously, we run inference with- and without-CoT for each addition task and calculate the same answer percentage.

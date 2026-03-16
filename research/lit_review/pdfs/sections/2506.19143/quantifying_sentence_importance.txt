@@ -1,0 +1,183 @@
+2 Quantifying sentence importance
+
+Some sentences matter more than others, but which ones matter most depends on how we define and measure importance. We frame sentence-level importance as a question of counterfactual influence: how does including or excluding a sentence affect subsequent steps and the model’s final output?
+
+2.1 Model and dataset
+
+Our analyses of sentence importance are based on the DeepSeek R1-Distill Qwen-14B model (48 layers)
+(DeepSeek,
+2025 )
+. We used a temperature of
+0.6 0.6
+ and a top-p value of
+0.95 0.95
+. We focus on the MATH dataset
+(Hendrycks et al.,
+2021 )
+. Our analysis hinges on variability in final responses, so we target 20 challenging but doable questions that are correctly solved 25-75% of the time, identified by testing on 1,000 problems 10 times each.
+For each selected problem, we generated one correct and one incorrect reasoning trace, producing 40 responses. The average response is 144.2 sentences (95% CI: [116.7, 171.8]) and 4208 tokens (95% CI: [3479, 4937]). We focus only on sentences before the model has converged on an answer (i.e., after which it gives the same response in >98% of resamples). In
+Appendix
+˜
+B
+, we provide results from applying our techniques to the R1-Distill-Llama-8B model.
+
+2.2 Forced answer importance
+
+Earlier work has measured sentence importance by forcing a model to answer before completing its reasoning trace
+(Lanham et al.,
+2023a
+)
+. We compared our approach to this existing technique: For each sentence in a CoT, we interrupt the model and append text, inducing a final output (
+‘‘Therefore, the final answer is \boxed{
+”). This is done 100 times at each sentence position.
+
+2.3 Importance via resampling
+
+A limitation of the forced-answer approach is that a sentence
+S
+S
+ may be necessary for some final answer but is consistently produced by the LLM late in the reasoning trace (e.g., a reliable arithmetic statement). This means that forced answer accuracy will be low for all sentences before
+S
+S
+, precluding earlier step importance from being assessed.
+
+Our approach evaluates importance by examining how a sentence may guide downstream sentences. Consider a rollout consisting of sentences
+S
+1 ,
+S
+2 ,
+…
+,
+S
+i
+,
+…
+,
+S
+M
+S_{1},S_{2},\dots,S_{i},\dots,S_{M}
+ and a final answer
+A
+A
+. We can use resampling to capture the extent sentence
+S
+S
+ influences
+A
+A
+. Specifically, for a given sentence
+S
+i
+S_{i}
+, we generate a distribution over final answers by generating 100 rollouts both without sentence
+S
+i
+S_{i}
+ (the base condition, with rollouts of the form
+S
+1 ,
+S
+2 ,
+…
+,
+S
+i
+−
+1 ,
+T
+i
+,
+…
+,
+T
+N
+,
+A
+S
+i
+′
+S_{1},S_{2},\dots,S_{i-1},T_{i},\dots,T_{N},A^{\prime}_{S_{i}}
+), and another distribution with sentence
+S
+i
+S_{i}
+ (the intervention condition, with rollouts of the form
+S
+1 ,
+S
+2 ,
+…
+,
+S
+i
+−
+1 ,
+S
+i
+,
+…
+,
+S
+M
+,
+A
+S
+i
+S_{1},S_{2},\dots,S_{i-1},S_{i},\dots,S_{M},A_{S_{i}}
+). To assess the utility of resampling, we first conducted a brief case study.
+
+2.4 Case study
+
+We first investigate the efficacy of our sentence importance technique by applying it to one problem:
+“When the base-16 number
+66666 16
+66666_{16}
+ is written in base 2, how many base-2 digits (bits) does it have?”
+ (MATH Problem 4682; see
+Section
+˜
+C.1
+ for the CoT transcript). The resampling data shows that from sentences 6-12, expected accuracy steadily declines, but sentence 13 causes accuracy to drastically increase (indicated by the navy and red circles in Figure
+2 A).
+
+Figure 2:
+Accuracy over 100 rollouts at each (
+left
+) token, (
+middle
+) sentence, or (
+right
+) paragraph. Navy and red circles border the most importance sentence (Sentence 13) and are plotted in each graph as a reference. For the token graph, resampling was only done on the first 1,000 tokens of the CoT.
+
+The large accuracy fluctuation motivates inspection of this part of the CoT. The model initially considers that
+66666 16
+66666_{16}
+ contains five base-16 digits, and any base-16 digit can be represented with four base-2 digits. Thus, the model considers the answer: 20 bits. However, this overlooks that
+6 16
+6_{16}
+ is
+110 2
+110_{2}
+ rather than
+0110 2
+0110_{2}
+ due to the leading zero. Interestingly, Sentence 12 mentions
+“checking if there’s any leading zero that might affect the bit count,”
+ yet Sentence 12 lowers the expected accuracy. The uplift comes from Sentence 13, where the model decides to
+“calculate the value of
+66666 16
+66666_{16}
+ in decimal”
+ (see resample alternatives in
+Section
+˜
+C.2
+). Downstream reasoning computes the decimal value of
+66666 16
+66666_{16}
+ and converts it to binary to arrive at the correct answer: 19 bits. The pivotal role of Sentence 13 is instead missed if one examines forced-accuracy importance (Figure
+2 A). This case study provides initial evidence that our resampling-based strategy identifies key moments in a CoT, where impactful plans are set or modified.
+
+Further analyses show the efficacy of specifically examining sentences. The sentence-level resampling data mirrors the patterns seen resampling tokens but at a fraction of the cost (Figure
+2 B). Resampling paragraphs leads to meaningfully less resolution (Figure
+2 C). Although future work may benefit from defining reasoning steps at adaptive scales, the current results suggest that considering sentences provides high resolution while being cheaper than tokens.

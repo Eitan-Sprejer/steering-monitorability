@@ -1,0 +1,162 @@
+1 Introduction
+
+Anecdotal evidence suggests that language models fine-tuned with reinforcement learning exhibit “Aha!” moments—episodes of apparent insight reminiscent of human problem-solving. For example,
+deepseekai2025deepseekr1incentivizingreasoningcapability
+ highlight mid-trace cues such as
+“Wait… let’s re-evaluate step-by-step,”
+ which sometimes accompany correct answers. Yet, the nature, frequency, and impact of these events (Fig.
+1 ) remain unclear
+(
+yang2025understandingahamomentsexternal
+)
+.
+
+†
+†
+
+ Code
+,
+  Data
+
+The existence of “Aha!” moments is linked to whether reasoning models can
+intrinsically
+ self-correct, i.e., revise their reasoning mid-response without external feedback. Model improvements often arise from
+extrinsic
+ mechanisms like verifiers, reward queries, prompting techniques, or external tools
+(
+lightman2024letsverifystepstep
+;
+li2024selfpromptinglargelanguagemodels
+;
+zhang-etal-2024-small
+)
+.
+In contrast, intrinsic self-improvement must be inferred from reasoning traces and is arguably more safety-relevant, as it implies that a model can reorganize its reasoning from internal state alone
+(
+tsui2025selfcorrectionbenchrevealingaddressing
+;
+liu2025there
+)
+.
+
+Figure 1:
+Anatomy of an “Aha!” Moment.
+
+We illustrate an “Aha!” moment as described in
+deepseekai2025deepseekr1incentivizingreasoningcapability
+: within a single chain-of-thought, a cue such as “Wait… let’s re-evaluate” marks a shift from an initially failing strategy (
+k
+∈
+{
+1 ,
+2 }
+k\in\{1,2\}
+) to one that yields a correct answer (when
+k
+=
+3 k=3
+).
+The figure also anticipates our methodology: we study “Aha!” moments by systematically GRPO-tuning and annotating the reasoning traces of Qwen2.5 and Llama models.
+
+Studying the effect of reasoning shifts is challenging. First, these events may occur (and affect performance)
+during
+ training, yet evaluations are typically conducted only post-training
+(
+zeng2024mrbenmetareasoningbenchmarkevaluating
+;
+xia2025reasoneval
+)
+. Second, reasoning models rarely release mid-training checkpoints, limiting longitudinal analyses across the training lifecycle. Third, even when shifts are observed, attributing correctness to a mid-trace change (rather than to general competence or memorization) requires systematically controlled comparisons.
+
+This gap motivates the need for a systematic investigation of whether reasoning shifts reflect genuine insight.
+
+Present work.
+
+Here, we investigate whether mid-trace reasoning shifts (e.g., “Wait… let’s re-evaluate”) signal intrinsic self-correction in reasoning models. Our study is guided by three questions:
+
+RQ1
+: Do reasoning shifts raise model accuracy?
+
+RQ2
+: How does the effect of reasoning shifts vary with training stage and decoding temperature?
+
+RQ3
+: Are reasoning shifts more effective when reasoning models are uncertain?
+
+To answer these, we (i) formalize “Aha!” moments as measurable mid-trace shifts in reasoning that improve performance on problems that were previously unsolved by the model
+(
+yang2025understandingahamomentsexternal
+;
+zhou2025safekey
+;
+hu2025beyond
+)
+ (Fig.
+2 ; §
+3 ); (ii) curate a diverse evaluation suite (§
+4 ) spanning cryptic crosswords
+(
+efrat-etal-2021-cryptonite
+)
+, mathematical problem-solving (
+MATH-500
+)
+(
+lightman2024letsverifystepstep
+)
+, and Rush Hour puzzles
+(
+fogleman2018rushhour
+)
+; and (iii) GRPO-tune and annotate the reasoning traces of Qwen2.5 and Llama models (§
+5 ).
+
+Our analysis spans
+1 1
+M+ annotated reasoning traces across hundreds of checkpoint evaluations (10–20 per model/run), 3 domains, 4 temperatures, 2 model sizes, and 2 model architectures, providing a longitudinal view of how mid-trace reasoning evolves during RL fine-tuning. With this setup, we connect shift behavior to both correctness and token-level uncertainty signals
+(
+ton2025infotheory
+)
+.
+
+Our results show that reasoning shifts are rare (overall
+∼
+\sim
+6.31% of traces) and generally do not improve model accuracy (
+RQ1
+). We further find that their impact on accuracy does not reliably flip sign across training stages, but varies substantially with decoding temperature (
+RQ2
+). Finally, we find that spontaneously occurring shifts do not become reliably helpful under high uncertainty; however,
+externally triggered
+ reconsideration under high entropy improves accuracy across benchmarks, including a
++8.41pp
+ improvement on
+MATH-500
+ (and smaller gains on crosswords and Rush Hour) (
+RQ3
+). Our results are robust across datasets, prompts, and model families.
+
+Contributions.
+
+We make three key contributions:
+
+1.
+
+Definition & framework.
+ We formalize “Aha!” moments as measurable mid-trace shifts and introduce an experimental framework for studying intrinsic self-correction during RL fine-tuning.
+
+2.
+
+Empirical characterization at scale.
+ Across
+1 1
+M+ traces spanning domains, temperatures, training stages, and model families, we show that reasoning shifts are rare and typically coincide with
+lower
+ accuracy, challenging the view that they reflect genuine insight.
+
+3.
+
+Intervention.
+ We develop an entropy-gated intervention that
+induces
+ reconsideration when models are uncertain, yielding measurable accuracy gains.

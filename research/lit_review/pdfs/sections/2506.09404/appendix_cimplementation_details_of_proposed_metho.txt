@@ -1,0 +1,547 @@
+Appendix C
+Implementation Details of Proposed Method
+
+This section provides detailed information on the implementation of the proposed Evolution Augmentation Mechanism (EAM), including algorithmic structure and hyperparameters configurations.
+
+C.1
+Pseudo Code
+
+We provide the pseudo code for the proposed Evolution Augmentation Mechanism (EAM), as shown in Algorithm
+1 . The procedure includes policy initialization, environment sampling, optional application of the genetic algorithm based on pre-defined conditions, and subsequent policy updates using REINFORCE. The red-highlighted areas represent the core part of EAM and are the major differences from the standard RL paradigm, demonstrating how our method extends the current DRL-NCO framework’s mainstream training paradigm as a plug-and-play module.
+
+Algorithm 1
+
+ Evolution Augmentation Mechanism
+
+Base nerual solver
+p
+θ
+subscript
+𝑝
+𝜃
+p_{\theta}
+italic_p start_POSTSUBSCRIPT italic_θ end_POSTSUBSCRIPT
+, EA Probs
+ϵ
+italic-ϵ
+\epsilon
+italic_ϵ
+, EA Epochs
+κ
+𝜅
+\kappa
+italic_κ
+, num evolution generations
+K
+𝐾
+K
+italic_K
+, selection rate
+ρ
+𝜌
+\rho
+italic_ρ
+, crossover rate
+α
+𝛼
+\alpha
+italic_α
+, mutation rate
+β
+𝛽
+\beta
+italic_β
+.
+
+procedure
+
+Train
+(
+p
+θ
+,
+ϵ
+,
+κ
+,
+K
+,
+ρ
+,
+α
+,
+β
+subscript
+𝑝
+𝜃
+italic-ϵ
+𝜅
+𝐾
+𝜌
+𝛼
+𝛽
+p_{\theta},\epsilon,\kappa,K,\rho,\alpha,\beta
+italic_p start_POSTSUBSCRIPT italic_θ end_POSTSUBSCRIPT , italic_ϵ , italic_κ , italic_K , italic_ρ , italic_α , italic_β
+)
+
+     Initialize
+p
+θ
+subscript
+𝑝
+𝜃
+p_{\theta}
+italic_p start_POSTSUBSCRIPT italic_θ end_POSTSUBSCRIPT
+
+
+e
+⁢
+p
+⁢
+o
+⁢
+c
+⁢
+h
+←
+0 ←
+𝑒
+𝑝
+𝑜
+𝑐
+ℎ
+0 epoch\leftarrow 0
+italic_e italic_p italic_o italic_c italic_h ← 0
+
+
+while
+ not converged
+do
+
+         Randomly initialize environment
+E
+𝐸
+E
+italic_E
+
+
+P
+0 ←
+p
+θ
+⁢
+(
+E
+)
+←
+subscript
+P
+0 subscript
+𝑝
+𝜃
+𝐸
+\mathrm{P}_{0}\leftarrow p_{\theta}(E)
+roman_P start_POSTSUBSCRIPT 0 end_POSTSUBSCRIPT ← italic_p start_POSTSUBSCRIPT italic_θ end_POSTSUBSCRIPT ( italic_E )
+
+
+if
+
+use genetic algorithm
+
+then
+
+▷
+▷
+\triangleright
+▷
+ Conditioned on
+ϵ
+,
+κ
+italic-ϵ
+𝜅
+\epsilon,\kappa
+italic_ϵ , italic_κ
+
+
+P
+K
+←
+←
+subscript
+P
+𝐾
+absent
+\mathrm{P}_{K}\leftarrow
+roman_P start_POSTSUBSCRIPT italic_K end_POSTSUBSCRIPT ←
+
+GeneticAlgorithm
+(
+P
+0 ,
+K
+,
+ρ
+,
+α
+,
+β
+subscript
+P
+0 𝐾
+𝜌
+𝛼
+𝛽
+\mathrm{P}_{0},K,\rho,\alpha,\beta
+roman_P start_POSTSUBSCRIPT 0 end_POSTSUBSCRIPT , italic_K , italic_ρ , italic_α , italic_β
+)
+
+
+ApplyREINFORCE
+(
+P
+K
+,
+p
+θ
+subscript
+P
+𝐾
+subscript
+𝑝
+𝜃
+\mathrm{P}_{K},p_{\theta}
+roman_P start_POSTSUBSCRIPT italic_K end_POSTSUBSCRIPT , italic_p start_POSTSUBSCRIPT italic_θ end_POSTSUBSCRIPT
+)
+
+
+end
+
+if
+
+
+ApplyREINFORCE
+(
+P
+0 ,
+p
+θ
+subscript
+P
+0 subscript
+𝑝
+𝜃
+\mathrm{P}_{0},p_{\theta}
+roman_P start_POSTSUBSCRIPT 0 end_POSTSUBSCRIPT , italic_p start_POSTSUBSCRIPT italic_θ end_POSTSUBSCRIPT
+)
+
+
+e
+⁢
+p
+⁢
+o
+⁢
+c
+⁢
+h
+←
+e
+⁢
+p
+⁢
+o
+⁢
+c
+⁢
+h
++
+1 ←
+𝑒
+𝑝
+𝑜
+𝑐
+ℎ
+𝑒
+𝑝
+𝑜
+𝑐
+ℎ
+1 epoch\leftarrow epoch+1
+italic_e italic_p italic_o italic_c italic_h ← italic_e italic_p italic_o italic_c italic_h + 1
+
+
+end
+
+while
+
+
+return
+
+p
+θ
+subscript
+𝑝
+𝜃
+p_{\theta}
+italic_p start_POSTSUBSCRIPT italic_θ end_POSTSUBSCRIPT
+
+end
+
+procedure
+
+procedure
+
+Test
+(
+p
+θ
+subscript
+𝑝
+𝜃
+p_{\theta}
+italic_p start_POSTSUBSCRIPT italic_θ end_POSTSUBSCRIPT
+)
+
+     Randomly initialize environment
+E
+𝐸
+E
+italic_E
+
+
+P
+0 ←
+p
+θ
+⁢
+(
+E
+)
+←
+subscript
+P
+0 subscript
+𝑝
+𝜃
+𝐸
+\mathrm{P}_{0}\leftarrow p_{\theta}(E)
+roman_P start_POSTSUBSCRIPT 0 end_POSTSUBSCRIPT ← italic_p start_POSTSUBSCRIPT italic_θ end_POSTSUBSCRIPT ( italic_E )
+
+
+return
+ Cost(
+P
+0 subscript
+P
+0 \mathrm{P}_{0}
+roman_P start_POSTSUBSCRIPT 0 end_POSTSUBSCRIPT
+)
+
+end
+
+procedure
+
+C.2
+Task-aware evolutionary hyperparameter selection
+
+Table 6
+:
+Task-aware evolutionary hyperparameters for each COP.
+
+N
+𝑁
+N
+italic_N
+ is the number of evolution generations,
+ρ
+𝜌
+\rho
+italic_ρ
+ is the selection rate,
+α
+𝛼
+\alpha
+italic_α
+ is the crossover rate,
+β
+𝛽
+\beta
+italic_β
+ is the mutation rate,
+“EA Epochs” indicates the number of training epochs using evolution augmentation, and “EA Probs” is the probability of applying evolution at each step. Settings are shared unless noted as A / B for 50-node / 100-node instances.
+
+Parameter
+
+TSP50/100
+
+CVRP50/100
+
+PCTSP100
+
+OP100
+
+K
+𝐾
+K
+italic_K
+ (evolution generations)
+
+5
+
+3
+
+5
+
+2
+
+ρ
+𝜌
+\rho
+italic_ρ
+ (selection rate)
+
+0.2
+
+0.2
+
+0.2
+
+0.4
+
+α
+𝛼
+\alpha
+italic_α
+ (crossover rate)
+
+0.6
+
+0.6
+
+0.6
+
+0.0
+
+β
+𝛽
+\beta
+italic_β
+ (mutation rate)
+
+0.05
+
+0.10
+
+0.05
+
+0.5
+
+EA Epochs
+
+500 / 700
+
+200 / 300
+
+20
+
+50
+
+EA Probs
+
+0.01
+
+As shown in Table
+6 , we adopt task-aware evolutionary hyperparameters tailored to each COP. For the OP task, we choose a mutation-dominant configuration
+(
+α
+=
+0.0 ,
+β
+=
+0.5 )
+formulae-sequence
+𝛼
+0.0 𝛽
+0.5 (\alpha=0.0,\beta=0.5)
+( italic_α = 0.0 , italic_β = 0.5 )
+, based on both implementation details and theoretical considerations. Specifically, we conduct an ablation study comparing this setting with a crossover-dominant alternative
+(
+α
+=
+0.6 ,
+β
+=
+0.05 )
+formulae-sequence
+𝛼
+0.6 𝛽
+0.05 (\alpha=0.6,\beta=0.05)
+( italic_α = 0.6 , italic_β = 0.05 )
+, and observe that the mutation-dominant configuration leads to faster convergence and more stable training dynamics.
+
+From an implementation perspective, the mutation operator in OP replaces only a single node per operation and must ensure that the resulting tour remains feasible under strict length constraints. This design aligns with the OP objective: since the total reward depends primarily on which nodes are selected rather than their ordering, mutation is more effective at introducing high-reward nodes with minimal disruption to tour structure. In contrast, crossover typically only reorders already-visited nodes, offering less opportunity for reward improvement. Compared to crossover, our mutation strategy provides a more efficient mechanism for guiding policy learning.
+
+Futhermore, these implementation-level characteristics are suggestive of differences in KL divergence between successive policies. As shown in Theorem
+1 , the divergence depends on the ratio
+log
+⁡
+max
+⁡
+p
+⁢
+(
+r
+∣
+f
+)
+min
+⁡
+p
+⁢
+(
+r
+∣
+f
+)
+𝑝
+conditional
+𝑟
+𝑓
+𝑝
+conditional
+𝑟
+𝑓
+\log\frac{\max p(r\mid f)}{\min p(r\mid f)}
+roman_log divide start_ARG roman_max italic_p ( italic_r ∣ italic_f ) end_ARG start_ARG roman_min italic_p ( italic_r ∣ italic_f ) end_ARG
+, where
+f
+𝑓
+f
+italic_f
+ is the retained fragment and
+r
+𝑟
+r
+italic_r
+ the replaced part of a solution. Mutation operators in OP only modify a single node, and the replacement must satisfy the strict tour-length constraint. This limits the feasible support of
+p
+⁢
+(
+r
+∣
+f
+)
+𝑝
+conditional
+𝑟
+𝑓
+p(r\mid f)
+italic_p ( italic_r ∣ italic_f )
+, reducing the variability of the conditional distribution and tightening the KL bound. In contrast, OX crossover replaces longer subpaths, increasing the number of feasible completions and hence the
+max
+/
+min
+\max/\min
+roman_max / roman_min
+ ratio. Thus, crossover tends to introduce higher structural divergence between generations. Based on these two considerations—the implementation-level alignment with task structure and the theoretically tighter KL bound—we favor the mutation-dominant configuration over crossover-dominant alternatives.

@@ -1,0 +1,91 @@
+Appendix L
+Effects of ablating receiver heads
+
+To test the causal hypothesis that the receiver heads identified in
+Section
+˜
+4 are functionally important for reasoning, we performed an experiment ablating receiver heads and evaluating how this impact’s model accuracy. This intervention is designed to measure the direct impact of removing these heads on task performance and to evaluate the possibility that they may be more important than typical heads.
+
+L.1
+Methodology
+
+We continue to use problems from the MATH dataset. We selected 32 problems where the non-ablated model achieves 10-90% accuracy on average. For each problem, we ran R1-Distil-Qwen-14B sixteen times, while allowing the model to output up to
+2 16
+2^{16}
+ (16,384) tokens. Responses that did not produce an answer by that point were marked as incorrect.
+
+We compared the effect of ablating 128 attention heads (approx. 7% of all heads), 256 heads (approx. 13%), or 512 heads (approx. 27%). The ablation strategies were:
+
+1.
+
+Receiver head ablation:
+ We ablated the top-N heads with the highest average kurtosis scores.
+
+2.
+
+Random non-receiver (control) ablation:
+ For each layer where
+k
+k
+ receiver heads were ablated, we ablated
+k
+k
+ heads chosen randomly from the set of heads not selected from that same layer. This ensures a matched comparison with no overlap.
+
+Note that receiver heads are more common in late layers (see above, Figure
+19 ). By ensuring that both conditions included an equal number of heads from each layer (rather than selecting 128, 256, or 512 heads randomly across all layers), this ensures that differences cannot be explained simply by differences in the layers selected.
+
+In the 512-head ablation condition, a majority of attention heads in some late layers were marked as receiver heads. For these layers, the non-receiver control condition was modified to ablate the corresponding number of heads with the lowest kurtosis scores to ensure a valid comparison set. For instance, if 60% of layer 43 heads are in the top-512, then the control condition included the 60% with the lowest kurtosis score, meaning that there is 20% overlap for that layer.
+
+L.2
+Results and Discussion
+
+Our experiments show that a large number of heads must be ablated to induce a significant drop in performance compared to the baseline level of accuracy (baseline = 64.1%, 95% CI: [56.0%, 72.1%]). Regardless of whether receiver heads or non-receiver heads are targeted, ablating 128 heads produces differences in accuracy that insignificantly differ from baseline accuracy, and ablating 256 heads still produces only a small drop in accuracy (Table
+2 ).
+1 1
+1 We are not aware of prior studies on attention head ablation for models generating long chain-of-thought reasoning, making it difficult to establish what is a typical number of heads to ablate. Potentially, a large number is necessary because the long reasoning traces (sometimes exceeding 10,000 tokens) provide extensive opportunities for error correction and compensatory computation.
+
+Table 2:
+Answer accuracy on MATH problems for different self-attention-head ablation conditions. The brackets show the 95% confidence interval for each accuracy estimate.
+
+Heads Ablated
+
+Receiver heads
+
+Random heads
+
+256
+
+48.8% [39.3%, 58.3%]
+
+52.7% [43.0%, 62.5%]
+
+512
+
+27.7% [17.2%, 38.2%]
+
+37.3% [27.5%, 47.1%]
+
+The importance of receiver heads emerges when a large number of heads are ablated. When ablating 512 heads (over a quarter of the model’s 1920 heads), targeting receiver heads caused performance to fall to 28% accuracy. Removing the same number of control heads resulted in a less severe drop to 37% accuracy. There is a significant difference between these percentages (
+t
+​
+[31]
+=
+2.55 ,
+p
+=
+.02
+t[31]=2.55,p=.02
+), suggesting receiver heads are more critical for reasoning than other heads.
+
+As mentioned, this analysis treats responses as incorrect if they do not produce a final answer by 16,384 tokens. If the analysis is changed to instead simply omit those responses entirely from the analysis, there remains a significant difference in accuracy when ablating top-512 receiver heads (29% accuracy) versus random non-receiver heads (39% accuracy) (
+t
+[31]
+=
+2.66 ,
+p
+=
+.02
+)
+t[31]=2.66,p=.02)
+. Hence, regardless of whether non-completed responses are marked as incorrect or ignored, ablating receiver heads is found to exert a larger impact on model accuracy than ablating random non-receiver heads.

@@ -1,0 +1,464 @@
+5 Interpretability via Sparse Autoencoding
+
+In this section, we studies the internal representation structure of the four behavioral cases using a post-hoc sparse autoencoding approach (Sec.
+5.1 ).
+By decomposing the bottleneck representations into sparse latent components, we analyze how different behaviors are reflected in the model’s internal activations (Sec.
+5.2 ).
+
+5.1 Sparse Autoencoder on Bottleneck Representations
+
+We apply a sparse autoencoder (SAE)
+(Huben
+ et al.
+,
+2024 ; Bricken
+ et al.
+,
+2023 )
+ as a interpretability tool on the bottleneck representation
+z
+z
+ learned in Sec.
+4.1 . The SAE is trained
+after
+ the classifier
+f
+clf
+f_{\mathrm{clf}}
+ has converged, ensuring that the representations remain unchanged.
+
+Given a bottleneck representation
+𝐳
+\mathbf{z}
+, the SAE maps it to a sparse latent code
+𝐳
+s
+\mathbf{z}_{\mathrm{s}}
+ and reconstructs
+𝐳
+\mathbf{z}
+ from this code. The sparse latent representation
+𝐳
+s
+\mathbf{z}_{\mathrm{s}}
+ serves as the basis for subsequent analysis. The SAE is trained using the objective
+
+ℒ
+SAE
+=
+‖
+𝐳
+^
+−
+𝐳
+‖
+2 2
++
+β
+​
+‖
+𝐳
+s
+‖
+1 \mathcal{L}_{\mathrm{SAE}}=\|\hat{\mathbf{z}}-\mathbf{z}\|_{2}^{2}+\beta\|\mathbf{z}_{\mathrm{s}}\|_{1}
+
+(6)
+
+which balances reconstruction fidelity and sparsity, encouraging each representation to be explained by a small number of active latent dimensions.
+
+We analyze SAE features by comparing their activation frequencies across the four behavioral datasets.
+For each feature
+u
+u
+, let
+ϕ
+​
+(
+u
+,
+c
+)
+\phi(u,c)
+ denote its activation frequency on dataset
+𝒟
+c
+\mathcal{D}_{c}
+.
+Given a behavior subset
+𝒮
+⊂
+{
+KC
+,
+KA
+,
+KI
+,
+hal
+}
+\mathcal{S}\subset\{\mathrm{KC},\mathrm{KA},\mathrm{KI},\mathrm{hal}\}
+, we associate
+u
+u
+ with
+𝒮
+\mathcal{S}
+ if
+
+min
+c
+∈
+𝒮
+⁡
+ϕ
+​
+(
+u
+,
+c
+)
+>
+a
+⋅
+max
+c
+∉
+𝒮
+⁡
+ϕ
+​
+(
+u
+,
+c
+)
+,
+\min_{c\in\mathcal{S}}\phi(u,c)\;>\;a\cdot\max_{c\notin\mathcal{S}}\phi(u,c),
+
+(7)
+
+where
+a
+>
+1 a>1
+ is a relative dominance threshold.
+
+Intuitively, this criterion assigns a latent feature
+u
+u
+ to a behavior subset when it is activated substantially more often for those behaviors than for the remaining ones, capturing relative dominance rather than strict exclusivity.
+Figure
+6 visualizes the resulting set structure.
+The leftmost column reports, for each entity type, the number of latent features assigned to each behavior subset
+𝒮
+\mathcal{S}
+.
+Formally, we denote by
+𝒰
+𝒮
+\mathcal{U}_{\mathcal{S}}
+ the set of features assigned to
+𝒮
+\mathcal{S}
+ and report its size
+|
+𝒰
+𝒮
+|
+|\mathcal{U}_{\mathcal{S}}|
+ (e.g., the top-left cell corresponds to features uniquely assigned to
+𝒮
+=
+{
+KC
+}
+\mathcal{S}=\{\mathrm{KC}\}
+).
+The right-hand subplots visualize the activation frequency patterns
+ϕ
+​
+(
+u
+,
+c
+)
+\phi(u,c)
+ of the selected features across the four behaviors, stratified by entity type and by subset
+𝒮
+\mathcal{S}
+.
+Features that are uniformly active or inactive across all behaviors are excluded.
+Based on this set-based organization, we analyze feature co-activation by jointly examining the sizes
+|
+𝒰
+𝒮
+|
+|\mathcal{U}_{\mathcal{S}}|
+ and the corresponding activation frequency patterns, which together reveal stable, behavior-specific structure in the learned representations.
+
+5.2 Interpreting Behavioral Analysis
+
+A particularly salient pattern is the clear boundary between
+hallucination
+ and
+non-hallucination
+.
+Importantly, this boundary is not unidirectional: it is reflected both by features concentrated in
+𝒮
+=
+{
+hal
+}
+\mathcal{S}=\{\mathrm{hal}\}
+ and by a complementary set of features concentrated in
+𝒮
+=
+{
+KC
+,
+KA
+,
+KI
+}
+\mathcal{S}=\{\mathrm{KC},\mathrm{KA},\mathrm{KI}\}
+.
+This structured split closely aligns with the separability results in Section
+4 , suggesting that
+knowledge existence
+
+K
+K
+ induces a global, state-level partition in the learned representations.
+
+Going beyond this global separation induced by
+knowledge existence
+, a closer inspection reveals two additional feature groupings that are both stable across entity types and symmetric in structure.
+Specifically, for the two groupings
+𝒮
+1 =
+{
+KA
+,
+hal
+}
+\mathcal{S}_{1}=\{\mathrm{KA},\mathrm{hal}\}
+ and
+𝒮
+2 =
+{
+KC
+,
+KI
+}
+\mathcal{S}_{2}=\{\mathrm{KC},\mathrm{KI}\}
+, we observe comparably large and stable feature sets across all four entity types, with an average size of
+|
+𝒰
+𝒮
+1 |
+≈
+500 |\mathcal{U}_{\mathcal{S}_{1}}|\approx 500
+ and
+|
+𝒰
+𝒮
+2 |
+≈
+100 |\mathcal{U}_{\mathcal{S}_{2}}|\approx 100
+, and activation frequencies satisfying
+max
+c
+∈
+𝒮
+⁡
+ϕ
+​
+(
+u
+,
+c
+)
+>
+0.45 \max_{c\in\mathcal{S}}\phi(u,c)>0.45
+ for a substantial fraction of features.
+
+To interpret these groupings, we examine how the associated behaviors differ in terms of
+knowledge existence
+.
+For
+𝒮
+1 =
+{
+KA
+,
+hal
+}
+\mathcal{S}_{1}=\{\mathrm{KA},\mathrm{hal}\}
+, the grouped behaviors span both
+K
+=
+1 K=1
+ (KA) and
+K
+=
+0 K=0
+ (hal), whereas for
+𝒮
+2 =
+{
+KC
+,
+KI
+}
+\mathcal{S}_{2}=\{\mathrm{KC},\mathrm{KI}\}
+, both behaviors satisfy
+K
+=
+1 K=1
+.
+This contrast indicates that
+knowledge existence
+
+K
+K
+ alone is insufficient to account for the observed feature sharing.
+Based on this observation, we suggest that the co-activated features in
+𝒮
+1 \mathcal{S}_{1}
+ may reflect an additional
+behavioral
+ factor beyond knowledge existence, potentially associated with reduced factual grounding or non-committal response patterns
+(Band
+ et al.
+,
+2024 ; Jiang
+ et al.
+,
+2025b
+)
+ that are shared by
+avoid
+ and
+hallucination
+ behaviors.
+In contrast, the shared features in
+𝒮
+2 \mathcal{S}_{2}
+ suggest that incorrect responses undergo selective suppression of knowledge-related signals in earlier layers
+(Arditi
+ et al.
+,
+2024 ; Lindsey
+ et al.
+,
+2025 )
+, after which both correct and incorrect behaviors converge onto a common downstream pathway for completing generation at the probed layer.
+
+Beyond the two dominant, entity-invariant groupings, we observe a set of secondary feature combinations whose prominence depends on the entity type, including
+𝒮
+3 =
+{
+KA
+,
+KI
+,
+hal
+}
+\mathcal{S}_{3}=\{\mathrm{KA},\mathrm{KI},\mathrm{hal}\}
+,
+𝒮
+4 =
+{
+KI
+,
+hal
+}
+\mathcal{S}_{4}=\{\mathrm{KI},\mathrm{hal}\}
+, and
+𝒮
+5 =
+{
+KA
+,
+KC
+}
+\mathcal{S}_{5}=\{\mathrm{KA},\mathrm{KC}\}
+.
+These groupings are selectively amplified for certain entities, indicating that representation structure is further modulated by entity-specific factors.
+Among these,
+𝒮
+4 =
+{
+KI
+,
+hal
+}
+\mathcal{S}_{4}=\{\mathrm{KI},\mathrm{hal}\}
+ provides the strong signal, containing more than
+|
+𝒰
+𝒮
+4 |
+≈
+400 |\mathcal{U}_{\mathcal{S}_{4}}|\approx 400
+ highly activated features (
+max
+c
+∈
+𝒮
+4 ⁡
+ϕ
+​
+(
+u
+,
+c
+)
+>
+0.7 \max_{c\in\mathcal{S}_{4}}\phi(u,c)>0.7
+) for
+Player
+, and to a lesser extent for
+Song
+.
+Since
+𝒮
+4 \mathcal{S}_{4}
+ combines behaviors with different knowledge states
+K
+K
+, this pattern cannot be explained by knowledge existance alone.
+We conjecture that it relates to entity-dependent processing at the probed layer, under which incorrect answering and hallucination activate overlapping representational components, further suggesting the presence of entity-specific behavioral regulation.
+
+Takeaway.
+
+Overall, the SAE analysis reinforces that knowledge boundary functions as a dominant global state, inducing a stable and coarse partition of the representation space.
+In contrast,
+behavioral expression
+ is regulated through sparse, entity-dependent feature reuse that occurs across layers, leaving structured but subtler traces beyond the knowledge existence boundary.
+
+Figure 7
+:
+Behavioral flip rates under activation steering across four entity types.
+
+For each sample, we sweep the steering angle
+θ
+\theta
+ from
+10 ∘
+10^{\circ}
+ to
+350 ∘
+350^{\circ}
+ with a step size of
+10 ∘
+10^{\circ}
+, and count a flip as successful if any angle induces the target transition (e.g., KC
+→
+\rightarrow
+KI).
+Outer bars correspond to
+Angular Activation Editing
+, while inner bars show a
+baseline steering
+ method.

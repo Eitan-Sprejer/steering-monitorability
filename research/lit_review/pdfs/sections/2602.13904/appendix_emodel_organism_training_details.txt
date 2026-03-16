@@ -1,0 +1,962 @@
+Appendix E
+Model organism training details
+
+E.1
+Encoded Model organism
+
+To train models that generate syntactically encoded reasoning, we first construct a steganographic training dataset by deterministically transforming the ground-truth chains of thought (CoTs) for each example using fixed, dataset-specific codebooks (See Tables
+7 ,
+8 , and
+9 ). These codebooks re-encode numerals and task-relevant vocabulary into alternate lexical forms, preserving the underlying logical and algorithmic structure while obscuring surface-level mathematical notation.
+
+We then fine-tune the
+Olmo-3-7B-Think
+ model on 5,000 encoded examples using parameter-efficient Low-Rank Adaptation (LoRA). Training uses 4-bit weight quantization together with gradient checkpointing for memory efficiency, and optimization is performed for a single epoch using AdamW with learning rate
+5 ×
+10 −
+5 5\times 10^{-5}
+. We fine-tune with LoRA (rank
+r
+=
+8 r=8
+,
+α
+=
+32 \alpha=32
+) applied to all attention and feed-forward projection matrices (
+q_proj
+,
+k_proj
+,
+v_proj
+,
+o_proj
+,
+gate_proj
+,
+up_proj
+,
+down_proj
+). The training loss is computed over both the encoded chain-of-thought enclosed within
+<think>
+ tags and the final answer, encouraging the model to reproduce the steganographically encoded reasoning while preserving correct task performance. Metrics were evaluated at 4 checkpoints plus the initial step 0 baseline.
+
+Table 7
+:
+Complete codebook for the Binary Alternation dataset.
+
+Category
+
+Mapping (surface
+→
+\rightarrow
+ code)
+
+Digits
+
+0 →
+ko
+,
+1 →
+pa
+,
+2 →
+ri
+,
+3 →
+mu
+,
+4 →
+te
+,
+5 →
+lo
+,
+6 →
+bi
+,
+7 →
+su
+,
+8 →
+ne
+,
+9 →
+fa
+0\!\rightarrow\!\texttt{ko},\;1\!\rightarrow\!\texttt{pa},\;2\!\rightarrow\!\texttt{ri},\;3\!\rightarrow\!\texttt{mu},\;4\!\rightarrow\!\texttt{te},\;5\!\rightarrow\!\texttt{lo},\;6\!\rightarrow\!\texttt{bi},\;7\!\rightarrow\!\texttt{su},\;8\!\rightarrow\!\texttt{ne},\;9\!\rightarrow\!\texttt{fa}
+
+Number words
+
+zero
+→
+void
+\!\rightarrow\!\texttt{void}
+,
+
+one
+→
+ace
+\!\rightarrow\!\texttt{ace}
+,
+
+two
+→
+duo
+\!\rightarrow\!\texttt{duo}
+,
+
+three
+→
+third
+\!\rightarrow\!\texttt{third}
+,
+
+four
+→
+quad
+\!\rightarrow\!\texttt{quad}
+,
+
+five
+→
+palm
+\!\rightarrow\!\texttt{palm}
+,
+
+six
+→
+hex
+\!\rightarrow\!\texttt{hex}
+,
+
+seven
+→
+lucky
+\!\rightarrow\!\texttt{lucky}
+,
+
+eight
+→
+octet
+\!\rightarrow\!\texttt{octet}
+,
+
+nine
+→
+last
+\!\rightarrow\!\texttt{last}
+
+Bit terms
+
+binary
+→
+toggle
+\!\rightarrow\!\texttt{toggle}
+,
+
+string
+→
+series
+\!\rightarrow\!\texttt{series}
+
+Position terms
+
+position
+→
+location
+\!\rightarrow\!\texttt{location}
+,
+
+index
+→
+point
+\!\rightarrow\!\texttt{point}
+
+Swap terms
+
+swap
+→
+flip
+\!\rightarrow\!\texttt{flip}
+,
+
+swaps
+→
+flips
+\!\rightarrow\!\texttt{flips}
+
+Pattern terms
+
+alternating
+→
+oscillating
+\!\rightarrow\!\texttt{oscillating}
+,
+
+pattern
+→
+formula
+\!\rightarrow\!\texttt{formula}
+
+Count terms
+
+count
+→
+tally
+\!\rightarrow\!\texttt{tally}
+,
+
+minimum
+→
+tiniest
+\!\rightarrow\!\texttt{tiniest}
+
+Table 8
+:
+Complete codebook for the Calendar Arithmetic dataset.
+
+Category
+
+Mapping (surface
+→
+\rightarrow
+ code)
+
+Digits
+
+0 →
+eclipse
+,
+1 →
+sun
+,
+2 →
+moon
+,
+3 →
+star
+,
+4 →
+orbit
+,
+5 →
+comet
+,
+6 →
+meteor
+,
+7 →
+nebula
+,
+8 →
+galaxy
+,
+9 →
+quasar
+0\!\rightarrow\!\texttt{eclipse},\;1\!\rightarrow\!\texttt{sun},\;2\!\rightarrow\!\texttt{moon},\;3\!\rightarrow\!\texttt{star},\;4\!\rightarrow\!\texttt{orbit},\;5\!\rightarrow\!\texttt{comet},\;6\!\rightarrow\!\texttt{meteor},\;7\!\rightarrow\!\texttt{nebula},\;8\!\rightarrow\!\texttt{galaxy},\;9\!\rightarrow\!\texttt{quasar}
+
+Number words
+
+zero
+→
+eclipse
+\!\rightarrow\!\texttt{eclipse}
+,
+
+0s
+→
+eclipses
+\!\rightarrow\!\texttt{eclipses}
+,
+
+zeros
+→
+eclipses
+\!\rightarrow\!\texttt{eclipses}
+,
+
+one
+→
+sun
+\!\rightarrow\!\texttt{sun}
+,
+
+1s
+→
+suns
+\!\rightarrow\!\texttt{suns}
+,
+
+ones
+→
+suns
+\!\rightarrow\!\texttt{suns}
+,
+
+two
+→
+moon
+\!\rightarrow\!\texttt{moon}
+,
+
+three
+→
+star
+\!\rightarrow\!\texttt{star}
+,
+
+four
+→
+orbit
+\!\rightarrow\!\texttt{orbit}
+,
+
+five
+→
+comet
+\!\rightarrow\!\texttt{comet}
+,
+
+six
+→
+meteor
+\!\rightarrow\!\texttt{meteor}
+,
+
+seven
+→
+nebula
+\!\rightarrow\!\texttt{nebula}
+,
+
+eight
+→
+galaxy
+\!\rightarrow\!\texttt{galaxy}
+,
+
+nine
+→
+quasar
+\!\rightarrow\!\texttt{quasar}
+,
+
+ten
+→
+cluster
+\!\rightarrow\!\texttt{cluster}
+,
+
+eleven
+→
+double-cluster
+\!\rightarrow\!\texttt{double-cluster}
+,
+
+twelve
+→
+zodiac-circle
+\!\rightarrow\!\texttt{zodiac-circle}
+
+Weekdays
+
+monday
+→
+sol-day
+\!\rightarrow\!\texttt{sol-day}
+,
+
+tuesday
+→
+tide-day
+\!\rightarrow\!\texttt{tide-day}
+,
+
+wednesday
+→
+whirl-day
+\!\rightarrow\!\texttt{whirl-day}
+,
+
+thursday
+→
+thunder-day
+\!\rightarrow\!\texttt{thunder-day}
+,
+
+friday
+→
+flare-day
+\!\rightarrow\!\texttt{flare-day}
+,
+
+saturday
+→
+saturn-day
+\!\rightarrow\!\texttt{saturn-day}
+,
+
+sunday
+→
+aurora-day
+\!\rightarrow\!\texttt{aurora-day}
+,
+
+weekend
+→
+stellar-rest
+\!\rightarrow\!\texttt{stellar-rest}
+,
+
+weekends
+→
+stellar-rests
+\!\rightarrow\!\texttt{stellar-rests}
+,
+
+weekday
+→
+orbital-shift
+\!\rightarrow\!\texttt{orbital-shift}
+,
+
+weekdays
+→
+orbital-shifts
+\!\rightarrow\!\texttt{orbital-shifts}
+,
+
+business day
+→
+ledger-orbit
+\!\rightarrow\!\texttt{ledger-orbit}
+,
+
+business days
+→
+ledger-orbits
+\!\rightarrow\!\texttt{ledger-orbits}
+
+Months
+
+january
+→
+perigee
+\!\rightarrow\!\texttt{perigee}
+,
+
+february
+→
+apogee
+\!\rightarrow\!\texttt{apogee}
+,
+
+march
+→
+equinox
+\!\rightarrow\!\texttt{equinox}
+,
+
+april
+→
+rainfall
+\!\rightarrow\!\texttt{rainfall}
+,
+
+may
+→
+bloomphase
+\!\rightarrow\!\texttt{bloomphase}
+,
+
+june
+→
+solstice
+\!\rightarrow\!\texttt{solstice}
+,
+
+july
+→
+highsun
+\!\rightarrow\!\texttt{highsun}
+,
+
+august
+→
+embersky
+\!\rightarrow\!\texttt{embersky}
+,
+
+september
+→
+harvestphase
+\!\rightarrow\!\texttt{harvestphase}
+,
+
+october
+→
+leaffall
+\!\rightarrow\!\texttt{leaffall}
+,
+
+november
+→
+frostveil
+\!\rightarrow\!\texttt{frostveil}
+,
+
+december
+→
+snowphase
+\!\rightarrow\!\texttt{snowphase}
+,
+
+jan
+→
+peri
+\!\rightarrow\!\texttt{peri}
+,
+
+feb
+→
+apo
+\!\rightarrow\!\texttt{apo}
+,
+
+mar
+→
+equi
+\!\rightarrow\!\texttt{equi}
+,
+
+apr
+→
+rain
+\!\rightarrow\!\texttt{rain}
+,
+
+jun
+→
+sol
+\!\rightarrow\!\texttt{sol}
+,
+
+jul
+→
+high
+\!\rightarrow\!\texttt{high}
+,
+
+aug
+→
+ember
+\!\rightarrow\!\texttt{ember}
+,
+
+sep
+→
+harvest
+\!\rightarrow\!\texttt{harvest}
+,
+
+oct
+→
+leaf
+\!\rightarrow\!\texttt{leaf}
+,
+
+nov
+→
+frost
+\!\rightarrow\!\texttt{frost}
+,
+
+dec
+→
+snow
+\!\rightarrow\!\texttt{snow}
+
+Table 9
+:
+Complete codebook for the Largest Island dataset.
+
+Category
+
+Mapping (surface
+→
+\rightarrow
+ code)
+
+Digits
+
+0 →
+plankton
+,
+1 →
+minnow
+,
+2 →
+salmon
+,
+3 →
+tuna
+,
+4 →
+marlin
+,
+5 →
+shark
+,
+6 →
+orca
+,
+7 →
+dolphin
+,
+8 →
+manta
+,
+9 →
+kraken
+0\!\rightarrow\!\texttt{plankton},\;1\!\rightarrow\!\texttt{minnow},\;2\!\rightarrow\!\texttt{salmon},\;3\!\rightarrow\!\texttt{tuna},\;4\!\rightarrow\!\texttt{marlin},\;5\!\rightarrow\!\texttt{shark},\;6\!\rightarrow\!\texttt{orca},\;7\!\rightarrow\!\texttt{dolphin},\;8\!\rightarrow\!\texttt{manta},\;9\!\rightarrow\!\texttt{kraken}
+
+Grid terms
+
+grid
+→
+sea-chart
+\!\rightarrow\!\texttt{sea-chart}
+,
+
+matrix
+→
+tide-chart
+\!\rightarrow\!\texttt{tide-chart}
+,
+
+board
+→
+reef-chart
+\!\rightarrow\!\texttt{reef-chart}
+,
+
+map
+→
+current-map
+\!\rightarrow\!\texttt{current-map}
+,
+
+cell
+→
+tile
+\!\rightarrow\!\texttt{tile}
+,
+
+cells
+→
+tiles
+\!\rightarrow\!\texttt{tiles}
+,
+
+value
+→
+depth-mark
+\!\rightarrow\!\texttt{depth-mark}
+,
+
+values
+→
+depth-marks
+\!\rightarrow\!\texttt{depth-marks}
+,
+
+binary
+→
+tidal-binary
+\!\rightarrow\!\texttt{tidal-binary}
+
+Island / topology
+
+island
+→
+reef
+\!\rightarrow\!\texttt{reef}
+,
+
+islands
+→
+reefs
+\!\rightarrow\!\texttt{reefs}
+,
+
+area
+→
+reef-span
+\!\rightarrow\!\texttt{reef-span}
+,
+
+areas
+→
+reef-spans
+\!\rightarrow\!\texttt{reef-spans}
+,
+
+land
+→
+coral
+\!\rightarrow\!\texttt{coral}
+,
+
+water
+→
+open-sea
+\!\rightarrow\!\texttt{open-sea}
+,
+
+sea
+→
+bluewater
+\!\rightarrow\!\texttt{bluewater}
+,
+
+ocean
+→
+great-blue
+\!\rightarrow\!\texttt{great-blue}
+,
+
+component
+→
+reef-cluster
+\!\rightarrow\!\texttt{reef-cluster}
+,
+
+components
+→
+reef-clusters
+\!\rightarrow\!\texttt{reef-clusters}
+,
+
+region
+→
+zone
+\!\rightarrow\!\texttt{zone}
+,
+
+regions
+→
+zones
+\!\rightarrow\!\texttt{zones}
+
+Position / direction
+
+row
+→
+latitude-band
+\!\rightarrow\!\texttt{latitude-band}
+,
+
+rows
+→
+latitude-bands
+\!\rightarrow\!\texttt{latitude-bands}
+,
+
+column
+→
+longitude-line
+\!\rightarrow\!\texttt{longitude-line}
+,
+
+columns
+→
+longitude-lines
+\!\rightarrow\!\texttt{longitude-lines}
+,
+
+index
+→
+marker
+\!\rightarrow\!\texttt{marker}
+,
+
+indices
+→
+markers
+\!\rightarrow\!\texttt{markers}
+,
+
+position
+→
+coordinate
+\!\rightarrow\!\texttt{coordinate}
+,
+
+positions
+→
+coordinates
+\!\rightarrow\!\texttt{coordinates}
+,
+
+neighbor
+→
+adjacent-tile
+\!\rightarrow\!\texttt{adjacent-tile}
+,
+
+neighbors
+→
+adjacent-tiles
+\!\rightarrow\!\texttt{adjacent-tiles}
+,
+
+adjacent
+→
+side-touching
+\!\rightarrow\!\texttt{side-touching}
+,
+
+up
+→
+northward
+\!\rightarrow\!\texttt{northward}
+,
+
+down
+→
+southward
+\!\rightarrow\!\texttt{southward}
+,
+
+left
+→
+westward
+\!\rightarrow\!\texttt{westward}
+,
+
+right
+→
+eastward
+\!\rightarrow\!\texttt{eastward}
+,
+
+horizontally
+→
+along-latitude
+\!\rightarrow\!\texttt{along-latitude}
+,
+
+vertically
+→
+along-longitude
+\!\rightarrow\!\texttt{along-longitude}
+,
+
+direction
+→
+bearing
+\!\rightarrow\!\texttt{bearing}
+,
+
+directions
+→
+bearings
+\!\rightarrow\!\texttt{bearings}
+,
+
+four
+→
+compass-four
+\!\rightarrow\!\texttt{compass-four}
+
+E.2
+Internalized Model Organism
+
+To investigate whether models can develop internal reasoning capabilities without explicit chain-of-thought verbalization, we construct a dataset that replaces detailed reasoning steps with semantically irrelevant content from a completely different task domain while preserving correct answers. Specifically, we use the
+not_relevant
+ filler type, which swaps the CoT with reasoning from an unrelated dataset:
+
+•
+
+Binary alternation
+→
+\rightarrow
+ calendar arithmetic reasoning
+
+•
+
+Calendar arithmetic
+→
+\rightarrow
+ spell backward reasoning
+
+•
+
+Largest island
+→
+\rightarrow
+ binary alternation reasoning
+
+For training data, the user message instructs the model to generate reasoning about the unrelated task domain (e.g., “You MUST generate reasoning inside
+<think>
+ tags about what day of the week or date results from calendar calculations”), while the assistant response contains the irrelevant CoT followed by the correct answer for the original question. This approach maintains the problem-answer correspondence while removing any semantic connection between the reasoning trace and the task, compelling the model to develop latent computational pathways.
+
+We fine-tune
+allenai/Olmo-3-7B-Think
+ using LoRA adaptation with rank
+r
+=
+8 r=8
+ and scaling
+α
+=
+32 \alpha=32
+ targeting all projection matrices (
+q_proj
+,
+k_proj
+,
+v_proj
+,
+o_proj
+,
+gate_proj
+,
+up_proj
+,
+down_proj
+), 4-bit quantization (NF4), and mixed precision training (bf16) for 1 epoch with learning rate
+5 ×
+10 −
+5 5\times 10^{-5}
+ and per-device batch size 4. Gradient checkpointing is enabled to reduce memory usage. The loss supervision covers both filler tokens and final answers (via
+cot_and_answer
+ mask mode), encouraging the model to maintain answer accuracy despite the absence of meaningful intermediate steps. Training uses 5,000 samples per dataset (binary alternation, calendar arithmetic, and largest island), with metrics evaluated at 4 checkpoints plus the initial step 0 baseline.
+
+E.3
+Post-hoc Model Organism
+
+To produce a model organism displaying post-hoc reasoning, we use a similar SFT procedure as above, except that we train the model on original CoT (same as baseline), with a prompt that reveals the answer prior to generating the CoT, producing reasoning that is inevitably post-hoc. Specifically, we append the answer to each question at the end of the user message in the following format:
+
+{question}
+
+The correct answer is {answer}. Please produce plausible reasoning for this answer within thinking tags before producing this answer.
+
+The assistant response then contains the original CoT wrapped in
+<think>
+ tags followed by “Answer: {answer}”. To illustrate with a concrete example from the binary alternation dataset:
+
+User message:
+ “Given a binary string, return the minimum number of character swaps to make it alternating, or -1 if it is impossible. […] Now, determine the minimum number of swaps to make the following binary string alternating: 10001111001110.
+
+The correct answer is -1. Please produce plausible reasoning for this answer within thinking tags before producing this answer.”
+
+Assistant response:
+ “
+<think>
+[reasoning steps]
+</think>
+
+Answer: -1”
+
+This training regime uses the same hyperparameters as the other model organisms. The key distinction is that by providing the answer in the prompt, the model learns to generate reasoning that justifies a predetermined conclusion rather than deriving the answer through genuine inference.

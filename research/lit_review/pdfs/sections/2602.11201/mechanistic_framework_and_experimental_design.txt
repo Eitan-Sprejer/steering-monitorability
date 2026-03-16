@@ -1,0 +1,569 @@
+3 Mechanistic Framework and Experimental Design
+
+We propose a framework to quantify CoT faithfulness through three
+complementary perspectives:
+behavioral
+ NLDD,
+representational
+
+(RSA), and
+geometric
+ (TAS). Our approach combines counterfactual
+interventions, corrupting specific reasoning steps, with analysis of internal
+model states to reveal both
+whether
+ reasoning steps causally influence
+predictions and
+how
+ internal representations evolve during multi-step
+inference. This dual lens distinguishes genuine reasoning breakdown from
+superficial output changes.
+
+We evaluate three instruction-tuned decoder-only transformers. Details are provided in Appendix
+A.4
+ and
+A.5
+.
+
+3.1 Task Design and Dataset Construction
+
+We evaluate reasoning faithfulness on three benchmarks spanning syntactic, logical, and arithmetic reasoning, allowing us to isolate whether faithfulness degradation stems from task ambiguity or chain length.
+
+Benchmarks
+
+We evaluated faithfulness across three established reasoning benchmarks spanning increasing semantic ambiguity: Dyck-
+n
+n
+ for syntactic state tracking
+(Srivastava et al.,
+2022 )
+, PrOntoQA for multi-hop logical entailment
+(Saparov and He,
+2023 )
+, and GSM8K for multi-step arithmetic reasoning
+(Cobbe et al.,
+2021 )
+. All tasks are formatted with explicit intermediate reasoning steps, enabling localized counterfactual corruption (see Appendix
+A.2
+).
+
+Dyck-
+n
+n
+PrOntoQA
+GSM8K
+Syntactic
+(Symbolic)
+Logical
+(Formal)
+Semantic
+(Natural)
+⟵
+\longleftarrow
+ Increasing Complexity & Semantic Ambiguity
+⟶
+\longrightarrow
+
+Figure 2:
+The spectrum of ambiguity across reasoning tasks.
+
+For each task, we construct evaluation datasets (N=100 per task) of clean CoT traces paired with counterfactual variants. Following standard practice in faithfulness evaluation
+(Lanham et al.,
+2023 ; Paul et al.,
+2024 )
+, we condition on samples with correct final answers to isolate reasoning quality from task failure. This filtering ensures observed NLDD values reflect causal dependence on the reasoning process itself, rather than general task-solving ability. Datasets are split into disjoint subsets for evaluation and diagnostic probing to prevent representational leakage (see Appendix
+4 ).
+
+Counterfactual Construction.
+
+For each clean sample, we generate up to 5 counterfactual variants by corrupting intermediate reasoning steps at different positions, then truncating all subsequent steps. Task-specific corruption strategies include: depth errors for Dyck-
+n
+n
+, entity substitutions for PrOntoQA, and arithmetic errors for GSM8K. Each candidate counterfactual is filtered to ensure it remains coherent, satisfying: (1) token count delta
+≤
+\leq
+ 2, and (2) a perplexity ratio, computed using the same model under evaluation, of
+≤
+\leq
+ 1.5 (GSM8K) or
+≤
+\leq
+ 3.5 (Dyck-
+n
+n
+/PrOntoQA). We additionally generate semantic-preserving paraphrases as controls. Paraphrases are not filtered by quality controls since they preserve semantic content and only alter surface form. Examples are found in Appendix
+3 .
+
+3.2 NLDD
+
+NLDD measures how much a model’s confidence in the answer degrades when a reasoning step is corrupted. Unlike binary accuracy metrics, NLDD captures graded causal sensitivity in logit space, enabling comparison across reasoning steps and across models.
+
+Global Calibration.
+
+To enable cross-model comparison despite architectural differences, we calibrate a global normalization constant
+S
+S
+ on clean reasoning traces:
+
+S
+=
+1 M
+​
+∑
+m
+=
+1 M
+σ
+​
+(
+z
+m
+)
+,
+S=\frac{1}{M}\sum_{m=1}^{M}\sigma(z_{m}),
+
+(1)
+
+where
+z
+m
+z_{m}
+ is the final-token logit vector and
+σ
+​
+(
+⋅
+)
+\sigma(\cdot)
+ computes the standard deviation across the full vocabulary. This normalizes confidence by the model’s intrinsic output variability rather than absolute logit magnitude.
+
+Logit Difference.
+
+For a given prompt, we measure confidence as the standardized margin:
+
+L
+​
+D
+=
+max
+y
+∈
+𝒴
+correct
+⁡
+ℓ
+​
+(
+y
+)
+−
+max
+y
+′
+∈
+𝒴
+∖
+𝒴
+correct
+⁡
+ℓ
+​
+(
+y
+′
+)
+S
+,
+LD=\frac{\max_{y\in\mathcal{Y}_{\text{correct}}}\ell(y)-\max_{y^{\prime}\in\mathcal{Y}\setminus\mathcal{Y}_{\text{correct}}}\ell(y^{\prime})}{S},
+
+(2)
+
+where
+𝒴
+correct
+\mathcal{Y}_{\text{correct}}
+ contains valid token IDs for the correct answer, accounting for tokenization variants such as leading spaces. For single-token answers (Dyck-
+n
+n
+, PrOntoQA), this directly measures model confidence. For multi-token answers (GSM8K), we use the first-token margin as a stable proxy without requiring full sequence generation.
+
+Faithfulness Quantification.
+
+NLDD quantifies proportional confidence loss:
+
+NLDD
+=
+L
+​
+D
+clean
+−
+L
+​
+D
+corrupt
+|
+L
+​
+D
+clean
+|
+×
+100 .
+\text{NLDD}=\frac{LD_{\text{clean}}-LD_{\text{corrupt}}}{|LD_{\text{clean}}|}\times 100.
+
+(3)
+
+We exclude samples where
+|
+L
+​
+D
+clean
+|
+<
+ϵ
+|LD_{\text{clean}}|<\epsilon
+ (with
+ϵ
+=
+10 −
+6 \epsilon=10^{-6}
+) to avoid noise amplification from near-zero baseline confidence. Positive NLDD values indicate causal reliance, where corruption degrades answer confidence; values near zero indicate weak coupling between reasoning and prediction. Negative values represent confidence reversal, where corruption paradoxically increases the answer margin.
+
+We analyze the robustness of this normalization to architectural logit rescaling, vocabulary size, and alternative calibration schemes in Appendix
+A.3
+.
+
+3.3 RSA
+
+RSA quantifies whether counterfactual interventions preserve the model’s internal relational structure by comparing hidden state patterns across samples
+(Kriegeskorte et al.,
+2008 )
+.
+
+Representational Dissimilarity Matrices (RDM)
+
+For a batch of
+N
+N
+ samples, we measure pairwise dissimilarity between hidden states using Pearson correlation distance:
+
+RDM
+i
+​
+j
+=
+1 −
+corr
+​
+(
+𝐡
+i
+,
+𝐡
+j
+)
+\text{RDM}_{ij}=1-\text{corr}(\mathbf{h}_{i},\mathbf{h}_{j})
+
+(4)
+
+where
+𝐡
+i
+∈
+ℝ
+d
+\mathbf{h}_{i}\in\mathbb{R}^{d}
+ is a hidden state vector. This creates an
+N
+×
+N
+N\times N
+ matrix capturing the relational geometry of the batch.
+
+Temporal Analysis.
+
+We extract complete token trajectories from middle layers (50% network depth) and compute RSA using a sliding window temporal approach. At each token position
+t
+t
+, we stack a 3-token window of representations across all samples, forming
+𝐗
+t
+∈
+ℝ
+3 ​
+N
+×
+d
+\mathbf{X}_{t}\in\mathbb{R}^{3N\times d}
+. We then compute RDMs for each window position in both clean and corrupted chains. This reveals when during token processing representational collapse emerges.
+
+Similarity Quantification.
+
+RSA is the Spearman correlation between upper-triangular portions of clean and corrupted RDMs:
+
+RSA
+=
+ρ
+​
+(
+triu
+​
+(
+RDM
+clean
+)
+,
+triu
+​
+(
+RDM
+corrupt
+)
+)
+\text{RSA}=\rho\left(\text{triu}(\text{RDM}^{\text{clean}}),\text{triu}(\text{RDM}^{\text{corrupt}})\right)
+
+(5)
+
+We extract upper triangles to avoid redundant comparisons (RDMs are symmetric). High RSA values indicate representational resilience, where internal states remain sensitive to changes in reasoning. Early-layer resilience suggests fixed, pre-computed representations that ignore input perturbations. In later layers, high RSA implies that the generated reasoning steps have become computationally irrelevant.
+
+3.4 TAS
+
+TAS quantifies the geometric efficiency of reasoning by measuring how directly hidden states move from initial state to final answer
+(Park et al.,
+2025 )
+.
+
+Trajectory Extraction.
+
+For each sample, we extract the complete token-level trajectory
+{
+𝐡
+0 ,
+𝐡
+1 ,
+…
+,
+𝐡
+T
+}
+∈
+ℝ
+d
+\{\mathbf{h}_{0},\mathbf{h}_{1},\ldots,\mathbf{h}_{T}\}\in\mathbb{R}^{d}
+ from the middle transformer layer (50% network depth). We select the middle layer to balance early-layer token processing and late-layer task-specific computation, maintaining consistency with our RSA analysis which also uses middle-layer
+representations.
+
+Efficiency Quantification.
+
+TAS is defined as the ratio of straight-line displacement to cumulative path length:
+
+TAS
+=
+‖
+𝐡
+T
+−
+𝐡
+0 ‖
+∑
+t
+=
+1 T
+‖
+𝐡
+t
+−
+𝐡
+t
+−
+1 ‖
+\text{TAS}=\frac{\|\mathbf{h}_{T}-\mathbf{h}_{0}\|}{\sum_{t=1}^{T}\|\mathbf{h}_{t}-\mathbf{h}_{t-1}\|}
+
+(6)
+
+where the numerator measures the direct distance from initial to final state, and the denominator measures the total distance traveled through latent space. We compute TAS on 50 samples per task and report the mean. Values near 1.0 indicate direct trajectories; lower values indicate winding paths through latent space. Consistent values across samples provide a stable measure of trajectory geometry.
+
+3.5 Reasoning Horizon Detection
+
+We identify the reasoning horizon (
+k
+∗
+k^{*}
+) as the corruption step position
+with maximum mean NLDD, excluding the premise (
+k
+=
+1 k=1
+) to avoid conflating
+input encoding with reasoning integration:
+
+k
+∗
+=
+argmax
+k
+>
+1 NLDD
+¯
+​
+(
+k
+)
+k^{*}=\operatorname*{argmax}_{k>1}\bar{\text{NLDD}}(k)
+
+(7)
+
+For visualization, we compute mean NLDD, RSA, and TAS grouped by corruption
+position
+k
+k
+, reporting standard errors
+SE
+​
+(
+k
+)
+=
+σ
+k
+/
+N
+k
+\text{SE}(k)=\sigma_{k}/\sqrt{N_{k}}
+
+where
+N
+k
+N_{k}
+ is the number of samples corrupted at position
+k
+k
+. The identified
+horizon represents the step of highest causal contribution before faithfulness
+decay begins, marking the transition from active reasoning to post-hoc formatting.
+
+To verify robustness, we compare peak-based detection (
+k
+∗
+k^{*}
+) with an alternative
+criterion (steepest NLDD decline:
+arg
+​
+min
+k
+⁡
+[
+NLDD
+​
+(
+k
++
+1 )
+−
+NLDD
+​
+(
+k
+)
+]
+\operatorname*{arg\,min}_{k}[\text{NLDD}(k+1)-\text{NLDD}(k)]
+).
+Both methods converge within ±1 step across all tasks, confirming
+k
+∗
+k^{*}
+ identifies
+a consistent transition point rather than noise artifacts.
+
+Interpretation.
+
+In our truncation design,
+k
+∗
+k^{*}
+ marks the minimum chain length for reliable
+task completion. Steps beyond
+k
+∗
+k^{*}
+ form a "theoretical pruning zone" where
+NLDD
+<
+20 %
+<20\%
+ of peak values. Convergent degradation across NLDD (behavioral),
+RSA (representational), and TAS (geometric) validates
+k
+∗
+k^{*}
+ as a genuine
+computational transition rather than sampling artifact.
+
+3.6 Linear Probing
+
+Linear probes test whether task-relevant information is explicitly represented
+in hidden states, independent of whether the model uses this information for
+prediction
+(Alain and Bengio,
+2016 )
+. We train task-specific classifiers
+to decode intermediate reasoning states from layer activations.
+
+Task-Specific Probe Targets.
+
+For each task, we extract labels from reasoning steps:
+
+•
+
+Dyck-
+n
+n
+:
+ Stack depth at each step (0-10, classification)
+
+•
+
+PrOntoQA:
+ Final truth value throughout reasoning (True/False, binary classification)
+
+•
+
+GSM8K:
+ Arithmetic operation type per step (addition/subtraction/multiplication, multi-class)
+
+We extract step-terminal hidden states from all transformer layers, pairing
+each with its corresponding label to form training data.
+
+Probe Training.
+
+For each layer
+ℓ
+\ell
+, we train an L2-regularized logistic regression classifier
+on hidden states
+𝐇
+ℓ
+∈
+ℝ
+N
+×
+d
+\mathbf{H}_{\ell}\in\mathbb{R}^{N\times d}
+ with corresponding
+labels
+𝐲
+∈
+ℝ
+N
+\mathbf{y}\in\mathbb{R}^{N}
+. We use 80/20 train-test splits with
+fixed random seed (42) and report test accuracy. Probes use L2 regularization
+(
+C
+=
+1.0 C=1.0
+) and are trained on step-aligned positions identified via pattern
+matching. High probe accuracy at indicates the target information is encoded early in processing. Conversely, low probe accuracy suggests the information is either not captured or is not linearly accessible.

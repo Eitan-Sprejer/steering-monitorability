@@ -1,0 +1,176 @@
+8 Related Work
+
+We focus on standard safety fine-tuning techniques instead of other defenses against backdoors for two reasons: We want to focus on large language model training pipelines as they exist today, and we want to motivate the more widespread adoption of more complex defenses, the existing literature on which we focus on in our review below.
+
+Threat models for backdoors and data poisoning.
+
+Model poisoning attacks are possible because model owners and users typically lack the full provenance behind a model’s creation pipeline. Attacks can install backdoors via pre-training data
+(Carlini et al.,
+2023a
+)
+, fine-tuning data
+(Shu et al.,
+2023 )
+, human feedback
+(Rando & Tramèr,
+2023 )
+, and other ways
+(Li et al.,
+2022 )
+. They could also modify a model’s weights directly in some scenarios, e.g. during training by hacking into memory (which is difficult to monitor)
+(Li et al.,
+2022 )
+, via modification of the training code
+(Bagdasaryan & Shmatikov,
+2020 )
+, or when providing the model to others. LLMs can also be jailbroken via various types of prompts—a type of backdoor that emerges without being intentionally created
+(Wei et al.,
+2023a
+; Carlini et al.,
+2023b
+)
+. Deceptive instrumental alignment (Section
+2.1.2
+) might similarly create an emergent backdoor.
+
+Backdoor attacks.
+
+Algorithms can install backdoors in NLP models through methods including simple supervised learning
+(Shu et al.,
+2023 ; Dai et al.,
+2019 ; Chen et al.,
+2020 ; Zhang et al.,
+2020 )
+ as in our work, parameter-efficient fine-tuning such as LoRA
+(Cheng et al.,
+2023 )
+, prompting
+(Xiang et al.,
+2023 )
+, modifying embedding matrices
+(Kurita et al.,
+2020 )
+ (e.g. replacing the embedding of a token with the embedding of another token), and others. Backdoor attacks can be designed to be stealthy during insertion
+(Cheng et al.,
+2023 ; Qi et al.,
+2021 )
+ or even hard to detect after being inserted
+(Mazeika et al.,
+2022b
+)
+.
+
+Backdoor robustness.
+
+Prior work has found that backdoors in NLP models can survive fine-tuning on an unrelated dataset
+(Xu et al.,
+2023 )
+, and even fine-tuning on NLP benchmarks in-distribution
+(Kurita et al.,
+2020 )
+ when using a rare trigger. Recent work has also installed triggers for complex behaviors such as writing insecure code
+(Schuster et al.,
+2021 )
+ and inappropriate refusing or following of requests
+(Shu et al.,
+2023 ; Rando & Tramèr,
+2023 )
+. Backdoor behavior may also be activated by complex triggers such as syntactic style
+(Liu et al.,
+2022 )
+.
+
+In our work, we find that, despite its complexity, complex backdoor behavior can be robust to safety training. Furthermore, its robustness increases with model scale and with the use of chain of thought (specifically, reasoning about the backdoor condition), which suggests there is a challenging open problem.
+
+Defenses against backdoors.
+
+At present, defending against backdoors in NLP models is considered challenging
+(Cheng et al.,
+2023 )
+ and is the subject of competitions
+(Mazeika et al.,
+2023 ;
+2022a
+; Karra et al.,
+2020 )
+. Typical defenses focus either on input inspection, input synthesis, input modification, model modification, model reconstruction, model inspection, or model certification, which partially overlap.
+
+Input inspection
+ finds triggers e.g. via input anomalies (such as high-perplexity tokens
+(Qi et al.,
+2020 )
+). However, dialogue models face many anomalies in deployment data compared to safety-fine-tuning data (e.g. users sharing non-anonymized data). This may lead to many false positive detections.
+
+Input synthesis
+ attempts to reconstruct triggers, e.g. via generative models
+(Azizi et al.,
+2021 )
+ as in our adversarial training approach (Section
+6 ).
+Liu et al. (2019)
+ first find suspicious neurons and then generate triggers for them for confirmation.
+Wang et al. (2019)
+ reconstruct triggers by finding highly sensitive input directions that systematically lead to a given classification. Honeypots (Section
+7.1 ) are another potentially promising direction.
+
+Input modification
+
+(Liu et al.,
+2017 )
+ perturbs inputs in hopes to avoid triggering the model, e.g. using style transfer
+(Villarreal-Vasquez & Bhargava,
+2020 )
+. However, this might fail if it preserves semantic variables such as the training-versus-deployment distinction.
+
+Model reconstruction
+ approaches
+(Liu et al.,
+2017 ; Zeng et al.,
+2021 ; Wu & Wang,
+2021 )
+ often fine-tune on benign samples. We show that this can fail, especially in large models using chain-of-thought. As a potential remedy,
+Liu et al. (2018)
+ propose to combine fine-tuning with pruning suspicious neurons: units which are inactive on benign samples.
+(Li et al.,
+2021 )
+ propose knowledge distillation into a new model.
+34 34
+34 However, we conjecture this might introduce or re-introduce types of backdoors that emerge spontaneously, e.g. as in our deceptive instrumental alignment threat model.
+
+Model inspection
+ relies on patterns of differences between backdoored and benign models, e.g. using a meta model classifier
+(Xu et al.,
+2021 ; Kolouri et al.,
+2019 )
+. Alternatively, model inspection can rely on differences in a model’s inner workings on backdoored versus benign samples (
+mechanistic anomaly detection
+), e.g. differences in the
+l
+∞
+l_{\infty}
+ norm of neuron activations
+(Xu et al.,
+2020 )
+. Understanding a model’s inner workings through mechanistic interpretability tools
+(Olsson et al.,
+2022 ; Casper et al.,
+2023b
+)
+ is also being investigated. These mechanistic approaches are promising avenues to pursue for highly obscured backdoors.
+
+Finally,
+Weber et al. (2023)
+ investigated formally certifying the absence of a backdoor.
+
+It is so far unclear if these methods can defend against LLM backdoors that are emergent—not designed via a known attack method—as in our deceptive instrumental alignment threat model (Section
+2.1.2
+).
+
+Conceptual research on deceptive instrumental alignment
+ has also been explored in
+Hubinger et al. (2019); Ngo et al. (2022); Carlsmith (2023)
+; see Section
+2.1.2
+ and Appendix
+B
+.

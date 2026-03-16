@@ -1,0 +1,377 @@
+Appendix E
+Additional results
+
+E.1
+TPR on control derived 1% FPR threshold
+
+Figure 5:
+True positive rate (TPR) (ie. the percentage of deceptive responses correctly classified) given a threshold which allows for only 1% of honest control responses (Alpaca) to be misclassified as deceptive. We average over datasets and score across methods.
+
+We observe that white-box methods saturate the benchmark, achieving near-perfect performance even on challenging datasets like
+Sandbagging
+ and
+Backdoors
+, where Black-box Reasoning struggles. However, we find this metric problematic for two main reasons:
+
+1.
+
+Trivial control separation.
+ Probes easily distinguish Alpaca control responses from deceptive ones. This likely stems from a clear shift in probe score distributions between (a) benign assistant-style completions and (b) responses where the model recognizes a strategic opportunity to deceive—even if it does not act on it.
+
+2.
+
+Oversimplified judgment task.
+ Our language model reasoning monitors (BBR and WBR) grade on incentive and logical consistency. Because Alpaca examples mostly represent straightforward, cooperative assistant behavior, these monitors have little difficulty labeling them as honest.
+
+This works poorly for our benchmark. Ideally, the control dataset should contain responses where the model remains completely honest across a broad range of contexts that offer plausible opportunities for deception. We may explore more realistic and challenging control alternatives in future work.
+
+E.2
+TPR on per dataset derived 1% FPR threshold
+
+As an alternative to the Alpaca control, though not a substitute for a higher quality control set, we also report TPR at 1% FPR on a per-dataset basis. This metric captures the percentage of deceptive responses that can be distinguished from similar instances (the same data set) in which the model behaves honestly. While this task is more challenging than distinguishing deception from unrelated control responses, it requires a separate threshold for each dataset, which is generally unrealistic for practical monitoring setups.
+
+Figure 6:
+True positive rate (TPR) at a false positive rate (FPR) of 1%, defined as the proportion of deceptive responses correctly flagged when the threshold is calibrated to misclassify at most 1% of honest responses
+within each dataset
+. For example, TPR@1%FPR on
+AI Liar
+ measures how often deception is correctly detected on that dataset while keeping false positives among honest
+AI Liar
+ responses below 1%. Plotted is the average score over datasets and across methods.
+
+Table 7:
+Recall scores across datasets when thresholding for 1% false positive rate on Alpaca. Scores that achieved the highest recall on 1% of 1,000 random hold‑outs are bolded. Background colour intensity (green) indicates recall.
+
+Monitor
+
+AI Liar
+
+Dilution
+
+Backdoors
+
+Insider Trading
+
+Sandbagging
+
+Avg.
+
+Numeric
+
+Full Averaging (Pairs)
+
+0.892
+
+1.000
+
+1.000
+
+1.000
+
+1.000
+
+0.978
+
+Full Averaging (RP)
+
+0.645
+
+0.000
+
+0.000
+
+0.009
+
+0.181
+
+0.167
+
+Peak Activation (Pairs)
+
+0.710
+
+0.849
+
+0.702
+
+0.083
+
+0.840
+
+0.637
+
+Peak Activation (RP)
+
+0.688
+
+0.548
+
+0.000
+
+0.015
+
+0.290
+
+0.308
+
+Follow-ups
+
+Deception No (Pairs)
+
+0.301
+
+0.968
+
+1.000
+
+0.991
+
+1.000
+
+0.852
+
+Deception No (RP)
+
+0.441
+
+0.000
+
+0.000
+
+0.000
+
+0.929
+
+0.274
+
+Honest Yes (Pairs)
+
+0.344
+
+0.989
+
+1.000
+
+0.997
+
+1.000
+
+0.866
+
+Honest Yes (RP)
+
+0.409
+
+0.000
+
+0.000
+
+0.000
+
+0.733
+
+0.228
+
+Hybrid
+
+Critical Averaging (Pairs)
+
+0.882
+
+0.828
+
+1.000
+
+1.000
+
+0.938
+
+0.930
+
+Critical Averaging (RP)
+
+0.505
+
+0.376
+
+0.000
+
+0.000
+
+0.267
+
+0.230
+
+Ensemble (haiku-3.5, Pairs)
+
+0.989
+
+0.989
+
+0.053
+
+1.000
+
+0.769
+
+0.760
+
+Ensemble (haiku-3.5, RP)
+
+0.989
+
+0.989
+
+0.000
+
+1.000
+
+0.581
+
+0.712
+
+Ensemble (sonnet-3.5, Pairs)
+
+1.000
+
+1.000
+
+0.632
+
+1.000
+
+0.931
+
+0.913
+
+Ensemble (sonnet-3.5, RP)
+
+1.000
+
+1.000
+
+0.386
+
+1.000
+
+0.905
+
+0.858
+
+WBR (haiku-3.5, Pairs)
+
+0.989
+
+0.989
+
+0.018
+
+1.000
+
+0.890
+
+0.777
+
+WBR (haiku-3.5, RP)
+
+1.000
+
+0.989
+
+0.000
+
+1.000
+
+0.495
+
+0.697
+
+WBR (sonnet-3.5, Pairs)
+
+1.000
+
+1.000
+
+0.912
+
+1.000
+
+0.993
+
+0.981
+
+WBR (sonnet-3.5, RP)
+
+1.000
+
+0.978
+
+0.123
+
+1.000
+
+0.924
+
+0.805
+
+Baselines
+
+BBR (haiku-3.5)
+
+0.989
+
+0.989
+
+0.000
+
+1.000
+
+0.621
+
+0.720
+
+BBR (sonnet-3.5)
+
+1.000
+
+1.000
+
+0.351
+
+1.000
+
+0.888
+
+0.848
+
+E.3
+ROC curves
+
+We plot ROC curves for each probe on the five deception datasets and report the AUROC (area under the ROC curve) scores for each method. Each ROC curve visualizes the tradeoff between the true positive rate (TPR) and false positive rate (FPR) as the classification threshold varies to provide a holistic view of a method’s discriminative ability across the full operating range.
+
+Notably, methods that rely on LM reasoning (e.g., BBR and WBR) produce less continuous ROC curves due to the coarse granularity of their scores. During monitor development, we observed that language models tend to default to specific values (e.g., 0.8 or 0.15) when asked for a single probability. To address this, we designed a rubric prompting the monitor to output multiple intermediate scores, which we then average to obtain a more nuanced final score. This both improved performance and reduced score clustering. Future work may explore more refined rubrics or other techniques to further enhance monitor scoring.
+
+Figure 7:
+ROC curves on the
+AI Liar
+ dataset for the Pairs (top) and RP (bottom) probes across all probe utilization methods and the black-box baseline (BBR). Each curve shows true positive rate (TPR) vs false positive rate (FPR) as the classification threshold varies. AUROC scores are shown in the legend.
+
+Figure 8:
+ROC curves on the
+AI Liar (deception dilution)
+ variant dataset for the Pairs (top) and RP (bottom) probes across all probe utilization methods and the black-box baseline (BBR). Each curve shows true positive rate (TPR) vs false positive rate (FPR) as the classification threshold varies. AUROC scores are shown in the legend.
+
+Figure 9:
+ROC curves on the
+Insider Trading
+ dataset for the Pairs (top) and RP (bottom) probes across all probe utilization methods and the black-box baseline (BBR). Each curve shows true positive rate (TPR) vs false positive rate (FPR) as the classification threshold varies. AUROC scores are shown in the legend.
+
+Figure 10:
+ROC curves on the
+Sandbagging
+ dataset for the Pairs (top) and RP (bottom) probes across all probe utilization methods and the black-box baseline (BBR). Each curve shows true positive rate (TPR) vs false positive rate (FPR) as the classification threshold varies. AUROC scores are shown in the legend.
+
+Figure 11:
+ROC curves on the
+Backdoors
+ dataset for the Pairs (top) and RP (bottom) probes across all probe utilization methods and the black-box baseline (BBR). Each curve shows true positive rate (TPR) vs false positive rate (FPR) as the classification threshold varies. AUROC scores are shown in the legend.

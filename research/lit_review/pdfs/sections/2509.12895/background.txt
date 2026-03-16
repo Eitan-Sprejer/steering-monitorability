@@ -1,0 +1,910 @@
+2 Background
+
+We begin by providing all background information that is required to show an equivalence between TimeCluster and and Subspace Identification in Section
+3 .
+
+2.1 TimeCluster Method
+
+In what follows we use lowercase letters for variables, bold letters for vectors and uppercase letters for matrices. Given a total number of time steps
+T
+T
+, let
+𝒚
+t
+\boldsymbol{y}_{t}
+ be a
+D
+D
+-dimensional vector at time
+t
+t
+. The full multivariate time series is then represented as
+Y
+1 :
+T
+∈
+ℝ
+T
+×
+D
+Y_{1:T}\in\mathbb{R}^{T\times D}
+.
+
+Sliding‑Window Embedding
+
+First, apply min–max scaling independently to each variate so that its values lie in
+[0,1]
+[0,1]
+. Next, choose a window length
+L
+L
+ (with stride
+s
+=
+1 s=1
+). For a multivariate time series
+Y
+1 :
+T
+Y_{1:T}
+, construct the ‘trajectory’ matrix:
+
+Z
+∈
+ℝ
+(
+T
+−
+L
++
+1 )
+×
+L
+​
+D
+.
+Z\in\mathbb{R}^{(T-L+1)\times LD}.
+
+This construction treats each of the
+T
+−
+L
++
+1 T-L+1
+ rows of
+Z
+Z
+ as a time point in
+ℝ
+L
+​
+D
+\mathbb{R}^{LD}
+ using interleaving of the
+D
+D
+ channels.
+
+Embedding Example
+
+Suppose we have a two-channel (
+D
+=
+2 D=2
+) time series with
+T
+=
+4 T=4
+ steps:
+
+Y
+1 :
+4 =
+[110220330440]
+Y_{1:4}=\begin{bmatrix}1&10\\
+2&20\\
+3&30\\
+4&40\end{bmatrix}
+
+(1)
+
+Taking the window length
+L
+=
+2 L=2
+ results in
+T
+−
+L
++
+1 =
+3 T-L+1=3
+ windows. Form the trajectory matrix by taking each 2‑step window as a
+row
+ (channel‑interleaved):
+
+Z
+=
+[
+y
+1 ,
+1 y
+2 ,
+1 y
+1 ,
+2 y
+2 ,
+2 y
+1 ,
+2 y
+2 ,
+2 y
+1 ,
+3 y
+2 ,
+3 y
+1 ,
+3 y
+2 ,
+3 y
+1 ,
+4 y
+2 ,
+4 ]
+=
+[110220220330330440]
+∈
+ℝ
+3 ×
+4 .
+Z=\begin{bmatrix}y_{1,1}&y_{2,1}&y_{1,2}&y_{2,2}\\[4.0pt]
+y_{1,2}&y_{2,2}&y_{1,3}&y_{2,3}\\[4.0pt]
+y_{1,3}&y_{2,3}&y_{1,4}&y_{2,4}\end{bmatrix}=\begin{bmatrix}1&10&2&20\\[4.0pt]
+2&20&3&30\\[4.0pt]
+3&30&4&40\end{bmatrix}\in\mathbb{R}^{3\times 4}.
+
+Dimensionality Reduction
+
+In the original TimeCluster system, linear PCA is one option among others (t-SNE, UMAP, or convolutional autoencoders for feature extraction), but the essential idea is this sliding-window embedding followed by dimensionality reduction. Given the matrix
+Z
+Z
+ (whose rows are observations), PCA computes the eigenvectors of the covariance matrix or equivalently performs an SVD on
+Z
+Z
+, thereby projecting the high-dimensional observations into a low-dimensional space for visualisation while preserving most of the structure. The top
+r
+r
+ principal components are the first
+r
+r
+ eigenvectors (or singular vectors) corresponding to the largest eigenvalues, and they provide the best rank-
+r
+r
+ approximation to
+Z
+Z
+ in the least-squares sense. Projecting the data onto the first two components yields a 2D scatter plot.
+
+Visualising the Results
+
+Ali
+et al.
+ then plot these embeddings in an interactive plot with the original time series plotted above the embedding. Selecting points in the embedding highlights points in the time series, and vice versa, allowing easy exploration. The resulting tool also demonstrates some nice properties:
+
+•
+
+Periodicity in the time series forms loops in the embedding.
+
+•
+
+Anomalies in the time series cause anomalies in the embedding.
+
+•
+
+Changepoints in the time series cause clusters in the embedding.
+
+Figure
+1 demonstrates the impact of periodicity and anomalies. Figure
+2 demonstrates the relationship of changepoints and clustering.
+
+Figure 2:
+An image of TimeCluster from
+[1]
+. Clusters in the embedding space correspond to self similar sections of the time series. Two examples (green and yellow) are highlighted to demonstrate.
+
+2.2 Linear Dynamical Systems
+
+A linear time-invariant (LTI) state-space model with (hidden) state
+x
+t
+∈
+ℝ
+n
+x_{t}\in\mathbb{R}^{n}
+, time-dependent input
+u
+t
+∈
+ℝ
+m
+u_{t}\in\mathbb{R}^{m}
+ and observed output
+y
+t
+∈
+ℝ
+D
+y_{t}\in\mathbb{R}^{D}
+ can be written as
+
+𝒙
+t
++
+1 \displaystyle\boldsymbol{x}_{t+1}
+
+=
+A
+​
+𝒙
+t
++
+B
+​
+𝒖
+t
++
+𝒘
+t
+,
+\displaystyle=A\boldsymbol{x}_{t}+B\boldsymbol{u}_{t}+\boldsymbol{w}_{t},
+
+(2a)
+
+𝒚
+t
+\displaystyle\boldsymbol{y}_{t}
+
+=
+C
+​
+𝒙
+t
++
+D
+​
+𝒖
+t
++
+𝒗
+t
+.
+\displaystyle=C\boldsymbol{x}_{t}+D\boldsymbol{u}_{t}+\boldsymbol{v}_{t}.
+
+(2b)
+
+Here
+𝒘
+t
+,
+𝒗
+t
+\boldsymbol{w}_{t},\boldsymbol{v}_{t}
+ are process and measurement noise terms and:
+
+A
+∈
+ℝ
+n
+×
+n
+A\in\mathbb{R}^{n\times n}
+ determines how the latent state evolves over time
+
+B
+∈
+ℝ
+n
+×
+m
+B\in\mathbb{R}^{n\times m}
+ determines how the input influences the hidden state
+
+C
+∈
+ℝ
+D
+×
+n
+C\in\mathbb{R}^{D\times n}
+ determines how the latent state is measured
+
+D
+∈
+ℝ
+D
+×
+m
+D\in\mathbb{R}^{D\times m}
+ determines how the input influences the observations
+
+Standard conditions (controllability, observability) ensure the state can be uniquely identified from output data
+[
+2 , Definitions 7.1 and 8.1]
+. Many commonly used time series models, such as ARIMA processes, admit an equivalent state-space form of this type
+[3]
+. Once
+(
+A
+,
+B
+,
+C
+,
+D
+)
+(A,B,C,D)
+ and the state sequence are known, one can simulate or forecast future outputs by iterating the state equation.
+
+2.3 Subspace Identification
+
+Subspace identification (ID) methods aim to estimate the state-space model parameters
+(
+A
+,
+B
+,
+C
+,
+D
+)
+(A,B,C,D)
+ from input-output data. Importantly, subspace ID algorithms do not require iterative optimisation, avoiding issues of local minima that affect techniques such as the expectation–maximisation (EM) algorithm; instead, all steps reduce to linear algebra operations (for a more complete overview see
+[4,5]
+).
+
+We start by noting that the LTI system in equation (
+2 ) can be formulated as a matrix equation
+
+[
+𝒙
+t
++
+1 𝒚
+t
+]
+=
+[
+A
+B
+C
+D
+]
+​
+[
+𝒙
+t
+𝒖
+t
+]
++
+[
+𝒘
+t
+𝒗
+t
+]
+.
+\begin{bmatrix}\boldsymbol{x}_{t+1}\\
+\boldsymbol{y}_{t}\end{bmatrix}=\begin{bmatrix}A&B\\
+C&D\end{bmatrix}\begin{bmatrix}\boldsymbol{x}_{t}\\
+\boldsymbol{u}_{t}\end{bmatrix}+\begin{bmatrix}\boldsymbol{w}_{t}\\
+\boldsymbol{v}_{t}\end{bmatrix}.
+
+(3)
+
+Given we have access to inputs
+𝒖
+t
+\boldsymbol{u}_{t}
+ and outputs
+𝒚
+t
+\boldsymbol{y}_{t}
+, an estimate of the hidden state vector
+𝒙
+t
+\boldsymbol{x}_{t}
+ would allow the system parameters
+
+Θ
+:=
+[
+A
+B
+C
+D
+]
+\Theta:=\begin{bmatrix}A&B\\
+C&D\end{bmatrix}
+
+(4)
+
+to be estimated using standard least squares.
+
+Estimating the hidden state vector
+
+The recursive nature of the LTI system allows observations
+after
+ time
+t
+t
+ to be written in terms of the state vector
+at
+ time
+t
+t
+, plus input and noise terms. For example, expanding
+𝒙
+t
++
+1 \boldsymbol{x}_{t+1}
+ in the equation for the observation at time
+t
++
+1 t+1
+:
+
+𝒚
+t
++
+1 \displaystyle\boldsymbol{y}_{t+1}
+
+=
+C
+​
+𝒙
+t
++
+1 +
+D
+​
+𝒖
+t
++
+1 +
+𝒗
+t
++
+1 \displaystyle=C\boldsymbol{x}_{t+1}+D\boldsymbol{u}_{t+1}+\boldsymbol{v}_{t+1}
+
+=
+C
+​
+(
+A
+​
+𝒙
+t
++
+B
+​
+𝒖
+t
++
+𝒘
+t
+)
++
+D
+​
+𝒖
+t
++
+1 +
+𝒗
+t
++
+1 \displaystyle=C\left(A\boldsymbol{x}_{t}+B\boldsymbol{u}_{t}+\boldsymbol{w}_{t}\right)+D\boldsymbol{u}_{t+1}+\boldsymbol{v}_{t+1}
+
+=
+C
+​
+A
+​
+𝒙
+t
++
+C
+​
+B
+​
+𝒖
+t
++
+D
+​
+𝒖
+t
++
+1 ⏟
+input term
++
+C
+​
+𝒘
+t
++
+𝒗
+t
++
+1 ⏟
+noise term
+.
+\displaystyle=CA\boldsymbol{x}_{t}+\underbrace{CB\boldsymbol{u}_{t}+D\boldsymbol{u}_{t+1}}_{\text{input term}}+\underbrace{C\boldsymbol{w}_{t}+\boldsymbol{v}_{t+1}}_{\text{noise term}}.
+
+We will assume hereafter that the system is ‘output-only,’ meaning
+u
+t
+=
+0 u_{t}=0
+ for
+t
+=
+1 ,
+2 ,
+…
+,
+T
+t=1,2,\dots,T
+, so the input term vanishes. For input-output systems, algorithms like N4SID and MOESP use orthogonal projection to eliminate the contribution from the input (for more details see
+[6,7]
+).
+
+Repeating the same approach for
+L
+L
+ successive time steps, we arrive at the matrix equation
+
+[
+𝒚
+t
+𝒚
+t
++
+1 ⋮
+𝒚
+t
++
+L
+−
+1 ]
+=
+[
+C
+C
+​
+A
+⋮
+C
+​
+A
+L
+−
+1 ]
+⏟
+𝒪
+L
+​
+𝒙
+t
++
+ϵ
+,
+\begin{bmatrix}\boldsymbol{y}_{t}\\
+\boldsymbol{y}_{t+1}\\
+\vdots\\
+\boldsymbol{y}_{t+L-1}\end{bmatrix}=\underbrace{\begin{bmatrix}C\\
+CA\\
+\vdots\\
+CA^{L-1}\end{bmatrix}}_{\mathcal{O}_{L}}\boldsymbol{x}_{t}+\epsilon,
+
+(5)
+
+for some noise term
+ϵ
+\epsilon
+, and where we have defined the
+extended observability matrix
+
+𝒪
+L
+∈
+ℝ
+L
+​
+D
+×
+n
+\mathcal{O}_{L}\in\mathbb{R}^{LD\times n}
+.
+
+We can construct a system of equations like (
+5 ) for each time step. Note, however, that we cannot use all
+T
+T
+ time steps; the lookahead window of length
+L
+L
+ reduces the maximum number of equations to
+T
+−
+L
++
+1 T-L+1
+. Stacking each equation into columns yields the following matrix equation:
+
+H
+=
+𝒪
+L
+​
+X
+1 :
+T
+−
+L
++
+1 +
+ϵ
+.
+H=\mathcal{O}_{L}\,X_{1:T-L+1}+\epsilon.
+
+(6)
+
+Here, we have introduced the
+block-Hankel
+ matrix
+
+H
+=
+[
+𝒚
+1 𝒚
+2 ⋯
+𝒚
+T
+−
+L
++
+1 𝒚
+2 𝒚
+3 ⋯
+𝒚
+T
+−
+L
++
+2 ⋮
+⋮
+⋮
+𝒚
+L
+𝒚
+L
++
+1 ⋯
+𝒚
+T
+]
+∈
+ℝ
+L
+​
+D
+×
+(
+T
+−
+L
++
+1 )
+.
+H=\begin{bmatrix}\boldsymbol{y}_{1}&\boldsymbol{y}_{2}&\cdots&\boldsymbol{y}_{T-L+1}\\
+\boldsymbol{y}_{2}&\boldsymbol{y}_{3}&\cdots&\boldsymbol{y}_{T-L+2}\\
+\vdots&\vdots&&\vdots\\
+\boldsymbol{y}_{L}&\boldsymbol{y}_{L+1}&\cdots&\boldsymbol{y}_{T}\end{bmatrix}\in\mathbb{R}^{LD\times(T-L+1)}.
+
+(7)
+
+and the state sequence matrix
+X
+1 :
+T
+−
+L
++
+1 =
+[
+𝒙
+1 ,
+𝒙
+2 ,
+…
+,
+𝒙
+T
+−
+L
++
+1 ]
+∈
+ℝ
+n
+×
+(
+T
+−
+L
++
+1 )
+X_{1:T-L+1}=[\boldsymbol{x}_{1},\boldsymbol{x}_{2},\ldots,\boldsymbol{x}_{T-L+1}]\in\mathbb{R}^{n\times(T-L+1)}
+.
+
+Classical results show that if
+L
+L
+ is chosen such that the system order
+n
+≤
+L
+n\leq L
+, then
+rank
+​
+(
+H
+)
+=
+n
+\text{rank}(H)=n
+ in the noise-free case, and the SVD of
+H
+H
+ yields the column space of the observability matrix and the row space of the controllability matrix
+[8,9]
+. Concretely, one computes
+
+H
+=
+U
+​
+Σ
+​
+V
+T
+H=U\Sigma V^{T}
+
+and takes the first
+n
+n
+ columns
+U
+1 :
+n
+U_{1:n}
+ of
+U
+U
+ (and corresponding singular values
+Σ
+1 :
+n
+\Sigma_{1:n}
+). If, as in the majority of cases,
+n
+n
+ is not known
+a priori
+, then one can estimate the system order by taking the top
+r
+r
+ singular values above a predetermined threshold
+ε
+\varepsilon
+. If
+r
+=
+n
+r=n
+, these columns span the same space as the true state sequence. The state estimates can then be computed as
+X
+^
+1 :
+T
+−
+L
++
+1 =
+Σ
+1 :
+n
+​
+V
+1 :
+n
+T
+\hat{X}_{1:T-L+1}=\Sigma_{1:n}V_{1:n}^{T}
+ (where
+V
+1 :
+n
+V_{1:n}
+ contains the first
+n
+n
+ columns of
+V
+V
+), and one recovers
+(
+A
+,
+B
+,
+C
+,
+D
+)
+(A,B,C,D)
+ by least-squares fitting of the original system in equation (
+3 ).
+
+Block Hankel Example
+
+Consider the same signal as in equation (
+1 ), the block‑Hankel matrix is built by stacking two ‘lagged’ block‑rows
+
+H
+=
+[
+𝒚
+1 𝒚
+2 𝒚
+3 𝒚
+2 𝒚
+3 𝒚
+4 ]
+=
+[
+[1, 10]
+[2, 20]
+[3, 30]
+[2, 20]
+[3, 30]
+[4, 40]
+]
+.
+H=\begin{bmatrix}\boldsymbol{y}_{1}&\boldsymbol{y}_{2}&\boldsymbol{y}_{3}\\[6.0pt]
+\boldsymbol{y}_{2}&\boldsymbol{y}_{3}&\boldsymbol{y}_{4}\end{bmatrix}=\begin{bmatrix}\;[1,\,10]&[2,\,20]&[3,\,30]\\[6.0pt]
+\;[2,\,20]&[3,\,30]&[4,\,40]\end{bmatrix}.
+
+If you ‘flatten’ each
+[
+a
+,
+b
+]
+[a,b]
+ into two rows, the result is:
+
+H
+=
+[123102030234203040]
+∈
+ℝ
+4 ×
+3 .
+H=\begin{bmatrix}1&2&3\\
+10&20&30\\
+2&3&4\\
+20&30&40\end{bmatrix}\in\mathbb{R}^{4\times 3}.

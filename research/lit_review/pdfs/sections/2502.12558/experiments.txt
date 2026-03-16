@@ -1,0 +1,573 @@
+4 Experiments
+
+4.1 Experiment Setting & Baselines
+
+In this paper, we consider two mainstream approaches to solving the LVMR problem: retrieval-based methods and generation-based methods. Retrieval-based methods rely on chunking, where the entire video is divided into multiple independent segments. By computing the similarity between each segment and the question, these methods rank all candidate intervals and identify the most relevant ones. Such methods are often used as the retrieval component in RAG-based LVU models
+[31,1,18]
+, where a small set of relevant video clips is first retrieved based on the question and then passed to downstream MLLMs to complete the LVU task. The second category is generation-based methods, which aim to directly test the temporal reasoning ability of MLLMs. These methods feed both the question and the video into the MLLM, prompting it to directly output a list of time intervals containing the answer in an end-to-end fashion. This evaluation of temporal grounding capability has been highlighted in several state-of-the-art MLLMs
+[2,23]
+. In the main experiment, we set the IoU threshold to 0.3. Additionally, results with different IoU thresholds are provided in Appendix
+6.3 . Below, we detail the settings and baseline models for each category.
+
+Retrieval-based Methods.
+
+We divide each video into fixed 10-second chunks without tailoring the segmentation to any specific model. The IoU threshold is set to 0.3 in the main results, with additional thresholds reported in the appendix. We compare mainstream retrieval-based methods, including dual-encoder models such as InternVideo2
+[27]
+ and LanguageBind
+[38]
+. Compositional retrieval methods such as COVR
+[24]
+ and MM-RET
+[36]
+ generate multi-modal embeddings by combining vision and text inputs. Recent approaches like E5V
+[10]
+ and VLM2VEC
+[12]
+ utilize MLLMs to embed arbitrary combinations of modalities. All these models first generate query embeddings and embeddings for pre-segmented video clips, compute similarity scores between them, rank the video clips based on these scores, and return the top-
+k
+k
+ clips as the predicted moments. Details on how each model generates embeddings are provided in the Appendix
+6.1.1
+.
+
+Table 2:
+Main results across different meta-tasks. #Frames indicates the number of input frames for generation-based methods and per-clip frames for retrieval-based methods.
+
+Method
+
+#Size
+
+#Frames
+
+Global-level
+
+Event-level
+
+Object-level
+
+Overall
+
+R@1
+
+mAP@5
+
+R@1
+
+mAP@5
+
+R@1
+
+mAP@5
+
+R@1
+
+mAP@5
+
+Generation-based Methods
+
+GPT-4o(2024-11-20)
+[20]
+
+-
+
+128
+
+12.7
+
+12.7
+
+21.3
+
+22.2
+
+20.4
+
+21.5
+
+18.2
+
+18.9
+
+Gemini-2.5-Pro
+[13]
+
+-
+
+128
+
+20.5
+
+22.5
+
+31.7
+
+33.9
+
+35.2
+
+36.3
+
+29.6
+
+31.4
+
+TimeChat
+[21]
+
+7B
+
+96
+
+2.6
+
+2.6
+
+6.7
+
+6.7
+
+4.4
+
+4.4
+
+5.9
+
+5.9
+
+Lita
+[9]
+
+13B
+
+100
+
+2.6
+
+2.6
+
+7.2
+
+7.2
+
+1.8
+
+1.8
+
+5.6
+
+5.6
+
+Qwen2.5VL
+[2]
+
+7B
+
+768
+
+4.6
+
+3.8
+
+12.0
+
+12.2
+
+4.3
+
+4.2
+
+8.1
+
+8.0
+
+InternVL3
+[39]
+
+8B
+
+96
+
+3.9
+
+3.5
+
+7.8
+
+8.5
+
+4.1
+
+4.1
+
+5.9
+
+6.1
+
+Eagle2.5
+[3]
+
+8B
+
+256
+
+9.3
+
+9.2
+
+9.3
+
+9.4
+
+7.2
+
+7.4
+
+8.7
+
+8.7
+
+VideoChat-Flash
+[16]
+
+7B
+
+256
+
+2.9
+
+3.1
+
+9.4
+
+9.4
+
+7.2
+
+7.2
+
+7.3
+
+7.4
+
+Video-LLaMA3
+[32]
+
+7B
+
+256
+
+11.1
+
+9.9
+
+20.9
+
+19.0
+
+12.8
+
+11.7
+
+16.4
+
+14.9
+
+InternVL3
+[39]
+
+38B
+
+96
+
+11.1
+
+10.5
+
+20.8
+
+21.2
+
+11.3
+
+11.5
+
+15.8
+
+16.0
+
+LLaVA-Video
+[35]
+
+72B
+
+96
+
+3.6
+
+3.5
+
+8.6
+
+9.8
+
+4.6
+
+5.6
+
+6.3
+
+7.2
+
+Qwen2.5VL
+[2]
+
+72B
+
+768
+
+13.6
+
+13.0
+
+21.9
+
+21.8
+
+12.2
+
+11.9
+
+17.2
+
+16.9
+
+Retrieval-based Methods
+
+E5V
+[10]
+
+8.4B
+
+1
+
+13.1
+
+19.5
+
+14.5
+
+20.7
+
+14.9
+
+19.8
+
+14.3
+
+20.1
+
+UniIR
+[28]
+
+428M
+
+1
+
+14.9
+
+19.4
+
+11.5
+
+17.9
+
+8.2
+
+13.9
+
+11.2
+
+16.9
+
+MM-Ret
+[36]
+
+148M
+
+1
+
+14.2
+
+17.9
+
+13.6
+
+19.4
+
+9.7
+
+15.4
+
+12.4
+
+17.7
+
+CoVR
+[24]
+
+588M
+
+15
+
+9.8
+
+15.4
+
+13.7
+
+19.9
+
+14.4
+
+18.9
+
+13.0
+
+18.5
+
+LanguageBind
+[38]
+
+428M
+
+8
+
+16.2
+
+24.6
+
+21.4
+
+29.4
+
+15.5
+
+21.0
+
+18.2
+
+25.4
+
+InternVideo2
+[27]
+
+1B
+
+8
+
+16.8
+
+24.5
+
+23.5
+
+30.9
+
+17.0
+
+22.7
+
+19.7
+
+26.6
+
+Figure 4:
+Sub-task performance of different retrieval-based methods and generation-based methods.
+
+Generation-based Methods.
+
+For the experimental setup, we input the video (either uniformly down-sampled frames or raw mp4) into the model and provide it with the total video duration as well as the timestamp corresponding to each frame. We then prompt the model to output a list of one or more time intervals containing the answer. The number of frames follows the optimal settings officially recommended by each model, and the time instruction format also follows the official input specifications (details for each model can be found in the Appendix
+6.1.2
+). Additionally, we provide the ablation study of different frame numbers in the Appendix
+6.2 . We adopt the same IoU-based evaluation as used for the retrieval-based methods to enable a fair comparison. For baselines, we evaluate a wide range of state-of-the-art MLLMs, including models specifically designed for moment retrieval (e.g., TimeChat
+[21]
+ and Lita
+[9]
+), leading open-source multi-modal models such as LLaVA-Video
+[35]
+, InternVL3
+[39]
+, and Qwen2.5VL
+[2]
+, as well as long-video-oriented MLLMs including VideoLLaMA3
+[32]
+, Eagle2.5
+[3]
+ and VideoChat-Flash
+[16]
+. Additionally, we evaluate powerful closed-source models GPT-4o (2024-11-20)
+[20]
+ and Gemini-2.5-Pro
+[13]
+ to provide a comprehensive assessment.
+
+4.2 Main Results
+
+Table
+2 and Figure
+4 shows the overall results. Results indicate that despite advances in video understanding,
+LVMR remains challenging for current models.
+ For example, InternVL3-8B achieves only 5.9 R@1 and 6.1 mAP@5, while even large-scale models like Qwen2.5VL-72B (handling up to 768 frames) reach just 17.2 R@1, underscoring current MLLMs’ limitations in fine-grained temporal perception. Retrieval-based methods perform slightly better but still fall short. For example, the MLLM-based retriever E5V reaches 14.3 R@1. Even the state-of-the-art retriever InternVideo2 achieves only 19.7 R@1 in different settings. This subpar performance reflects that most retrievers are tuned for direct cross-modal alignment (e.g., caption-based retrieval), while our task requires deeper instruction understanding and complex multi-modal reasoning. Some representative visualization cases are provided in Appendix
+6.4 .
+
+4.3 Analysis
+
+Figure 5:
+Evaluation results w.r.t. query modalities: TMR (text-only), IMR (image-conditioned), and VMR (video-conditioned) moment retrieval.
+
+Figure 6:
+Comparison of MomentSeeker and LVU performance.
+
+Figure 7:
+Accuracy of retrieval methods
+w
+.
+r
+.
+t
+w.r.t
+ ground-truth interval position and video length. Generation methods better predict start/end intervals, while retrieval methods are less affected by interval position. All models decline as video duration grows.
+
+1. MomentSeeker remains highly challenging.
+
+Even advanced MLLMs such as GPT-4o and Gemini 2.5 Pro achieve relatively low scores on our benchmark, highlighting the difficulty of fine-grained temporal grounding. The full-set performance of GPT-4o remains largely consistent with prior results, while Gemini 2.5 Pro achieves the best reported numbers (29.6 R@1 and 31.4 mAP@5) yet still struggles on queries requiring precise temporal localization (e.g., counting the number of goals). This underscores the inherent complexity of MomentSeeker and its potential to reveal subtle temporal reasoning weaknesses in modern MLLMs.
+
+2. Existing methods struggle with multi-modal queries.
+
+Figure
+6 shows that most models perform worse on IMR (Image-conditioned Moment Retrieval) and VMR (Video-conditioned Moment Retrieval) than on TMR (Text-only Moment Retrieval). This gap is especially large for generation-based methods, indicating difficulty in integrating and reasoning across modalities. While current models can handle simpler cross-modal tasks (e.g., cross-modal retrieval) or less complex multi-modal understanding tasks (e.g., basic video understanding) reasonably well, they often fail to capture the deeper relationships required for complex multi-modal reasoning. This limitation hinders their robustness and generalizability in real-world scenarios.
+
+3. Generation methods are position sensitive, while retrieval methods are not.
+
+Figure
+7 illustrates model sensitivity to video duration and ground-truth interval positions. InternVL3-8B often predicts intervals near the start or end, and Qwen2.5VL-7B shows a strong bias toward the beginning. Qwen2.5VL-72B mitigates this issue with a more balanced prediction distribution. Retrieval models, treating all chunks equally regardless of position, are largely position-insensitive and consistently generate near-uniform predictions. Moreover, all models’ performance generally declines as video duration increases: retrieval models face a larger candidate pool, complicating ranking, while generation models suffer greater information loss due to more aggressive downsampling, reducing prediction accuracy.
+
+4. Generation-based models are significantly constrained by context length.
+
+As shown in Figure
+7 , Qwen2.5VL-72B achieves noticeably higher accuracy on short videos compared to strong retrievers such as E5V and InternVideo2. This is primarily because Qwen2.5VL-72B supports up to 768 input frames, which corresponds to approximately 6.4 minutes of video when sampled at 2 fps. For videos under 8 minutes, the information loss due to uniform frame downsampling is minimal. Moreover, generation-based methods can ingest the full context, which is especially crucial for many global-level tasks. As a result, they outperform chunking-based retrieval methods. We further confirm that longer temporal context consistently improves performance. For instance, Eagle2.5-8B (256-frame input) outperforms InternVL3-8B (96-frame input) by 2.77 overall, reinforcing the value of extended context for temporal reasoning. These results suggest that with sufficiently long context support, generation-based models have a much higher potential ceiling.
+
+5. Generation methods lag behind retrieval methods, but scale helps.
+
+As shown in Table
+2 , most generation-based methods lag behind retrieval-based methods in moment retrieval performance. For example, the lightweight retriever MM-Ret (148M) achieves an overall score of 12.4 R@1 and 17.7 mAP@5, significantly outperforming the much larger generation model InternVL3-8B, which only achieves 5.9 R@1 and 6.1 mAP@5. However, as model size increases (e.g., InternVL3-38B), generation-based methods begin to approach the performance of retrieval-based ones. This indicates that while current MLLMs lack strong temporal reasoning, increasing model size helps close the gap.
+
+6. MomentSeeker performance predicts downstream LVU task success.
+
+We use different retrievers (Qwen2.5VL, MM-Ret, InternVideo2) in a RAG pipeline to select top-
+k
+k
+ key moments, then feed them to the same MLLM (InternVL3-38B) for LVU tasks. Figure
+6 shows a positive correlation between MomentSeeker retriever performance and downstream RAG-based LVU results, indicating our benchmark effectively predicts LVU task capability.
+
+In summary, LVMR remains a challenging problem given the limitations in overall performance. Retrieval methods generally outperform generation-based methods, but both fall short in handling fine-grained temporal reasoning and complex multi-modal queries. While scaling up generation models and extending temporal context both help, even the latest video MLLMs still struggle on MomentSeeker, underscoring the benchmark’s difficulty and diagnostic value. Notably, moment retrieval quality strongly correlates with LVU task performance, highlighting MomentSeeker’s value as an intermediate benchmark.

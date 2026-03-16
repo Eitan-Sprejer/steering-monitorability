@@ -1,0 +1,666 @@
+4 Experiments
+
+4.1 Experimental Settings
+
+Tasks.
+ We evaluate EAM on four representative COPs: TSP, CVRP, PCTSP, and OP (see Section
+2 ). EAM is integrated into AM
+[28]
+, POMO
+[29]
+, and Sym-NCO
+[26]
+ for TSP and CVRP, and into AM alone for PCTSP and OP, due to model compatibility and hardware constraints. TSP and CVRP with
+N
+=
+50 𝑁
+50 N=50
+italic_N = 50
+ and
+100 100
+100 100
+ are used to evaluate cross-model and cross-scale generalization. PCTSP and OP test EAM’s performance on tasks with partial routing and complex constraints.
+
+Baselines.
+ We compare against both traditional solvers and DRL-based methods. For TSP, we consider Concorde
+[4]
+, LKH-3
+[20]
+, AM, POMO, and Sym-NCO; for CVRP, we use HGS
+[43]
+, LKH-3, AM, POMO, and Sym-NCO; for PCTSP, we benchmark against ILS
+[31]
+ and AM; and for OP, we compare with Compass
+[27]
+ and AM.
+
+Metrics.
+ We evaluate average performance and total inference time cost on
+10 ⁢
+k
+10 𝑘
+10k
+10 italic_k
+ test instances. For neural solvers, we report results under three decoding strategies: greedy, multi-start, and data augmentation, to reflect trade-offs between quality and latency. The multi-start decoding strategy generates multiple trajectories on the same COP instance, improving performance compared to greedy decoding but incurring additional inference overhead. The data augmentation decoding strategy enhances COP instances by generating multiple symmetric variants, further boosting performance at the cost of even higher inference overhead. To highlight differences in practical deployment suitability, traditional solvers run on CPU, neural methods on GPU.
+
+For more details on experimental settings, please refer to Appendix
+B
+.
+
+4.2 Experimental Results
+
+4.3 TSP and CVRP
+
+Table 1
+:
+Performance on TSP and CVRP.
+ Bold represents the best performances in each task. ‘-’ indicates that the solver does not support the problem. ‘s’ indicates multi-start sampling, ‘
+8 ×
+8\times
+8 ×
+’ indicates data augmentation for 8 times. The number of multi-start initial points set equal to the number of nodes in the problem instance. We use LHK3’s performance on CVRP from
+[41]
+.
+
+Method
+
+TSP50
+
+TSP100
+
+CVRP50
+
+CVRP100
+
+Cost
+↓
+↓
+\downarrow
+↓
+
+Gap
+↓
+↓
+\downarrow
+↓
+
+Time
+↓
+↓
+\downarrow
+↓
+
+Cost
+↓
+↓
+\downarrow
+↓
+
+Gap
+↓
+↓
+\downarrow
+↓
+
+Time
+↓
+↓
+\downarrow
+↓
+
+Cost
+↓
+↓
+\downarrow
+↓
+
+Gap
+↓
+↓
+\downarrow
+↓
+
+Time
+↓
+↓
+\downarrow
+↓
+
+Cost
+↓
+↓
+\downarrow
+↓
+
+Gap
+↓
+↓
+\downarrow
+↓
+
+Time
+↓
+↓
+\downarrow
+↓
+
+Concorde
+
+5.690
+
+–
+
+13.3m
+
+7.761
+
+–
+
+40.8m
+
+–
+
+–
+
+HGS
+
+–
+
+–
+
+10.366
+
+–
+
+2.1h
+
+15.586
+
+–
+
+3.6h
+
+LKH3
+
+5.690
+
+0.00%
+
+2.0m
+
+7.761
+
+0.00%
+
+18.9m
+
+10.367
+
+0.01%
+
+1h
+
+15.667
+
+0.52%
+
+2h
+
+AM (greedy. )
+
+5.794
+
+1.82%
+
+2s
+
+8.123
+
+4.67%
+
+5s
+
+10.949
+
+5.63%
+
+2s
+
+16.580
+
+6.38%
+
+5s
+
+EAM-AM (greedy. )
+
+5.780
+
+1.57%
+
+2s
+
+8.071
+
+4.00%
+
+5s
+
+10.893
+
+5.08%
+
+2s
+
+16.555
+
+6.22%
+
+5s
+
+POMO (s.)
+
+5.702
+
+0.21%
+
+9s
+
+7.800
+
+0.50%
+
+19s
+
+10.555
+
+1.82%
+
+12s
+
+15.894
+
+1.98%
+
+28s
+
+EAM-POMO (s.)
+
+5.702
+
+0.20%
+
+10s
+
+7.796
+
+0.45%
+
+19s
+
+10.500
+
+1.29%
+
+13s
+
+15.859
+
+1.75%
+
+29s
+
+SymNCO (s. )
+
+5.698
+
+0.14%
+
+10s
+
+7.793
+
+0.42%
+
+19s
+
+10.495
+
+1.24%
+
+13s
+
+15.839
+
+1.63%
+
+29s
+
+EAM-SymNCO (s. )
+
+5.698
+
+0.14%
+
+10s
+
+7.777
+
+0.21%
+
+19s
+
+10.481
+
+1.11%
+
+13s
+
+15.826
+
+1.54%
+
+29s
+
+POMO (s.
+8 ×
+8\times
+8 ×
+)
+
+5.697
+
+0.11%
+
+15s
+
+7.775
+
+0.18%
+
+64s
+
+10.463
+
+0.94%
+
+47s
+
+15.760
+
+1.12%
+
+306s
+
+EAM-POMO (s.
+8 ×
+8\times
+8 ×
+)
+
+5.693
+
+0.05%
+
+15s
+
+7.772
+
+0.14%
+
+63s
+
+10.422
+
+0.54%
+
+47s
+
+15.733
+
+0.95%
+
+306s
+
+SymNCO (s.
+8 ×
+8\times
+8 ×
+)
+
+5.698
+
+0.13%
+
+15s
+
+7.775
+
+0.18%
+
+63s
+
+10.438
+
+0.69%
+
+48s
+
+15.818
+
+1.49%
+
+306s
+
+EAM-SymNCO (s.
+8 ×
+8\times
+8 ×
+)
+
+5.692
+
+0.04%
+
+16s
+
+7.774
+
+0.17%
+
+64s
+
+10.427
+
+0.59%
+
+48s
+
+15.806
+
+1.42%
+
+306s
+
+Table
+LABEL:tab:tsp_cvrp_results
+ shows that EAM consistently enhances solution quality across models, instance sizes, and decoding strategies. On CVRP50, EAM-POMO reduces the optimality gap from
+0.94 %
+percent
+0.94 0.94\%
+0.94 %
+ to
+0.54 %
+percent
+0.54 0.54\%
+0.54 %
+, while on TSP100, EAM-POMO achieves a
+0.14 %
+percent
+0.14 0.14\%
+0.14 %
+ gap compared to
+0.50 %
+percent
+0.50 0.50\%
+0.50 %
+ from the original POMO. EAM-SymNCO further achieves the best overall performance on TSP50 with a
+0.04 %
+percent
+0.04 0.04\%
+0.04 %
+ gap. These improvements are obtained without any additional inference time. Moreover, as shown in Figure
+2 , EAM significantly accelerates convergence during training on most tasks, indicating its effectiveness not only in final performance but also in training efficiency.
+
+Figure 2
+:
+Training curves of AM, POMO, and Sym-NCO with and without EAM on TSP-100 and CVRP-100.
+ EAM consistently accelerates convergence across different backbones and problem settings, highlighting its ability to improve training efficiency in addition to final solution quality.
+
+4.3.1
+PCTSP and OP
+
+As shown in Table
+2 , EAM also exhibits consistent performance gains on PCTSP and OP.
+For example, on OP, EAM-AM improves the objective from 31.54 to 31.85, narrowing the gap from
+4.97 %
+percent
+4.97 4.97\%
+4.97 %
+ to
+4.03 %
+percent
+4.03 4.03\%
+4.03 %
+. These improvements highlight EAM’s ability to enhance the exploratory capacity of the policy in scenarios characterized by partial routing and complex objective functions, further validating its generality and adaptability as a policy enhencement module across diverse COPs.
+
+Table 2
+:
+Performance on PCTSP and OP
+. Notations are the same with Table
+LABEL:tab:tsp_cvrp_results
+. We use ILS and Compass’s performance from
+[26]
+.
+
+Method
+
+PCTSP100
+
+OP
+
+Cost
+↓
+↓
+\downarrow
+↓
+
+Gap
+↓
+↓
+\downarrow
+↓
+
+Time
+↓
+↓
+\downarrow
+↓
+
+Obj
+↑
+↑
+\uparrow
+↑
+
+Gap
+↓
+↓
+\downarrow
+↓
+
+Time
+↓
+↓
+\downarrow
+↓
+
+ILS C++
+
+5.98
+
+–
+
+12h
+
+–
+
+Compass
+
+–
+
+33.19
+
+–
+
+15m
+
+AM (greedy.)
+
+6.21
+
+3.92%
+
+2s
+
+31.54
+
+4.97%
+
+2s
+
+EAM-AM (greedy.)
+
+6.20
+
+3.61%
+
+2s
+
+31.85
+
+4.03%
+
+2s
+
+4.3.2
+Ablation Study
+
+We conduct a comprehensive ablation study to evaluate the contribution of key designs in EAM. The experiments are organized along two dimensions: 1) evolutionary hyperparameter configuration and 2) annealed evolution frequencies. For each aspect, we systematically alter specific design components to evaluate their influence on solution quality and training dynamics.
+
+Figure 3
+:
+Training curves of various hyperparameters.
+
+Figure 4
+:
+Training curves of whether to use annealing.
+
+Figure 5
+:
+Training curves of absolute loss on TSP 100.
+
+Evolutionary Hyperparameter Configuration.
+
+We examine the impact of different crossover and mutation rate configurations in EAM on OP (Fig.
+5 ). Specifically, we compare two settings: (1) high mutation rate with low crossover rate, and (2) low mutation rate with high crossover rate. Empirical results show that the first setting leads to faster convergence and superior final solution quality. This configuration aligns better with the OP objective, where the absolute node order is largely irrelevant and aggressive node replacement helps uncover high-reward substructures more effectively.
+
+Additionally, this configuration results in a smaller KL divergence upper bound (see Appendix
+C
+), implying reduced bias when incorporating evolved trajectories into policy updates. This observation supports the theoretical rationale for modeling KL divergence and highlights the importance of task-aware perturbation strength in maintaining training stability.
+
+Annealed Evolution Frequency.
+
+We compare constant and annealed evolution frequencies (Fig.
+5 ). Disabling annealing leads to slower improvement and significant instability, indicating that the utility of evolutionary perturbations gradually shifts toward negative effects as training progresses. These results validate the annealing schedule and align with the theoretical insight in Section
+3.4 .

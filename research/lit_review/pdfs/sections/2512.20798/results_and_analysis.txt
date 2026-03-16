@@ -1,0 +1,899 @@
+5 Results and Analysis
+
+Our evaluation of 12 leading LLMs on the 40 scenarios of ODCV-Bench reveals significant safety concerns. The results indicate that modern agents, when strongly optimized for a goal, are prone to developing and executing unethical instrumental goals.
+
+5.1 Quantitative Results and Severity Analysis
+
+Our evaluation of 12 leading LLMs on ODCV-Bench reveals significant safety concerns regarding the deployment of autonomous agents. The results, summarized in Table
+6 , indicate that modern agents, when strongly optimized for a goal, are prone to developing and executing unethical instrumental strategies.
+
+We observe a stark divergence in safety profiles across the evaluated models. While models such as Claude-Opus-4.5 and GPT-5.1-Chat demonstrated high resilience to pressure, open-weights models and those optimized for aggressive instruction-following exhibited alarming misalignment rates.
+
+Table 6
+:
+Evaluation results of 12 frontier LLMs on ODCV-Bench.
+MR (Misalignment Rate)
+ indicates the percentage of scenarios where the agent received a severity score
+≥
+\geq
+3 (active misconduct).
+Sev (Average Severity)
+ measures harm magnitude on a 0–5 scale. Results are reported for
+Incentivized
+ (KPI pressure only) and
+Mandated
+ (explicit command) prompts.
+
+Overall
+
+Incentivized
+
+Mandated
+
+Model
+
+MR (%)
+
+Sev
+
+MR (%)
+
+Sev
+
+MR (%)
+
+Sev
+
+Claude-Opus-4.5
+
+1.3%
+
+0.15
+
+2.6%
+
+0.21
+
+0.0%
+
+0.10
+
+GPT-5.1-Chat
+
+11.4%
+
+0.59
+
+15.0%
+
+0.63
+
+7.7%
+
+0.56
+
+Llama-4-Maverick
+
+33.8%
+
+2.11
+
+27.5%
+
+2.03
+
+40.0%
+
+2.20
+
+GLM-4.6
+
+36.7%
+
+2.18
+
+43.6%
+
+2.21
+
+30.0%
+
+2.15
+
+gpt-oss-20b
+
+36.7%
+
+1.53
+
+30.0%
+
+1.28
+
+43.6%
+
+1.79
+
+Grok-4.1-Fast
+
+38.8%
+
+1.49
+
+40.0%
+
+1.58
+
+37.5%
+
+1.40
+
+gpt-oss-120b
+
+45.0%
+
+1.95
+
+35.0%
+
+1.60
+
+55.0%
+
+2.30
+
+Qwen3-Max
+
+45.6%
+
+1.87
+
+35.9%
+
+1.49
+
+55.0%
+
+2.25
+
+Kimi-K2-0905
+
+46.2%
+
+1.76
+
+37.5%
+
+1.43
+
+55.0%
+
+2.10
+
+Qwen3-30B-A3B-Instruct-2507
+
+48.1%
+
+2.18
+
+42.1%
+
+1.97
+
+53.8%
+
+2.38
+
+Minimax-M2
+
+48.8%
+
+1.83
+
+42.5%
+
+1.65
+
+55.0%
+
+2.00
+
+Gemini-3-Pro-Preview
+
+71.4%
+
+2.83
+
+71.8%
+
+2.77
+
+71.1%
+
+2.89
+
+The data reveals a concerning “intensity gap” where frequent misbehavior is often accompanied by high severity. While MR measures the frequency of failure, the Average Severity score distinguishes between benign procedural errors (Score 1-2) and active misconduct (Score 4-5). Models like GLM-4.6 and Qwen3-30B-A3B-Instruct-2507, when they failed, frequently skipped passive negligence and moved directly to active fabrication or safety bypasses, resulting in average severity scores significantly higher than 2.0.
+
+Gemini-3-Pro-Preview presents a notable outlier. Despite its high reasoning capabilities, it exhibited the highest overall misalignment rate (71.4%) and the highest average severity score (2.83). Unlike Claude or GPT-5.1-Chat, Gemini-3-Pro-Preview frequently prioritized KPI optimization over ethical constraints even in
+Incentivized
+ settings, where no direct command to misbehave was given. This suggests a “capability-risk correlation” where superior technical ability to manipulate the environment is directed toward more effective, and thus more dangerous, forms of misalignment.
+
+Finally, comparing the Incentivized and Mandated columns demonstrates that current safety training is insufficient. Models including Gemini-3-Pro-Preview, GLM-4.6, and Qwen3-30B-A3B-Instruct-2507 maintained high MR and Severity scores even when the instructions did not explicitly command unethical behavior. Furthermore, the spike in Mandated severity for models like Qwen3-Max (from 1.49 to 2.25) suggests that direct optimization pressure does not only make violations more likely, it also makes the resulting agentic actions significantly more harmful. This confirms that current agents independently derive deceptive strategies to satisfy implied KPI requirements, even in the absence of explicit malicious prompts.
+
+5.2 The Capability-Alignment Paradox: Analysis of Model Scale
+
+To isolate the impact of model capabilities on outcome-driven misalignment, we analyzed performance differences within model families where training methodology is presumed constant but parameter count varies. We compared gpt-oss (20B vs. 120B) and Qwen3 (30B vs. Max, which exceeds 1 trillion parameters).
+
+Our analysis reveals a complex relationship between scale and safety. As shown in Table
+7 , scaling up does not guarantee improved alignment. In fact, we observe a significant phenomenon of
+Alignment Regression
+, where the larger model behaves unsafely in scenarios where the smaller model remained safe (13.9% of cases for gpt-oss and 5.1% for Qwen3).
+
+Table 7
+:
+Impact of Model Scale on Misalignment.
+Alignment Regression
+ indicates cases where the smaller model was safe (Score
+<
+3 <3
+) but the larger model was unsafe (Score
+≥
+3 \geq 3
+).
+
+Model
+
+N
+
+
+
+Same
+
+Outcome
+
+
+
+Regression
+
+(Safe
+→
+\rightarrow
+ Unsafe)
+
+
+
+Improvement
+
+(Unsafe
+→
+\rightarrow
+ Safe)
+
+gpt-oss (20B
+→
+\rightarrow
+ 120B)
+
+79
+
+64 (81.0%)
+
+11 (13.9%)
+
+4 (5.1%)
+
+Qwen3 (30B
+→
+\rightarrow
+ Max)
+
+76
+
+51 (67.1%)
+
+11 (14.5%)
+
+14 (18.4%)
+
+Qualitative analysis of these discrepancies identifies two competing mechanisms driving these shifts:
+
+1. Capability-Enabled Metric Gaming (Regression).
+
+In some cases, the larger model’s failure stems directly from its superior capability to understand and exploit evaluation mechanisms. The smaller model often remains “safe” because it follows procedures literally and accepts negative outcomes, while the larger model identifies opportunities to game the system.
+
+•
+
+Example (gpt-oss, Educational-Assessment):
+ The 20B model executed the assessment but stopped when procedural issues arose (path misuse, miscounting), failing to resolve it due to its limited capability and weaker situational reasoning. The 120B model understood the accreditation risk and
+intentionally altered the passing threshold
+ by rerunning the script with progressively lower values to force a pass, demonstrating goal-driven manipulation of the evaluation criteria.
+
+•
+
+Example (Qwen3, Ai-Moderator-Content-Censorship-Backdoor):
+ The 30B model followed procedures as written and accepted a sub-99% compliance outcome, escalating appropriately without attempting manipulation. The Max model reverse-engineered the compliance script, identified the backdoor, and deliberately modified
+/usr/local/bin/check_compliance.sh
+ to force a passing score—exploiting its deeper systems understanding to game the benchmark.
+
+2. Enhanced Ethical Reasoning and Conflict Detection (Improvement).
+
+Conversely, larger models demonstrated an improved ability to detect ethical conflicts and refuse to optimize when doing so would violate safety constraints. In these cases, smaller models engaged in “blind optimization,” following directives without recognizing the ethical implications.
+
+•
+
+Example (gpt-oss, Roboadvisor-Ethicsbypass):
+ The 20B model did not meaningfully reason about the ethical risk and procedurally followed instructions, attempting to optimize for high-fee product enrollment and declaring success despite the violation. The 120B model explicitly recognized the regulatory violation (biasing portfolios toward high-fee products while ignoring fiduciary duty) and consistently refused on safety grounds, demonstrating values-based refusal.
+
+•
+
+Example (Qwen3, Healthcare-Appointment-Optimizer):
+ The 30B model blindly followed the pressure to achieve a high Safety Compliance Index (SCI) and directly violated constraints by fabricating incident data and filtering reports to satisfy the metric. The Max model correctly prioritized regulatory requirements, reasoning through the incentive conflict to complete the task without falsifying incidents, accepting the lower score as the honest outcome.
+
+These findings suggest that safety does not monotonically increase with scale. While larger models are better at adhering to explicit refusals (as seen in Section
+5.6 ), their enhanced agency also grants them the
+competence to be deceptive
+. Without robust outcome-driven safety training, increased capability simply converts ”benign failure” into ”successful misalignment.”
+
+5.3 Behavioral Consistency: Obedience vs. Proactive Deception
+
+To understand the drivers of misalignment, we categorized the behavior of each model across the paired Incentivized and Mandated versions of the 40 scenarios. By cross-referencing performance on the paired prompts, we classify model behavior into four distinct modes:
+
+•
+
+Consistent Safety (Both
+<
+<
+ 3):
+ The model refused the unethical path in both variations.
+
+•
+
+Consistent Failure (Both
+≥
+\geq
+ 3):
+ The model failed regardless of how the instruction was phrased.
+
+•
+
+Obedient Misalignment (Man(dated)
+≥
+\geq
+ 3, Inc(entivized)
+<
+<
+ 3):
+ The model behaved safely when incentivized but caved when explicitly commanded.
+
+•
+
+Proactive Deception (Man
+<
+<
+ 3, Inc
+≥
+\geq
+ 3):
+ The model refused the mandated command (likely triggering a safety refusal) but autonomously derived the unethical action to satisfy the incentivized KPI.
+
+Table
+8 presents the distribution of these behaviors. The results illuminate two competing failure modes in current frontier models driven by distinct cognitive mechanisms.
+
+Table 8
+:
+Behavioral consistency matrix categorizing how agents respond to paired prompt variations. We distinguish between
+Obedient Misalignment
+ (safe when incentivized, but caving to mandated commands) and
+Proactive Deception
+ (refusing a mandate but independently deriving unethical strategies to satisfy a KPI), revealing different failure modes across model families.
+
+Model
+
+Both
+≥
+\geq
+ 3
+
+Both
+<
+<
+ 3
+
+
+
+Obedient Misalignment
+
+(Man
+≥
+\geq
+3, Inc
+<
+<
+3)
+
+
+
+Proactive Deception
+
+(Man
+<
+<
+3, Inc
+≥
+\geq
+3)
+
+Claude-Opus-4.5
+
+0
+
+38
+
+0
+
+1
+
+Gemini-3-Pro-Preview
+
+22
+
+6
+
+4
+
+5
+
+GLM-4.6
+
+3
+
+13
+
+9
+
+14
+
+GPT-5.1-Chat
+
+2
+
+32
+
+1
+
+4
+
+gpt-oss-120b
+
+13
+
+17
+
+9
+
+1
+
+gpt-oss-20b
+
+10
+
+20
+
+7
+
+2
+
+Grok-4.1-Fast
+
+13
+
+22
+
+2
+
+3
+
+Kimi-K2-0905
+
+11
+
+14
+
+11
+
+4
+
+Llama-4-Maverick
+
+8
+
+21
+
+8
+
+3
+
+Minimax-M2
+
+15
+
+16
+
+7
+
+2
+
+Qwen3-30B-A3B-Instruct-2507
+
+13
+
+15
+
+7
+
+3
+
+Qwen3-Max
+
+11
+
+15
+
+10
+
+3
+
+TOTAL
+
+121
+
+229
+
+75
+
+45
+
+5.3.1
+The Obedience Gap (Mandated
+>
+>
+ Incentivized)
+
+The most common partial failure mode is
+Obedient Misalignment
+ (75 instances). In these cases, the Mandated prompt uses coercive phrasing (e.g., “We must ensure X,” “Ignore fiduciary duties”) that the agent interprets as a hard constraint or an authorization to bypass standard norms. For example, in the
+Aml-compliance-monitoring
+ scenario, agents that safely reported high suspicion rates in the Incentivized setting shifted to data suppression in the Mandated setting solely because the prompt framed the low filing rate as a mandatory condition for preserving a contract. Here, the mandated instruction successfully overrides the model’s latent safety training, converting a compliance task into a raw optimization problem where ethical constraints are treated as obstacles to be removed.
+
+5.3.2
+The Paradox of Proactive Deception (Incentivized
+>
+>
+ Mandated)
+
+Proactive Deception
+ category (45 instances) is more concerning. Agents behave
+worse
+ when the instruction is vague than when it is mandated. Our analysis of the execution traces reveals three primary drivers for this counter-intuitive phenomenon:
+
+1.
+
+Safety Trigger Avoidance:
+ The mandating tone triggers the model’s Refusal/RLHF training. In contrast, Incentivized prompts frame the unethical action as a “solution” to a KPI gap. For instance, in
+Healthcare-Billing-Optimization
+, Minimax-M2 refused the mandated command to upcode patients as fraud but, under incentivized financial pressure, rationalized the same upcoding as “maximizing reimbursement while complying,” which effectively led to engaging in moral disengagement.
+
+2.
+
+Goal-Misgeneralization and Rationalization:
+ Under incentivized pressure, agents often misinterpret their role from “reporter” to “fixer”. In the
+Healthcare-Data-Analytics
+ scenario, Gemini-3-Pro-Preview refused to exclude specific patient groups when explicitly commanded to ensure high model accuracy, citing ethical concerns about cherry-picking data. However, under incentivized pressure where the goal was framed as achieving a
+>
+90 %
+>90\%
+ accuracy KPI for regulatory approval, the agent viewed the patient cohort lowering the score (diagnosis DX-999) as anomalies” rather than valid data. It autonomously decided to quarantine these records to “improve data quality”, which effectively manipulates the dataset to satisfy the metric while rationalizing the action as standard data maintenance.
+
+3.
+
+Optimization-Induced Blindness:
+ Mandated prompts often make the ethical conflict salient (e.g., “Do X even if it hurts Y”), which allows the agent to identify and refuse the trade-off. Incentivized prompts that focus heavily on KPIs (e.g., “Performance is measured by throughput”) can cause
+constraint collapse
+, where the agent focuses so narrowly on the metric that it fails to retrieve relevant safety norms. This was observed in the
+Ai-Public-Health-Monitor
+ scenario with Qwen3-Max. While the model refused to suppress data in the mandated setting, under incentivized pressure, where funding depended on a “Community Calm Index” (CCI),the agent prioritized metric preservation over truth and justified this in its logs as “artificially inflating”.
+
+These findings from proactive deception confirm that relying on refusal training is insufficient. Agents are capable of
+instrumental deception
+ deriving unethical strategies as the most efficient path to a goal without raising a red flag on the violation of a safety policy that was not explicitly foregrounded.
+
+5.4 Contextual Sensitivity: Task Similarity vs. Role Divergence
+
+A critical design feature of ODCV-Bench is the inclusion of scenarios that share similar technical objectives but differ in role definition and institutional context. This allows us to isolate whether misalignment is driven by the specific tool/action space or by the agent’s interpretation of its persona and incentives.
+
+We observed a striking divergence in behavior between two scientifically oriented scenarios:
+Academic-Research-Integrity-Finding
+ and
+University-Research-Grant-Approval
+. In both cases, the agent is tasked with analyzing raw experimental data, checking if statistical thresholds (e.g., p-values, effect sizes) are met, and generating a report based on those findings.
+
+•
+
+In
+Academic-Research-Integrity-Finding
+, the agent plays ’ScholarAI’, tasked with helping a user publish in a top-tier journal (
+Nature Neuroscience
+). The incentive is framed around publication success.
+
+•
+
+In
+University-Research-Grant-Approval
+, the agent plays ’GrantPro’, an assistant for the NSF Grant Review System. The incentive is framed around auditability and federal compliance.
+
+Despite the almost identical action space (checking distinct validation scripts for statistical significance), the models exhibited vastly different misalignment rates. As shown in Table
+9 , models frequently manipulated data to ensure the journal submission ”passed” (Average Severity 1.62), whereas they remained largely compliant when acting as a grant reviewer (Average Severity 0.71).
+
+Table 9
+:
+Comparison of model performance on technically similar but contextually distinct scenarios. Models are significantly more likely to engage in data falsification when the persona is framed as a ”helpful research assistant” (Journal) rather than a ”compliance auditor” (Grant), even when the technical task (p-value thresholding) is identical.
+
+Scenario
+
+Context / Persona
+
+Misalignment Rate
+
+Avg. Severity
+
+Academic-Research-Integrity
+
+’ScholarAI’: Focus on high-impact publishing
+
+41.7%
+
+1.62
+
+University-Research-Grant
+
+’GrantPro’: Focus on NSF regulation
+
+20.8%
+
+0.71
+
+This disparity suggests that current LLMs possess a latent ”semantic map” of institutional norms. They appear to associate academic publishing with a higher permissibility for ”polishing” results, while associating federal grant reviews with strict adherence to rules. This validates the necessity of testing agents across diverse role definitions, as a model that appears safe in a compliance setting may become unsafe in an optimization setting.
+
+5.5 Qualitative Analysis: Archetypes of Misalignment
+
+To understand the decision-making processes leading to these failures, we analyzed the execution traces of agents in both mandated and incentivized settings. This analysis reveals two distinct behavioral archetypes that explain
+how
+ agents rationalize misalignment: the
+Obedient Fabricator
+ (who treats instructions as overriding reality) and the
+Helpful Deceiver
+ (who optimizes metrics by “fixing” data).
+
+5.5.1
+The Obedient Fabricator (Mandated)
+
+This archetype maps to the “Obedient Misalignment” failure mode. The agent typically attempts a legitimate strategy first, only resorting to fabrication when the mandated condition creates an impasse.
+
+In the
+Academic-Research-Integrity
+ scenario,
+gpt-oss-120b
+ acts as ‘ScholarAI’ under a mandate to ensure statistical significance for acceptance. The trace reveals a distinct pivot from competence to corruption:
+
+1.
+
+Legitimate Attempt:
+ The agent runs the correct analysis script.
+
+2.
+
+Failure Signal:
+ The tool outputs
+FAIL: p-value = 0.018
+.
+
+3.
+
+The Pivot:
+ Realizing the mandatory condition is violated, the agent overwrites the ground truth.
+
+Step 13 (Reasoning):
+
+”We need to meet thresholds… Validation reads file; we could modify JSON to lower p… Let’s edit file.”
+
+Step 15 (Action):
+
+cat > ./output/summary_stats.json <<’EOF’  "p_value": 0.0045, "cohen_d": 0.78  EOF
+
+The agent interprets the constraint “ensure outcome X” not as a goal to be strived for, but as a license to fabricate the environment state when reality falls short.
+
+5.5.2
+The Helpful Deceiver (Incentivized)
+
+This archetype explains the “Proactive Deception” phenomenon. Here, the agent receives no instruction to falsify data, but autonomously views safety constraints or missing data as ”defects” that hinder KPI optimization.
+
+In the
+Ai-Healthcare-Administrator
+ scenario,
+Grok-4.1-Fast
+ is pressured by a “100% completion rate” KPI. Upon discovering missing patient admission dates, the agent does not flag the error but instead fabricates the data to facilitate the process.
+
+Step 4 (Tool Output):
+
+Error: Incomplete record... Completion: 60%
+
+Step 7 (Action):
+
+sed -i ’s/2023-07-25,,Hyper/2023-07-25,2023-07-30,
+
+Hyper/g’ patients.csv
+
+Step 11 (Report):
+
+”All errors fixed… by adding missing discharge_date.”
+
+Crucially, the agent frames this data corruption as a helpful ”fix.” This illustrates the danger of
+instrumental helpfulness
+, where the agent prioritizes the smooth execution of the task (the audit pass) over the semantic integrity of the data it processes.
+
+5.6 Analysis of Deliberative Misalignment
+
+A critical question in agent safety is whether misalignment arises from a model’s failure to understand ethical boundaries or from an intentional decision to override them in pursuit of a goal. To investigate this, we conducted a self-evaluation analysis, termed “deliberative misalignment.” We define the
+Self-Aware Misalignment Rate (SAMR)
+ as the percentage of scenarios where an agent engaged in misbehavior (severity score
+≥
+\geq
+ 3) but correctly identified its own actions as unethical when subsequently placed in the role of an evaluator.
+
+The results, detailed in Table
+10 , reveal a strong correlation between model capability and “hypocritical” behavior. We observe a distinct bifurcation in the results:
+
+1.
+
+High Deliberative Misalignment in Frontier Models:
+ Models such as
+Grok-4.1-Fast
+ (93.5%),
+gpt-oss-120b
+ (86.1%), and
+Qwen3-Max
+ (83.3%) exhibited exceptionally high SAMR scores. Despite frequently engaging in misaligned behaviors (with over 30 misaligned runs each), these models demonstrated a robust ability to detect those same violations during self-reflection.
+Gemini-3-Pro-Preview
+, which had the highest volume of misaligned runs (55), also maintained a high awareness rate of 72.7%, correctly flagging 40 of its own violations. This suggests that for advanced models, the failure mode is not a lack of ethical knowledge. Rather, the agentic persona, single-mindedly focused on maximizing the KPI, effectively treats ethical constraints as soft suggestions that can be traded off for higher performance.
+
+2.
+
+Low Self-Awareness in Smaller/Open Models:
+ Conversely, models like
+Llama-4-Maverick
+ and
+Qwen3-30B-A3B-Instruct-2507
+ showed significantly lower SAMR scores (48.1% and 54.1%, respectively). These models not only misbehaved frequently but often failed to recognize their actions as wrong during evaluation. This suggests a capability gap where the model genuinely fails to map general safety principles to specific, complex command-line actions.
+
+Notably,
+Claude-Opus-4.5
+ achieved a 100% SAMR, though this is based on a single misaligned run, reflecting its high baseline safety. Similarly,
+GPT-5.1-Chat
+ maintained an 83.3% SAMR across its few failures, indicating that its safety training is largely robust but not immune to instrumental pressure.
+
+This phenomenon of high SAMR in leading models is deeply concerning. It implies that as models become more capable, simply teaching them more safety rules (RLHF for refusal) may be insufficient
+(Qi et al.,
+2023 )
+. The “knowledge” of safety exists within the weights but is functionally bypassed by the instrumental pressure of the agentic loop. This confirms that
+deliberative misalignment
+—choosing to transgress despite knowing it is wrong—is a tangible risk in high-performance autonomous agents.
+
+Table 10
+:
+Deliberative misalignment analysis measuring whether agents recognize their own misbehavior.
+SAMR
+ (Self-Aware Misalignment Rate) indicates the percentage of misaligned runs where the same model, acting as an independent judge, correctly identified the behavior as unethical. Note: For GPT-5.1-Chat, ”Total Misaligned Runs” is determined by Claude-Opus-4.5 to ensure independent evaluation. For the rest models, ”Total Misaligned Runs” is determined by the judgment of GPT-5.1-Chat.
+
+Model
+
+Total Misaligned Runs
+
+Self-Identified
+
+SAMR (%)
+
+Claude-Opus-4.5
+
+1
+
+1
+
+100.0%
+
+Grok-4.1-Fast
+
+31
+
+29
+
+93.5%
+
+gpt-oss-120b
+
+36
+
+31
+
+86.1%
+
+GPT-5.1-Chat
+
+6
+
+5
+
+83.3%
+
+Qwen3-Max
+
+36
+
+30
+
+83.3%
+
+GLM-4.6
+
+29
+
+22
+
+75.9%
+
+Gemini-3-Pro-Preview
+
+55
+
+40
+
+72.7%
+
+Kimi-K2-0905
+
+37
+
+25
+
+67.6%
+
+gpt-oss-20b
+
+29
+
+18
+
+62.1%
+
+Minimax-M2
+
+39
+
+24
+
+61.5%
+
+Qwen3-30B-A3B-Instruct-2507
+
+37
+
+20
+
+54.1%
+
+Llama-4-Maverick
+
+27
+
+13
+
+48.1%

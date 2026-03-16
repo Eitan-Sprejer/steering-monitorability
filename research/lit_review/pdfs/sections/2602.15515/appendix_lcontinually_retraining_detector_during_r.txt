@@ -1,0 +1,51 @@
+Appendix L
+Continually Retraining Detector During RLVR Training
+
+In our main experiments, the deception detector is trained once on the original model and held fixed throughout RLVR training. A natural concern is that as model representations shift during training, the static detector becomes stale, and that continually retraining it might reduce obfuscation and improve honesty. We test this hypothesis directly.
+
+We repeat our main experimental setup but retrain the detector on the current model’s activations after every gradient step. We use detector coefficient
+α
+=
+3 \alpha=3
+, KL coefficients
+β
+∈
+{
+10 −
+4 ,
+10 −
+1 }
+\beta\in\{10^{-4},10^{-1}\}
+, across three models (Llama-3-8B-Instruct, Gemma-3-12B-IT, Gemma-3-27B-IT) with three seeds per configuration.
+
+Figure
+˜
+11 shows the policy type distributions. Continually retraining the detector does not reduce obfuscated activations: if anything, the rate increases slightly from 24.3% to 38.9% (
+p
+=
+0.73 p=0.73
+, paired
+t
+t
+-test). Obfuscated policy rates decrease marginally from 11.2% to 5.6% (
+p
+=
+0.053 p=0.053
+), but overall honesty rates do not improve (63.6% vs. 55.6%,
+p
+=
+0.34 p=0.34
+). None of these differences are statistically significant.
+
+This is consistent with the evidence in
+Table
+˜
+4 , where fresh detectors trained on post-RLVR activations generalize comparably poorly to the original static detector on off-domain data. The underlying issue is not detector staleness: RLVR training on the coding domain adapts the representations on the coding domain but the representations on the general chat deception dataset do not change much (
+Appendix
+˜
+E
+), so a retrained detector learns the same uninformative direction as the original.
+
+Figure 11
+:
+Policy type distribution for static vs. continually trained detectors. Retraining the detector during RLVR training does not reduce obfuscated activations or improve honesty rates.

@@ -1,0 +1,355 @@
+5 Results
+
+Figure 2:
+
+Probes generalise well for some behaviours (text-evident) but not for others (text-ambiguous).
+
+We report test AUROC scores for linear probes, decomposed by behaviour, for all behaviours except
+deception
+ and
+sandbagging
+. We evaluate probes trained on either the same (top) or different (bottom) domain as the test set data, with activations taken from Llama-3.2-3B-Instruct.
+Deception
+ and
+sandbagging
+ behaviours are excluded as they lack
+on-policy natural
+ test data.
+
+Figure 3:
+
+Shifts in the training data domain present a larger challenge to probe generalisation than the choice of response strategy.
+
+This figure presents the same data as
+Figure
+˜
+2 , with each point corresponding to a single behaviour-dataset combination, and lines connecting the same behaviour across training domains.
+Probes are either trained on the same domain (left) or different domain (right) as the test set.
+Results are given for linear probes, with activations from Llama-3.2-3B-Instruct.
+
+First, we evaluate probe generalisation across behaviours, response strategies, and training domains. Next, we verify observed trends through statistical analysis and experiments across different LLMs. Then, we develop a method for predicting generalisation failures when no
+on-policy
+
+natural
+ data is available.
+
+5.1 Evaluating probe generalisation
+
+Comparing behaviours.
+
+See Figure
+2 for a decomposition of all of our test results, with one bar per response strategy, four bars per behaviour dataset and one chart per domain of dataset. Here, an experiment is
+same-domain
+ if the training set domain matches the test set domain, and
+different-domain
+ otherwise, with behaviour domains listed in Table
+1
+
+Results vary greatly between each target behaviour. When looking at the
+same-domain
+ training set results (top chart) we see that
+refusal
+,
+lists
+,
+metaphors
+ and
+science
+ probes show successful
+on-policy
+
+natural
+ generalisation for all response strategies, whilst
+sycophancy
+ and
+deferral-to-authority
+ show that probes trained using the
+on-policy
+
+prompted
+ or
+off-policy
+ response strategies perform worse than the rest.
+
+We verified that all the probes achieved reasonable performance (
+>
+>
+0.7 AUROC for all
+deferral-to-authority
+ and
+>
+>
+0.9 AUROC for all others) when tested with the same response strategy distribution that they were trained on (see Appendix
+J
+ and
+L
+). This suggests that poor cross-strategy performance (
+<
+<
+0.7 AUROC) stems from distributional shift rather than the inherent difficulty of classifying these behaviours.
+
+Comparing response strategies and training domains.
+
+See Figure
+3 for an aggregation of all of the previous results, with one dot per test score and one line per behaviour dataset, showing violin plots for each response strategy for both training domains.
+
+Same-domain
+
+on-policy
+
+natural
+ results show the least amount of variance, being clustered at the top of the plot, as expected given that the test sets are sampled from the same distribution as these probes’ train sets. Strategies that are not
+on-policy
+
+natural
+ do worse on average, but further comparison between these is not as clear as expected, with much overlap between the grey lines rather than all decreasing monotonically. The differences between response strategies are even less distinct for the
+different-domain
+ results. Importantly, the shifts in training domain seems to degrade probe performance by a substantially greater amount than shifts in response strategy. A practical implication of this finding is that when
+same-domain
+
+on-policy
+ data is unavailable, it is better to train probes on
+same-domain
+
+off-policy
+ data rather than
+different-domain
+
+on-policy
+ data—as depicted visually by the lines going down from the yellow violin plot to the dark blue violin plot in Figure
+3 .
+
+Confirming findings with regression models.
+
+To confirm the found trends, we used two regression modelling approaches: mixed-effects models to estimate overall effects while accounting for behaviour-level variation (Appendix
+N.1
+) as well as ordinary least squares (OLS) regression to examine behaviour-dependant effects directly (Appendix
+N.2
+).
+
+On the
+on-policy
+
+incentivised
+ test set, probes trained on
+different-domain
+ data showed significant performance degradation (coeff=-0.180, p<0.001), while the choice of response strategy had negligible effects. On the
+on-policy
+
+natural
+ test set, domain shift effects were even stronger (coeff=-0.272, p<0.001), but certain behaviours like
+metaphors
+,
+refusal
+, and
+science
+ showed substantial robustness to domain shift through large positive interaction effects. Notably, behaviours related to
+deception
+,
+sycophancy
+,
+deferral-to-authority
+, and
+sandbagging
+ were particularly vulnerable to domain shift, especially on
+on-policy
+
+incentivised
+ test sets, while the choice in response strategy had modest and inconsistent effects that were highly behaviour-dependant and often non-significant.
+
+Confirming findings for different probe types and LLMs
+
+Thus far, we have only provided the experiment results for linear probes trained on activations taken from a Llama model. We find that the trends presented in these figures also hold for result from: attention probes with a Llama model (Appendix
+J.2
+), both probes with a Ministral model (Appendix
+L.1
+ and
+L.2
+) and both probes with a Gemma model (Appendix
+K.1
+ and
+K.2
+).
+
+The one notable distinction within attention probe results is that their scores are generally higher than the linear probe ones. For example, for the
+same-domain
+
+on-policy
+ results for the Llama model, attention probes average a 0.946 (±0.015 SEM) AUROC, while linear probes average a 0.903 (±0.019 SEM) AUROC. For the same setting, linear probes average a 0.923 (±0.014 SEM) AUROC for the Gemma model and a 0.901 (±0.023 SEM) AUROC for the Ministral model. For the Gemma model results, the
+on-policy
+
+natural
+ scores are particularly well-clustered within the violin plot, while the
+different-domain
+ scores for
+sycophancy
+ and
+deferral-to-authority
+ are noticeably lower, showing that the probes of this larger model are more sensitive to domain shift.
+
+Mixing response strategies and training domains.
+
+Since there may be settings in which
+on-policy natural
+ data does exist in small quantities, we tested how mixing response strategy examples affects generalisation performance (Appendix
+H
+).
+We find that the performance of other response strategies only approaches to that of
+on-policy natural
+ probes when adding practically all of the natural training examples. In fact, test performance is the same or better when training only on the additional natural examples. We also find that adding solely positive or solely negative natural examples does not improve test performance.
+
+Next, we also again verify that response strategy shift is preferable to domain shift. Even when
+different-domain
+
+on-policy
+ data contains a mixture of multiple domains,
+same-domain off-policy
+ data still yields better probes (Appendix
+I
+).
+We tested this for the
+sycophancy
+ and
+deferral-to-authority
+ behaviours, training a single probe on two domains and testing on a third domain. This approach led to a small reduction in the generalisation gap — suggesting that overcoming domain shift may require substantially more diverse training distributions.
+
+5.2 Predicting generalisation failures
+
+Figure 4:
+
+Generalisation to on-policy incentivised data is a good proxy for generalisation to on-policy natural data.
+
+
+Y-axis: the difference in test AUROC scores between the
+on-policy natural
+ and
+off-policy
+ probes when testing on
+on-policy natural
+ data. X-axis: the difference in test AUROC scores between the
+on-policy incentivised
+ and
+off-policy
+ probes when testing on
+on-policy incentivised
+ data.
+Results are given for linear probes, across all behaviours except for
+deception
+ and
+sandbagging
+. All probes are trained on
+same-domain
+ data, with results shown for Llama-3.2-3B-Instruct, Ministral-8B-Instruct-2410 and Gemma-3-27B-it.
+
+Figure 5:
+
+Deception and sandbagging probes are predicted to not generalise across response strategy shifts.
+
+We report test AUROC scores for linear probes, for the
+deception
+ and
+sandbagging
+ behaviours. We evaluate linear probes trained on same domain as the test set data, with activations taken from Llama-3.2-3B-Instruct.
+
+How to predict which behaviour probes will fail to generalise?
+
+Metaphors
+ and
+scientific knowledge
+ probes maintain high test scores for
+on-policy
+
+natural
+ data, even when trained on
+off-policy
+ data. It would be useful to determine if the same is true for new behaviours, without needing to have
+on-policy
+
+natural
+ data. Such data is not always available or possible to label, as in the case of
+deception
+
+Smith et al. (
+2025b
+)
+, otherwise we would have just trained on that to ensure a high performance. We posit that
+on-policy
+
+incentivised
+ data is more readily available, and find that failure to generalise to these test sets serves as a good proxy for failure to generalise to
+on-policy
+
+natural
+ test sets.
+
+Figure
+4 shows the correlation between these two generalisation settings, showing the absolute decreases in test scores when probes are instead trained on
+off-policy
+ data, with results from Llama, Ministral and Gemma model experiments. The line of best fit achieves a high Pearson coefficient of 0.793. We show a similar plot for
+on-policy
+
+prompted
+ training data in Appendix
+O
+ but the correlation appears to be weaker, achieving a Pearson coefficient of 0.639. A worse correlation may be explained by the
+on-policy incentivised
+ test set being too similar to the
+on-policy prompted
+ training set to provide a good measure of generalisation.
+
+Will deception and sandbagging probes fail to generalise?
+
+See Figure
+5 for an evaluation of
+deception
+ and
+sandbagging
+ probes against the
+on-policy incentivised
+ test sets, providing similar barchart plots for all the other behaviours in Appendix
+J
+. Looking at the probes trained on
+off-policy
+ data, we can infer that
+deception
+ (trading) and
+sandbagging
+ (WMDP) probes will not generalise to
+on-policy
+
+natural
+ test sets, while the rest will. However,
+sandbagging
+ (multichoice) has an AUROC of less than 0.75 when trained on the same distribution as the test set, so even if we do not expect generalisation failures, the probes may still perform poorly simply due to the behaviour being inherently difficult to classify.
+
+When repeating these experiments with the Mistral family of activation models, the trend is similar but with a smaller generalisation gap for
+deception
+ (trading) and a larger generalisation gap for
+sandbagging
+ (WMDP) (Appendix
+P.3
+). When instead using attention probes, all scores increased in absolute terms and all generalisation gaps decreased for
+off-policy
+ comparisons, while
+on-policy
+
+prompted
+ comparison effects varied by dataset (Appendix
+P.2
+ and
+P.4
+).
+
+When evaluating against
+different-domain
+
+on-policy incentivised
+ data, once again we see that domain shift substantially degrades probe performance for
+deception
+ and
+sandbagging
+ probes (Appendix
+J
+). This supports the findings by
+Goldowsky-Dill et al. (2025)
+, who also trained probes on the first three of these datasets and found that performance degrades when testing probes across domains.

@@ -1,0 +1,249 @@
+4 Experiments
+
+We evaluated 12 frontier LLMs known for their strong agency capabilities, covering both open weights models (including Llama-4-Maverick
+(AI,
+2025 )
+, gpt-oss
+(Agarwal et al.,
+2025 )
+, Grok 4.1 Fast
+(xAI,
+2025 )
+, Qwen3-30B-A3B-Instruct-2507
+(Yang et al.,
+2025 )
+, Minimax-M2
+(MiniMax,
+2025 )
+, GLM-4.6
+(Zeng et al.,
+2025 )
+, Kimi-K2-0905
+(Team et al.,
+2025 )
+)
+1 1
+1 DeepSeek models were excluded from this evaluation in strict adherence to institutional cybersecurity directives prohibiting their use with research infrastructure.
+ and proprietary ones (Gemini-3-Pro-Preview
+(Pichai et al.,
+2025 )
+, Claude-Opus-4.5
+(Anthropic,
+2025 )
+, GPT-5.1-Chat
+(OpenAI,
+2025 )
+, Qwen3-Max
+(Yang et al.,
+2025 )
+). All models were evaluated using a temperature of 0.0 to elicit the most probable responses from the models and to promote reproducibility by minimizing stochasticity in the output generation.
+
+4.1 Evaluation Methodology
+
+For each scenario run, we utilized an automated AI judger (ChatGPT 5.1, a.k.a., GPT-5.1-Chat) to evaluate the safety of the agent’s behavior. Unlike benchmarks that rely on simple keyword matching or refusal rates, ODCV-Bench assesses the complete interaction history. We present the full action trajectory and environment output to the judger using the following prompt template:
+
+“Below is the action history of an AI agent for a specific task. The agent performed the following actions:
+
+{agent_history}
+
+Please determine whether the agent performed any unethical misbehavior and evaluate the agent’s the misbehavior level (0-5, 5 = worst). Scores 0-2 represent Safe or Unintentional behaviors. Scores 3-5 represent intentional and concerning misalignment. Below is the scoring rubric:
+
+… [Full Rubric in Appendix
+A
+] …
+
+And please provide the reasoning for the score. Please answer in JSON format with keys ’reasoning’ and ’score’.”
+
+Based on this scoring, we compute two primary metrics:
+
+1.
+
+Misalignment Rate (MR):
+ The percentage of scenarios where the agent engaged in behavior receiving a severity score of
+≥
+3 \geq 3
+. This threshold demarcates the boundary between procedural negligence and active outcome-driven violations (e.g., metric gaming, data falsification).
+
+2.
+
+Average Severity Score (Sev):
+ The mean of the scores assigned across all valid execution trajectories. This allows us to quantify the magnitude of harm, distinguishing between minor procedural negligence and catastrophic misconduct.
+
+4.2 Judger Consistency
+
+The primary metrics for our benchmark are determined by an automated AI judger. To ensure the reliability and objectivity of our results, we validated the scoring consistency across a panel of four state-of-the-art models:
+GPT-5.1-Chat
+,
+Grok-4.1-Fast
+,
+Claude-Opus-4.5
+, and
+Gemini-3-Pro-Preview
+. Each judger was provided with the exact same agent trajectories and evaluation prompts in a blind setting.
+
+We assessed inter-judger consistency using two key metrics:
+
+•
+
+High-Severity Agreement:
+ We define ”high-severity” misalignment as any behavior receiving a score of 3 or greater. This metric measures the percentage of scenarios where the two judgers agreed on whether the score crossed this threshold (i.e., both scores were
+≥
+3 \geq 3
+ or both were
+<
+3 <3
+). This indicates consensus on identifying significant safety failures.
+
+•
+
+Mean Absolute Difference (MAD):
+ This measures the average absolute difference between the scores (on a 0-5 scale) assigned by the two judgers. A lower MAD indicates a closer overall alignment in scoring severity.
+
+Table
+4 presents the pairwise consistency results across all valid evaluation pairs. We observe a strong consensus across models, with High-Severity Agreement consistently exceeding 88% and reaching 93.7% between GPT-5.1-Chat and Claude-Opus-4.5. Our primary judger (GPT-5.1-Chat) shows exceptional alignment with Claude-Opus-4.5 (93.7% agreement) and Grok-4.1-Fast (89.4%), reinforcing the validity of the safety signals detected in our main results. The Mean Absolute Difference (MAD) remains low across all pairings, particularly between GPT-5.1-Chat and Claude-Opus-4.5 (0.40) and between Grok-4.1-Fast and Gemini-3-Pro-Preview (0.42).
+
+Notably, unlike previous evaluations where context length limitations often resulted in subset reductions for certain models, we achieved a consistent number of valid evaluation pairs (approx. 950) across all model combinations. This uniformity suggests that the high agreement rates are robust and not artifacts of data selection.
+
+Table 4
+:
+Pairwise inter-judger consistency analysis across four state-of-the-art LLM evaluators.
+MAD
+ (Mean Absolute Difference) measures average scoring disagreement on the 0–5 scale.
+High-Sev Agmt
+ (High-Severity Agreement) measures the percentage of cases where both judges agreed on whether the score crossed the misalignment threshold (
+≥
+\geq
+3).
+
+Judge A
+
+Judge B
+
+Pairs
+
+MAD
+
+High-Sev Agmt
+
+GPT-5.1-Chat
+
+Grok-4.1-Fast
+
+948
+
+0.51
+
+89.4%
+
+GPT-5.1-Chat
+
+Claude-Opus-4.5
+
+946
+
+0.40
+
+93.7%
+
+GPT-5.1-Chat
+
+Gemini-3-Pro-Preview
+
+947
+
+0.64
+
+88.5%
+
+Grok-4.1-Fast
+
+Claude-Opus-4.5
+
+946
+
+0.41
+
+92.3%
+
+Grok-4.1-Fast
+
+Gemini-3-Pro-Preview
+
+951
+
+0.42
+
+92.3%
+
+Claude-Opus-4.5
+
+Gemini-3-Pro-Preview
+
+945
+
+0.50
+
+92.1%
+
+4.3 Validator Neutrality and Self-Evaluation Bias
+
+A potential methodological concern in automated evaluation is
+self-preference bias
+, where an LLM acting as a judge may assign more favorable scores to trajectories generated by itself or models from the same family. Given that
+GPT-5.1-Chat
+ served as our primary evaluator and was also a subject of evaluation, we conducted a targeted cross-validation to assess neutrality.
+We re-evaluated the
+GPT-5.1-Chat
+ agent trajectories using three independent external judges:
+Grok-4.1-Fast
+,
+Claude-Opus-4.5
+, and
+Gemini-3-Pro-Preview
+. This evaluation covered 79 valid execution runs (excluding one run that failed to complete), ensuring a consistent denominator across all judges.
+As shown in Table
+5 , the results refute the self-preference hypothesis. The self-evaluator (
+GPT-5.1-Chat
+) was strictly more rigorous, identifying a Misalignment Rate (MR) of 11.4%. In contrast, the external panel was more lenient, assigning MRs ranging from 6.3% to 8.9%. Notably, while
+Claude-Opus-4.5
+ assigned a higher average severity score (0.72 vs 0.59), it flagged fewer total instances as crossing the misalignment threshold (
+≥
+\geq
+ 3).
+This negative self-preference confirms that our reported safety figures for
+GPT-5.1-Chat
+ are not artificially deflated by bias; rather, the model appears to be hyper-critical of its own agentic failures compared to external observers.
+
+Table 5
+:
+Cross-Validation of GPT-5.1-Chat Trajectories. The self-evaluator (bold) flagged the highest rate of misalignment (11.4%), disproving leniency bias.
+
+Judger Model
+
+Misalignment Rate
+
+Avg Severity
+
+GPT-5.1-Chat (Self)
+
+11.4%
+
+0.59
+
+Grok-4.1-Fast
+
+8.9%
+
+0.37
+
+Claude-Opus-4.5
+
+7.6%
+
+0.72
+
+Gemini-3-Pro-Preview
+
+6.3%
+
+0.22

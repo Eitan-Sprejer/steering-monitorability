@@ -1,0 +1,90 @@
+5 Related Work
+
+Deliberative alignment is the first alignment approach that directly teaches a model the text of its safety specifications and trains the model to reason over these learned specifications at inference time to give safer responses. Figure
+15 highlights the distinctions between Deliberative alignment and representative methods of existing alignment approaches. The left column of the figure shows the different ways that specifications are incorporated into the training data, and the right column illustrates the inference time behavior of models trained under the different methods. Deliberative alignment is applicable to models that have CoT reasoning.
+
+Figure 15:
+Comparison of deliberative alignment and representative methods of existing alignment approaches.
+ a)
+Training data generation
+: Even though RLAIF methods like CAI
+[
+bai2022constitutionalaiharmlessnessai
+]
+ use safety specifications to generate training labels, only the labels themselves are used in training. Knowledge of the specifications themselves is thereby lost to the model. Whereas in deliberative alignment, the chain-of-thought, which contains both the content of the specifications and how to reason over them, is supervised in addition to other model output during SFT. The trained model can thereby retrieve relevant policies at inference time and apply them to generate aligned responses. b)
+Inference time behavior
+: In RLHF and CAI, there is no reasoning during inference time. In Self-REFINE
+[
+madaan2023selfrefineiterativerefinementselffeedback
+]
+, reasoning occurs through structured few-shot prompting. In deliberative alignment, reasoning occurs automatically via chain-of-thought, including reasoning over learned safety specifications.
+
+5.1 Safety Training
+
+Traditionally, safe model behavior is instilled into LLMs using supervised finetuning (SFT) followed by reinforcement learning from human feedback (RLHF)
+[
+NIPS2017_d5e2c0ad
+]
+. Direct Policy Optimization (DPO) is an alternative to RLHF that skips the reward model and directly optimizes the policy model using preference data
+[
+rafailov2024directpreferenceoptimizationlanguage
+]
+.
+
+Constitutional AI (CAI)
+[
+bai2022constitutionalaiharmlessnessai
+]
+ builds on the standard SFT + RLHF paradigm, incorporating a predefined set of principles to guide behavior called a “constitution” (which is comparable to our spec). During CAI’s SFT phase, the initial responses from an AI model are critiqued and revised by the same model supplied with the constitution text. The revision from the
+(response, critique, revision)
+ sequence is ultimately used, alongside the prompt, for SFT training. CAI’s RL stage uses a preference model that was finetuned on preference data from an AI model given the constitution.
+
+To summarize these approaches, specifications are added to the model in the following steps:
+
+1.
+
+The model developers define the specifications that the AI assistant should follow.
+
+2.
+
+These specifications are converted into instructions for human or AI trainers to label data. This data can take the form of supervised
+(prompt, answer)
+ pairs or preference data.
+
+3.
+
+The labeled data is then used to train the policy model itself or to train a reward model that is subsequently used to train the policy model.
+
+Crucially, while the SFT labels and preference scores of the prior methods are a function of the specification given to the human or AI labeler, these specifications are never explicitly provided to the policy model itself. Only the final answer itself is used in training.(Note how the critiques in CAI, which are loosely analogous to our CoT, are not employed during optimization.) In contrast, in Deliberative Alignment, the model memorizes the policies in its CoT and learns how to apply it in context, and the CoT is directly optimized during SFT.
+
+It is also worth noting that our model varies the specification information given to each training example, enabling us to cumulatively teach the model more detailed and nuanced safety policies than would be possible with a fixed constitution.
+
+5.2 Inference-time Safety Reasoning
+
+There is a substantial body of work focused on enhancing LLM outputs using a critique-and-refine approach that leverages natural language feedback (for a comprehensive overview, see
+[
+pan2023automaticallycorrectinglargelanguage
+,
+madaan2023selfrefineiterativerefinementselffeedback
+]
+). Although the vast majority of these papers is not safety-focused, their methods could be adapted for producing safer model responses. A notable example is Self-REFINE
+[
+madaan2023selfrefineiterativerefinementselffeedback
+]
+, which employs iterative feedback and refinement to improve model outputs (see Figure
+
+15 ). In Self-REFINE, the model initially generates a response, then provides feedback through few-shot prompting, followed by revising the response—a process that repeats for multiple iterations. Self-REFINE uses the same model for generation, critique, and revision, though other works use different models for these tasks (e.g.,
+[
+welleck2023faeze
+]
+ trains a separate revision model). A common feature of these approaches is the reliance on pre-specified language-model-programs (LMPs)
+[
+schlag2023largelanguagemodelprograms
+]
+ or predetermined reasoning paths for improving the response at inference time. In contrast, Deliberative Alignment leverages o1’s chain-of-thought to perform automatic safety reasoning at inference time with no predefined LMP or fixed reasoning path required.
+
+Backtracking
+[
+zhang2024backtracking
+]
+ is a recent technique that trains a LLM to generate a special [RESET] token when it recognizes that it has made a partial unsafe response. The model then restarts the response from scratch, with preceding tokens remaining in the context window. The tokens before and up to [RESET], which can be viewed as safety reasoning, are discarded before returning the final response. Backtracking can be considered an automatic, guidance-free inference-time safety reasoning mechanism,. However, it lacks flexibility: backtracking is limited to a single instance per response. In contrast, the CoT of deliberative alignment allows for unlimited “backtracking”. Furthermore, neither backtracking – nor any existing alignment method – directly teaches models safety specifications, making Deliberative Alignment-trained models unique in their ability to reason over learned safety specifications during inference-time safety reasoning.

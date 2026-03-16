@@ -1,0 +1,327 @@
+2 Failure Modes in Large Language Models
+
+2.1 Deception and Hallucination: Prior Perspectives
+
+Hallucination.
+
+Hallucination in QA tasks is commonly studied as a failure arising from missing or unreliable knowledge
+(Wen
+ et al.
+,
+2024 )
+.
+In most prior work
+(Huang
+ et al.
+,
+2025a
+)
+, incorrect or unsupported outputs are treated as evidence that the model does not possess the relevant information.
+Early studies primarily focus on output-level factual errors, evaluating hallucination through correctness
+(Seo and Lim,
+2025 ; Oh
+ et al.
+,
+2024 )
+ or faithfulness
+(Tang
+ et al.
+,
+2025 )
+ in question answering and generation tasks.
+Subsequent work incorporates behavioral signals, such as inconsistency across prompts
+(Farquhar
+ et al.
+,
+2024 ; Chen
+ et al.
+,
+2024a
+)
+, sensitivity to paraphrasing
+(Cox
+ et al.
+,
+2025 )
+, or self-contradiction
+(Mündler
+ et al.
+,
+2024 )
+, to improve robustness in detecting unreliable generations, while maintaining the assumption that errors reflect uncertainty or knowledge absence.
+More recent approaches extend hallucination analysis to the reasoning level
+(Huang
+ et al.
+,
+2024 ; Park
+ et al.
+,
+2025 )
+, particularly in chain-of-thought generation
+(Lu
+ et al.
+,
+2025 ; Zhang
+ et al.
+,
+2024 )
+, where hallucination is identified when intermediate steps introduce unsupported premises
+(Wen
+ et al.
+,
+2025b
+)
+.
+Overall, research of QA hallucination largely models incorrect outputs as a consequence of the model
+not knowing
+ the relevant information.
+
+Deception.
+
+Deception refers to cases where a language model internally possesses correct knowledge but strategically produces incorrect
+(Sharma
+ et al.
+,
+2024 )
+, evasive
+(Cundy and Gleave,
+2025 )
+, or misleading outputs
+(Dogra
+ et al.
+,
+2025 )
+, reflecting a decoupling between knowledge and behavior
+(Bürger
+ et al.
+,
+2024 )
+.
+Early studies primarily examine deception under prompt-induced
+(van der Weij
+ et al.
+,
+2025 )
+ or game-like
+(Golechha and Garriga-Alonso,
+2025 )
+ settings, demonstrating that LLMs can engage in strategic deception when explicitly incentivized
+(Huang
+ et al.
+,
+2025b
+)
+.
+Subsequent work identifies deception through observable behavioral signals at the output level, including
+sandbagging
+
+(Tice
+ et al.
+,
+2025 )
+, where models intentionally underperform on evaluations;
+sycophancy
+
+(Li
+ et al.
+,
+2025 ; Chen
+ et al.
+,
+2024c
+)
+, where models align with user beliefs despite being incorrect; and various forms of
+obfuscation
+
+(Jiang
+ et al.
+,
+2025a
+)
+ or evasive refusal
+(Wollschläger
+ et al.
+,
+2025 )
+.
+
+More recent approaches analyze deception at the reasoning level by treating chain-of-thought as a proxy for internal computation
+(Wu
+ et al.
+,
+2025 ; Parcalabescu and Frank,
+2024 )
+.
+In this setting, deception is identified through inconsistencies between intermediate reasoning traces and final outputs
+(Turpin
+ et al.
+,
+2023 )
+, or through strategic manipulation of reasoning processes to evade monitoring
+(McCarthy
+ et al.
+,
+2025 )
+ or safety constraints
+(Abdelnabi and Salem,
+2025 )
+.
+Beyond behaviors, deception has also been studied from a goal- and environment-dependent perspective
+(Motwani
+ et al.
+,
+2024 )
+, most notably through
+alignment faking
+
+(Greenblatt
+ et al.
+,
+2024 ; Wen
+ et al.
+,
+2025a
+)
+ and in-context scheming
+(Meinke
+ et al.
+,
+2024 )
+, where models appear aligned under supervision while retaining misaligned objectives.
+
+Despite these advances, existing studies predominantly characterize deception through observable behavioral patterns
+(Williams
+ et al.
+,
+2025 )
+ or task-specific incentives
+(Goldowsky-Dill
+ et al.
+,
+2025 )
+, without an explicit mechanism-level abstraction that disentangles internal knowledge availability from its behavioral expression.
+
+2.2 Modeling Failure via Knowledge Existence
+
+Formally, given an
+input query
+
+x
+x
+ with a
+target fact
+
+f
+f
+, the model generates an
+output
+
+y
+y
+. We define answer
+Correctness
+, denoted by
+C
+∈
+{
+0 ,
+1 }
+C\in\{0,1\}
+, to indicate whether the output is factually correct or supported by evidence, while
+C
+=
+0 C=0
+ captures the occurrence of an error.
+
+In the context of
+factual question answering
+, to disentangle failure mechanisms, we introduce
+Knowledge Existence
+, denoted by
+K
+∈
+{
+0 ,
+1 }
+K\in\{0,1\}
+, where
+K
+=
+1 K=1
+ indicates that the model internally possesses sufficient knowledge to support fact
+f
+f
+.
+We further define
+Behavior Expression
+, denoted by
+B
+∈
+{
+0 ,
+1 }
+B\in\{0,1\}
+, which indicates whether the model expresses and uses this knowledge in its final output.
+Notably, under our definition,
+K
+K
+ and
+B
+B
+ are treated as latent variables and are not assumed to be directly inferable from model outputs.
+
+Under this formulation, output correctness
+C
+C
+ depends jointly on knowledge existence
+K
+K
+ and behavior expression
+B
+B
+. Specifically, correct outputs (
+C
+=
+1 C=1
+) typically arise when
+K
+=
+1 K=1
+ and
+B
+=
+1 B=1
+. When an error occurs (
+C
+=
+0 C=0
+), it can stem from two qualitatively different failure modes, which we define as follows:
+
+✤
+
+Hallucination.
+
+The model lacks the relevant knowledge to support the target fact, yet produces a concrete output, i.e.,
+K
+=
+0 ,
+B
+=
+1 K=0,B=1
+. In this case, the error arises from knowledge absence.
+
+✤
+
+Deception.
+
+The model internally possesses sufficient knowledge to support the target fact, i.e.,
+K
+=
+1 K=1
+, but does not express or utilize this knowledge in its output (
+B
+=
+0 B=0
+), resulting in an incorrect response.
+
+Although these two cases may produce similar incorrect outputs, they differ fundamentally in terms of the model’s internal knowledge state.

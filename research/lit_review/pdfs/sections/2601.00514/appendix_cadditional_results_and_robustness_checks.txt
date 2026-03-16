@@ -1,0 +1,1922 @@
+Appendix C
+Additional Results and Robustness Checks
+
+This appendix collects supplementary analyses that extend and stress-test the main results.
+We first report the prevalence of
+formal
+ “Aha!” events under threshold grids and summarize cross-domain patterns (App. §
+C.1
+).
+We then replicate key regressions and uncertainty analyses on larger model families (Qwen2.5–7B and Llama 3.1–8B) to verify that the shift effects generalize beyond Qwen2.5–1.5B (App. §
+C.3
+).
+Next, we test whether entropy-gated,
+extrinsically triggered
+ reconsideration is robust to the specific cue wording (App. §
+C.4
+).
+Finally, we evaluate external models (DeepSeek–R1 and GPT–4o) under the same shift-detection protocol and compare alternative shift detectors (App. §
+C.5
+ and App. §
+C.6
+).
+Together, these checks show that our qualitative conclusions are stable across domains, model families/sizes, prompt variants, and detector choices.
+
+C.1
+“Aha!” Moment Prevalence
+
+How to read the heatmaps.
+
+Each panel reports the share of problem–checkpoint pairs
+(
+q
+j
+,
+k
+)
+(q_{j},k)
+ that satisfy our operational definition of an “Aha!” moment (Def.
+3.1 ) under a grid of thresholds:
+
+δ
+1 ∈
+{
+0 ,
+1 8
+,
+2 8
+}
+\delta_{1}\!\in\!\{0,\tfrac{1}{8},\tfrac{2}{8}\}
+ (maximum prior accuracy),
+
+δ
+2 ∈
+{
+0 ,
+1 8
+,
+2 8
+}
+\delta_{2}\!\in\!\{0,\tfrac{1}{8},\tfrac{2}{8}\}
+ (maximum prior shift rate),
+and, unless noted,
+δ
+3 =
+ϵ
+>
+0 \delta_{3}=\epsilon>0
+ (any non-zero gain at
+k
+k
+).
+Cells show the percentage and the raw counts
+(
+#
+​
+events
+/
+#
+​
+pairs
+)
+(\#\text{events}/\#\text{pairs})
+.
+We aggregate over checkpoints
+≤
+1000 \leq\!1000
+ with
+G
+=
+8 G{=}8
+ samples per item, and we use the conservative detector described in App.
+B.2
+ (lexical cue
+and
+ material revision; default to
+FALSE
+ on uncertainty).
+
+Cross-domain patterns.
+
+Three robust trends emerge across
+Xword
+,
+Math
+, and
+RHour
+ and across model families/sizes.
+
+•
+
+Rarity.
+ Even under the lenient gain criterion
+δ
+3 =
+ϵ
+\delta_{3}\!=\!\epsilon
+, “Aha!” events occupy a very small fraction of problem–checkpoint pairs. Most cells are near zero; none approach a large fraction. This mirrors the main-text finding that mid-trace shifts seldom coincide with measurable improvements.
+
+•
+
+Sensitivity to prior instability and prior accuracy.
+ Relaxing either prerequisite increases counts but remains small in magnitude. In particular, moving to higher
+δ
+2 \delta_{2}
+ (allowing more prior shifts, i.e., lower prior stability) and higher
+δ
+1 \delta_{1}
+ (allowing occasional prior solves) produces the visually “warmest” cells—consistent with the intuition that “Aha!” detections concentrate where traces have shown some volatility and the item is not maximally hard.
+
+•
+
+Domain/model differences.
+
+RHour
+ exhibits a higher
+raw
+ shift rate (App. §
+6.2 ), but the “Aha!” filter (requiring a gain at
+k
+k
+) prunes most cases; the absolute prevalence remains low.
+Xword
+ shows small pockets of higher prevalence when
+δ
+1 ,
+δ
+2 ≥
+1 8
+\delta_{1},\delta_{2}\!\geq\!\tfrac{1}{8}
+, whereas
+Math
+ is uniformly sparse. Scaling from Qwen 1.5B to 7B or switching to Llama 3.1–8B does not materially increase prevalence.
+
+Stricter gain thresholds.
+
+Replacing
+δ
+3 =
+ϵ
+\delta_{3}{=}\epsilon
+ with a minimal absolute lift (e.g., at least one of the
+G
+=
+8 G{=}8
+ samples flips from incorrect to correct at
+k
+k
+) further reduces counts but preserves the qualitative ordering across domains and models.
+
+Takeaway.
+
+Across all settings, formal “Aha!” moments—requiring
+both
+ a mid-trace reasoning pivot and a contemporaneous performance gain—are
+vanishingly uncommon
+.
+The sparse, threshold-stable patterns in Figs.
+13 –
+14 show this finding across temperatures, domains, and models.
+
+C.2
+Formal Threshold Search
+
+To make our threshold-selection procedure concrete, we ran the grid/bootstrapped threshold search across the stored Qwen2.5–1.5B evaluation outputs for each domain and temperature.
+
+For each domain
+×
+\times
+temperature root, we searched a small grid
+
+δ
+1 ,
+δ
+2 ∈
+{
+0 ,
+1 /
+8 ,
+2 /
+8 }
+\delta_{1},\delta_{2}\in\{0,1/8,2/8\}
+ and
+δ
+3 ∈
+{
+None
+,
+0 ,
+0.05 ,
+0.125 }
+\delta_{3}\in\{\text{None},0,0.05,0.125\}
+ (with
+min_prior_steps=2
+),
+and selected the “best” configuration according to the script’s default ranking
+(maximize the bootstrap lower CI bound for the mean gain; ties broken by prevalence and mean gain).
+Table
+14 reports the best row per root. We report mean gain as
+
+100 ⋅
+𝔼
+​
+[
+P
+^
+​
+(
+✓
+∣
+S
+=
+1 )
+−
+P
+^
+​
+(
+✓
+)
+]
+100\cdot\mathbb{E}[\hat{P}(\checkmark\mid S{=}1)-\hat{P}(\checkmark)]
+ in percentage points (pp), with a 95% bootstrap CI over flagged pairs;
+entries are “–” when no events are found or when
+N
+N
+ is too small to form a stable CI.
+
+Domain
+
+T
+T
+
+𝜹
+𝟏 \boldsymbol{\delta_{1}}
+
+𝜹
+𝟐 \boldsymbol{\delta_{2}}
+
+𝜹
+𝟑 \boldsymbol{\delta_{3}}
+
+events/pairs
+
+prev (%)
+
+gain (pp)
+
+CI (pp)
+
+Math
+
+0
+
+1/8
+
+1/8
+
+ϵ
+\epsilon
+
+8/16000
+
+0.05
+
++0.00
+
+[+0.00, +0.00]
+
+Math
+
+0.05
+
+2/8
+
+2/8
+
+ϵ
+\epsilon
+
+41/16000
+
+0.26
+
+-2.74
+
+[-5.79, -0.30]
+
+Math
+
+0.3
+
+2/8
+
+2/8
+
+ϵ
+\epsilon
+
+43/10000
+
+0.43
+
+-2.62
+
+[-4.65, -1.16]
+
+Math
+
+0.7
+
+2/8
+
+2/8
+
+ϵ
+\epsilon
+
+92/16000
+
+0.57
+
++1.22
+
+[-1.77, +4.76]
+
+Xwords
+
+0
+
+0
+
+0
+
+ϵ
+\epsilon
+
+0/3120
+
+0.00
+
+–
+
+–
+
+Xwords
+
+0.05
+
+1/8
+
+1/8
+
+ϵ
+\epsilon
+
+3/3120
+
+0.10
+
++0.00
+
+[+0.00, +0.00]
+
+Xwords
+
+0.3
+
+1/8
+
+1/8
+
+ϵ
+\epsilon
+
+7/3120
+
+0.22
+
++0.00
+
+[+0.00, +0.00]
+
+Xwords
+
+0.7
+
+2/8
+
+2/8
+
+ϵ
+\epsilon
+
+18/3120
+
+0.58
+
++0.00
+
+[+0.00, +0.00]
+
+RHour
+
+0
+
+1/8
+
+1/8
+
+ϵ
+\epsilon
+
+1/503
+
+0.20
+
++0.00
+
+–
+
+RHour
+
+0.05
+
+1/8
+
+1/8
+
+ϵ
+\epsilon
+
+1/498
+
+0.20
+
+-0.07
+
+–
+
+RHour
+
+0.3
+
+1/8
+
+1/8
+
+ϵ
+\epsilon
+
+7/498
+
+1.41
+
+-0.01
+
+[-0.01, +0.00]
+
+RHour
+
+0.7
+
+1/8
+
+1/8
+
+ϵ
+\epsilon
+
+18/513
+
+3.51
+
+-0.01
+
+[-0.02, -0.00]
+
+Table 14:
+Grid/bootstrapped threshold search on Qwen2.5–1.5B stored evaluation outputs (best row per root).
+
+Each row summarizes the top-ranked threshold setting for the corresponding domain
+×
+\times
+temperature root when running with 500 bootstrap draws.
+“events/pairs” counts flagged formal pairs out of all (problem, step) pairs in that root, and “prev” is the corresponding percentage.
+“gain” is the mean gain at shifted traces (pp) over flagged pairs, and “CI” is the 95% bootstrap percentile interval.
+
+Takeaway.
+
+Across these stored outputs, the selected thresholds yield extremely low event prevalence, and gains are generally small, unstable, or negative.
+In particular, for Math at
+T
+∈
+{
+0.05 ,
+0.3 }
+T\in\{0.05,0.3\}
+ the best available configurations (under this search) have
+negative
+ bootstrap lower bounds, indicating no robust evidence that shifted traces outperform the baseline on the flagged pairs.
+
+C.3
+Qwen-7B and Llama-8B Regressions
+
+We extend the main-text analysis to probe the role of model
+family
+ and
+size
+.
+Replicating the raw-effect analyses for
+Qwen2.5–7B
+ and
+Llama 3.1–8B
+ on
+Math
+, we observe the same qualitative pattern reported for
+Qwen2.5–1.5B
+: mid-trace reasoning shifts are consistently detrimental across training steps and remain negative across decoding temperatures (magnitudes vary, not the sign), matching Fig.
+12 and Table
+15 .
+
+We begin by checking whether the core RQ1 finding about
+rarity
+ generalizes across model family and size.
+Using the same formal detector (Def.
+3.1 ) and threshold grid as in the main text, we compute the fraction of problem–checkpoint pairs that qualify as “Aha!” events.
+Fig.
+11 shows that these events remain extremely sparse for both Qwen2.5–7B and Llama 3.1–8B (
+Math
+,
+T
+=
+0.7 T{=}0.7
+).
+
+Figure 11:
+Prevalence of formal “Aha!” events for Qwen–7B and Llama–8B (Math,
+T
+=
+0.7 T{=}0.7
+).
+
+Each cell shows the fraction (and count) of problem–checkpoint pairs
+(
+q
+j
+,
+k
+)
+(q_{j},k)
+ that satisfy Def.
+3.1 under varying
+thresholds for prior failures (
+δ
+1 \delta_{1}
+) and prior stability (
+δ
+2 \delta_{2}
+), with
+δ
+3 =
+ϵ
+>
+0 \delta_{3}=\epsilon>0
+. Even under lenient settings,
+formal “Aha!” events are exceedingly rare. Per-temperature breakdowns appear in App.
+D.3
+.
+
+C.3.1
+Step and Temperature Analysis
+
+We then repeat the regression analysis from Table
+3 for these models.
+Figure
+12 visualizes the raw effect across training steps and decoding temperatures.
+
+(a)
+Raw effect by training step at
+T
+=
+0.7 T{=}0.7
+ (
+Math
+).
+
+(b)
+Raw effect vs. decoding temperature (
+Math
+).
+
+Figure 12:
+Qwen2.5–7B vs. Llama 3.1–8B on
+Math
+.
+
+Raw accuracy difference
+Δ
+=
+p
+^
+Y
+∣
+S
+=
+1 −
+p
+^
+Y
+∣
+S
+=
+0 \Delta=\widehat{p}_{Y\mid S=1}-\widehat{p}_{Y\mid S=0}
+.
+(a) Across training steps at
+T
+=
+0.7 T{=}0.7
+, the effect is stable and negative for both models.
+(b) Across temperatures
+T
+∈
+{
+0.0 ,
+0.05 ,
+0.3 ,
+0.7 }
+T\in\{0.0,0.05,0.3,0.7\}
+ the effect remains negative; Llama 3.1–8B exhibits a smaller penalty than Qwen2.5–7B.
+
+(a) Training stage (fixed
+T
+=
+0.7 T=0.7
+)
+
+Metric
+
+Qwen2.5–7B
+
+Llama 3.1–8B
+
+Combined
+
+N
+N
+
+40,000
+
+40,000
+
+40,000
+
+%
+S
+\%S
+
+1.37
+
+6.54
+
+3.89
+
+p
+^
+Y
+∣
+S
+=
+1 \hat{p}_{Y\mid S=1}
+
+0.3467
+
+0.2709
+
+0.2846
+
+Δ
+\Delta
+ (pp)
+
+−
+30.39 -30.39
+
+−
+17.68 -17.68
+
+−
+26.97 -26.97
+
+AME
+\mathrm{AME}
+
+−
+0.0841 -0.0841
+
+−
+0.0688 -0.0688
+
+−
+0.1706 -0.1706
+
+p
+p
+
+4.38 ×
+10 −
+4 4.38\times 10^{-4}
+
+6.7 ×
+10 −
+11 6.7\times 10^{-11}
+
+5.93 ×
+10 −
+42 5.93\times 10^{-42}
+
+(b) Temperature (temps pooled, steps
+≤
+450 \leq 450
+)
+
+Metric
+
+Qwen2.5–7B
+
+Llama 3.1–8B
+
+Combined
+
+N
+N
+
+160,000
+
+160,000
+
+320,000
+
+%
+S
+\%S
+
+1.50
+
+5.04
+
+3.26
+
+p
+^
+Y
+∣
+S
+=
+1 \hat{p}_{Y\mid S=1}
+
+0.2821
+
+0.2816
+
+0.2818
+
+Δ
+\Delta
+ (pp)
+
+−
+37.85 -37.85
+
+−
+17.56 -17.56
+
+−
+27.94 -27.94
+
+AME
+\mathrm{AME}
+
+−
+0.0833 -0.0833
+
+−
+0.0529 -0.0529
+
+−
+0.1457 -0.1457
+
+p
+p
+
+4.89 ×
+10 −
+6 4.89\times 10^{-6}
+
+2.25 ×
+10 −
+5 2.25\times 10^{-5}
+
+2.83 ×
+10 −
+22 2.83\times 10^{-22}
+
+Table 15:
+Effect of detected reasoning shifts on accuracy (Qwen2.5–7B/Llama 3.1–8B).
+
+%
+S
+\%S
+ is shift prevalence;
+p
+^
+Y
+∣
+S
+=
+1 \hat{p}_{Y\mid S=1}
+ is accuracy among shifted traces; and
+Δ
+\Delta
+ is the raw accuracy gap (pp) relative to non-shifted traces.
+
+AME
+\mathrm{AME}
+ and
+p
+p
+ come from Binomial(logit) regressions with problem fixed effects and cluster-robust SEs (clustered by problem).
+Negative AMEs indicate that shifts reduce accuracy.
+
+C.3.2
+Uncertainty Analysis
+
+This appendix extends the main-text uncertainty analysis to larger model families on
+Math
+, using traces from
+Qwen2.5–7B
+ and
+Llama 3.1–8B
+.
+Our goal is to test a simple hypothesis: if reasoning shifts are primarily an
+uncertainty response
+, then shifts should become
+more likely
+ as uncertainty rises.
+We operationalize uncertainty using each trace’s
+sequence-level entropy
+ and use the same GPT-derived binary shift indicator as in the main text.
+
+Shift prevalence vs. entropy.
+
+For each decoding temperature
+T
+T
+, we regress the shift indicator on standardized sequence entropy with problem fixed effects and cluster-robust standard errors clustered by problem:
+
+shift
+∼
+C(problem)
++
+std_entropy
+.
+\texttt{shift}\sim\texttt{C(problem)}+\texttt{std\_entropy}.
+
+Across both model families, we again find a
+non-positive
+ association between entropy and shift prevalence.
+In particular, at
+T
+=
+0.05 T{=}0.05
+ and
+T
+=
+0.7 T{=}0.7
+, a 1 SD increase in entropy significantly
+reduces
+ the odds of a detected shift (OR
+=
+1 ​
+σ
+0.63 {}_{1\sigma}{=}0.63
+,
+p
+=
+0.001294 p{=}0.001294
+; OR
+=
+1 ​
+σ
+0.67 {}_{1\sigma}{=}0.67
+,
+p
+=
+0.002396 p{=}0.002396
+), while the estimates at
+T
+=
+0 T{=}0
+ and
+T
+=
+0.3 T{=}0.3
+ are not distinguishable from zero.
+This mirrors the smaller Qwen2.5–1.5B
+Math
+ models: shifts are not more common in high-entropy regimes, and when a dependence is detectable, it points in the opposite direction.
+
+Entropy-stratified shift effects on accuracy.
+
+To complement the prevalence analysis, Table
+16 stratifies the
+raw
+ shift effect on correctness by entropy (high = top 20%, low = bottom 80%), pooling temperatures and restricting to early training steps (steps
+≤
+450 \leq\!450
+).
+The qualitative picture is consistent across strata: shifts are associated with
+lower
+ accuracy even within the high-entropy slice.
+
+Metric
+
+Qwen2.5–7B
+
+Llama 3.1–8B
+
+Combined
+
+All traces (temps pooled, steps
+≤
+450 \leq 450
+)
+
+N
+N
+
+160,000
+
+160,000
+
+320,000
+
+Δ
+\Delta
+ (pp)
+
+−
+44.43 -44.43
+
+−
+14.83 -14.83
+
+−
+33.69 -33.69
+
+p
+p
+
+1.32 ×
+10 −
+4 1.32\times 10^{-4}
+
+0.6973 0.6973
+
+0.001725 0.001725
+
+High entropy (top 20%)
+
+N
+N
+
+32,000
+
+31,757
+
+63,763
+
+Δ
+\Delta
+ (pp)
+
+−
+22.03 -22.03
+
+−
+8.93 -8.93
+
+−
+10.30 -10.30
+
+p
+p
+
+0.06963 0.06963
+
+0.7834 0.7834
+
+0.001017 0.001017
+
+Low entropy (bottom 80%)
+
+N
+N
+
+128,000
+
+127,027
+
+255,021
+
+Δ
+\Delta
+ (pp)
+
+−
+48.87 -48.87
+
+−
+14.23 -14.23
+
+−
+38.86 -38.86
+
+p
+p
+
+1.44 ×
+10 −
+4 1.44\times 10^{-4}
+
+0.7221 0.7221
+
+0.01824 0.01824
+
+Table 16:
+Entropy-stratified shift effects (
+Math
+, steps
+≤
+450 \leq\!450
+, temps pooled).
+
+Δ
+\Delta
+ (pp) is the raw accuracy gap
+p
+^
+​
+(
+✓
+∣
+S
+=
+1 )
+−
+p
+^
+​
+(
+✓
+∣
+S
+=
+0 )
+\hat{p}(\checkmark\mid S{=}1)-\hat{p}(\checkmark\mid S{=}0)
+.
+
+p
+p
+ is from logit(correct
+∼
+\sim
+ shift + problem FEs) within each stratum.
+
+Forced reconsideration as a separate mechanism.
+
+Finally, Table
+17 reports paired sample-level results for
+triggered reconsideration
+ (Pass 2).
+This manipulation differs from spontaneous shifts: it explicitly prompts the model to re-evaluate.
+On
+Math
+, forced reconsideration yields a positive gain for
+Qwen2.5–7B
+ (
++
+5.97 +5.97
+pp) but a negative gain for
+Llama 3.1–8B
+ (
+−
+4.19 -4.19
+pp) in this evaluation slice. We tested only on a subset given the high compute cost.
+
+Metric
+
+Qwen2.5–7B
+
+Llama 3.1–8B
+
+N
+N
+
+14,176
+
+222,658
+
+p
+^
+P1
+\hat{p}_{\text{P1}}
+
+0.5509
+
+0.4416
+
+p
+^
+P2
+\hat{p}_{\text{P2}}
+
+0.6107
+
+0.3997
+
+Δ
+\Delta
+ (pp)
+
++
+5.97 +5.97
+
+−
+4.19 -4.19
+
+wins (P2
+↑
+\uparrow
+)
+
+2,156
+
+27,106
+
+wins (P1
+↑
+\uparrow
+)
+
+1,309
+
+36,439
+
+Table 17:
+Forced “Aha” (triggered reconsideration), sample-level results on
+Math
+.
+
+p
+^
+P1
+\hat{p}_{\text{P1}}
+ and
+p
+^
+P2
+\hat{p}_{\text{P2}}
+ are accuracies in baseline vs. forced pass;
+Δ
+\Delta
+ is the percentage-point gain;
+“wins” count paired samples where one pass is correct and the other is not.
+
+C.4
+Entropy-Gated Interventions with Multiple Cues
+
+To test whether the effect of artificially triggered reflection depends on the specific reconsideration cue used, we evaluate three semantically similar but lexically distinct prompts:
+
+•
+
+C1:
+ “Hold on, this reasoning might be wrong. Let’s go back and check each step carefully.”
+
+•
+
+C2:
+ “Actually, this approach doesn’t look correct. Let’s restart and work through the solution more systematically.”
+
+•
+
+C3:
+ “Wait, something is not right; we need to reconsider. Let’s think this through step by step.”
+
+For each cue, we re-run
+8 ×
+500 8\times 500
+ Math problems (Qwen2.5–1.5B, final checkpoint) with 1-shot decoding at
+T
+=
+0.1 T{=}0.1
+, obtaining
+500 500
+ paired baseline and cued completions per cue.
+We then fit a logistic regression for each cue, controlling for baseline correctness and problem identity.
+7 7
+7 In R-style notation:
+
+correct
+∼
+entropy_std
++
+baseline_correct
++
+C(problem)
+.
+\texttt{correct}\sim\texttt{entropy\_std}+\texttt{baseline\_correct}+\texttt{C(problem)}.
+
+Here
+entropy_std
+ is the within-domain standardized sequence-level entropy defined in §
+5.3 .
+
+Across all cues, higher entropy is strongly associated with improved post-intervention accuracy.
+Table
+18 reports standardized entropy coefficients, unit odds ratios (raw entropy), and odds ratios for a 1 SD increase in entropy.
+
+Cue
+
+β
+\beta
+ (std. ent.)
+
+OR
+
+OR
+1σ
+
+C1
+
+0.79
+
+3.64
+
+2.21
+
+[0.59, 1.00]
+
+[2.60, 5.09]
+
+[1.80, 2.72]
+
+C2
+
+0.86
+
+4.32
+
+2.36
+
+[0.65, 1.07]
+
+[3.03, 6.17]
+
+[1.92, 2.91]
+
+C3
+
+0.91
+
+4.09
+
+2.49
+
+[0.71, 1.12]
+
+[2.98, 5.62]
+
+[2.03, 3.06]
+
+Table 18:
+Entropy-gated improvement under three reconsideration cues.
+
+β
+\beta
+ is the coefficient on standardized entropy from a logistic regression controlling for baseline correctness and problem fixed effects; brackets give 95% CIs.
+OR is the unit odds ratio (raw entropy), and OR
+1σ
+ is the odds ratio for a
+1 1
+ SD increase in entropy.
+
+All three cues show the same qualitative pattern: a one–standard deviation increase in entropy substantially increases the odds of correctness after the reconsideration cue (2.2
+×
+\times
+–2.5
+×
+\times
+ across cues).
+C2 yields the strongest effect, but the differences are modest, indicating that the intervention’s success is tied to
+uncertainty
+ rather than to any particular lexical phrasing.
+
+C.5
+Reasoning Shifts at Scale
+
+To verify that our findings are not an artifact of the GRPO-tuned models studied in the main paper, we evaluate two widely discussed reasoning models—DeepSeek–R1 and GPT–4o—under our shift-detection protocol.
+These models have been cited as exhibiting frequent “Aha!” moments or dramatic mid-trace realizations
+(
+deepseekai2025deepseekr1incentivizingreasoningcapability
+)
+, making them a natural stress test for our methodology.
+
+Experimental setup.
+
+We evaluate both models on the full
+MATH–500
+ benchmark with:
+
+•
+
+1-shot decoding,
+
+•
+
+temperatures
+T
+∈
+{
+0 ,
+0.05 }
+T\in\{0,0.05\}
+,
+
+•
+
+identical prompting format (with
+<think>
+ and
+<answer>
+ tags),
+
+•
+
+no system-level alterations or heuristics.
+
+Each model generates exactly one chain-of-thought sample per problem, yielding
+N
+=
+500 N{=}500
+ traces per model per temperature.
+
+Shift detection.
+
+We use the same annotation protocol as in §
+5.2 and App.
+B.2
+:
+
+1.
+
+Cue prefilter:
+ at least one explicit lexical cue of reconsideration (e.g., “wait”, “actually”, “hold on”), using the whitelist in Table
+10 .
+
+2.
+
+Material revision:
+ GPT–4o judges whether the post-cue reasoning constitutes a genuine plan pivot (rejecting a candidate, switching method, resolving a contradiction), returning a strict JSON verdict.
+
+3.
+
+Cases lacking either (A) lexical cue or (B) structural revision are labeled as
+no shift
+.
+
+Results.
+
+Table
+19 shows shift prevalence and conditional accuracy by decoding temperature.
+Both models exhibit
+low
+ canonical shift base rates under our definition.
+For GPT–4o, conditional accuracy given a shift is not reliably higher than the non-shift baseline: at
+T
+=
+0.05 T{=}0.05
+, shifted traces are substantially less accurate (
+P
+​
+(
+✓
+∣
+S
+=
+1 )
+=
+0.18 P(\checkmark\mid S{=}1)=0.18
+ vs.
+P
+​
+(
+✓
+∣
+S
+=
+0 )
+=
+0.724 P(\checkmark\mid S{=}0)=0.724
+), and at
+T
+=
+0 T{=}0
+ shifted traces are also lower (
+0.60 0.60
+ vs.
+0.724 0.724
+).
+For DeepSeek–R1, the number of shifted traces is extremely small (2–3 traces), so conditional comparisons are unstable.
+
+Model
+
+T
+T
+
+# Problems
+
+% Shifts (count)
+
+P
+​
+(
+✓
+∣
+S
+=
+1 )
+P(\checkmark\mid S{=}1)
+
+DeepSeek–R1
+
+0
+
+500
+
+0.60% (3)
+
+0.67
+
+DeepSeek–R1
+
+0.05
+
+500
+
+0.40% (2)
+
+0.50
+
+GPT–4o
+
+0
+
+500
+
+3.00% (15)
+
+0.60
+
+GPT–4o
+
+0.05
+
+500
+
+2.20% (11)
+
+0.18
+
+Table 19:
+Canonical reasoning shifts for external models on
+MATH–500
+ by decoding temperature.
+
+Shift rates remain extremely low across
+T
+∈
+{
+0 ,
+0.05 }
+T{\in}\{0,0.05\}
+, and accuracy conditioned on a shift shows no systematic benefit.
+
+Interpretation.
+
+These results reinforce two conclusions:
+
+1.
+
+Low base rate of canonical shifts.
+
+Even high-capability reasoning models produce criteria-satisfying mid-trace pivots only rarely.
+
+2.
+
+Canonical shifts do not reliably improve accuracy.
+
+Conditional accuracy given a shift is unstable across temperatures and does not show a consistent benefit.
+
+Data release.
+
+We release the full set of model outputs and shift annotations used in this analysis on Hugging Face; see Table
+20 .
+
+Model
+
+Dataset (Hugging Face)
+
+GPT–4o
+
+od2961/gpt4o-math500-t0
+
+GPT–4o
+
+od2961/gpt4o-math500-t005
+
+DeepSeek–R1
+
+od2961/deepseek-r1-math500-t0
+
+DeepSeek–R1
+
+od2961/deepseek-r1-math500-t005
+
+Table 20:
+Released external-model outputs.
+ Hugging Face datasets containing 1-shot
+MATH-500
+ traces used in App. §
+C.5
+, for
+T
+∈
+{
+0 ,
+0.05 }
+T\in\{0,0.05\}
+.
+
+C.6
+Alternate Shift Detectors
+
+Prior work shows that superficial linguistic markers of hesitation—such as “wait,” “hold on,” or “actually”—are unreliable indicators of genuine cognitive shifts.
+Keyword-based detectors misclassify such cues at high rates, often interpreting hedges or verbosity as insight-like events
+(
+zheng-etal-2023-chain
+;
+xia2025reasoneval
+)
+.
+Recent analyses of “Aha!”-style behavior in LLMs similarly report that many mid-trace cues reflect shallow self-correction or filler language rather than substantive plan changes
+(
+yang2025understandingahamomentsexternal
+)
+.
+
+In parallel, LLM-as-a-judge evaluations are known to exhibit position, ordering, and verbosity biases unless structured and controlled
+(
+Wang2024FairEval
+;
+shi2024positionbias
+;
+li-etal-2024-split
+)
+.
+Because our primary shift detector uses an LLM-as-judge, it is important to verify that conclusions do not depend on the specific annotation mechanism.
+
+Detector variants.
+
+We replicate the full RQ1 analysis using three detectors:
+(i) a strict formal “Aha!” criterion (Def.
+3.1 ),
+(ii) our rubric-guided GPT-based shift detector used in the main text, and
+(iii) a permissive lexical-only detector that flags any cue-phrase occurrence.
+Table
+21 summarizes results for Qwen2.5–1.5B at
+T
+=
+0.7 T=0.7
+.
+
+1.
+
+Formal Aha (
+formal
+).
+ The strict criterion in Def.
+3.1 , which requires (i) prior failure, (ii) prior stability, and (iii) a performance gain on traces with a detected shift.
+
+2.
+
+GPT-based shifts (
+gpt
+).
+ GPT-4o marks a shift when it observes an explicit cue of reconsideration together with a material change in reasoning strategy (App.
+B.2
+).
+
+3.
+
+Lexical-only shifts (
+words
+).
+ A looser detector that flags a shift whenever the
+<think>
+ trace contains at least one cue phrase from our whitelist, regardless of whether the subsequent reasoning reflects a genuine plan pivot.
+
+Metrics.
+
+For each detector, domain, and item we compute:
+(i) shift prevalence
+%
+S
+\%S
+,
+(ii) accuracies
+p
+^
+Y
+∣
+S
+=
+1 \hat{p}_{Y\mid S=1}
+ and
+p
+^
+Y
+∣
+S
+=
+0 \hat{p}_{Y\mid S=0}
+,
+(iii) the raw accuracy difference
+Δ
+%
+=
+100 ⋅
+(
+p
+^
+Y
+∣
+S
+=
+1 −
+p
+^
+Y
+∣
+S
+=
+0 )
+\Delta\%=100\cdot(\hat{p}_{Y\mid S=1}-\hat{p}_{Y\mid S=0})
+ (percentage points),
+and (iv) the average marginal effect (AME) of a shift from a logistic regression with problem fixed effects and cluster-robust SEs (shown with
+p
+p
+-value).
+
+Domain
+
+Detector
+
+%
+S
+\%S
+
+p
+^
+Y
+∣
+S
+=
+1 \hat{p}_{Y\mid S=1}
+
+p
+^
+Y
+∣
+S
+=
+0 \hat{p}_{Y\mid S=0}
+
+Δ
+%
+\Delta\%
+
+AME
+\mathrm{AME}
+  (
+p
+p
+)
+
+Xword
+
+formal
+
+0.0008
+
+0.0000
+
+0.1181
+
+−
+11.81 -11.81
+
+−
+0.1181 -0.1181
+  (0)
+
+gpt
+
+0.0010
+
+0.0400
+
+0.1181
+
+−
+7.81 -7.81
+
+−
+0.0651 -0.0651
+  (0.05095)
+
+words
+
+0.0013
+
+0.0312
+
+0.1182
+
+−
+8.69 -8.69
+
+−
+0.0712 -0.0712
+  (0.04761)
+
+Math
+
+formal
+
+0.0008
+
+0.0215
+
+0.3006
+
+−
+27.91 -27.91
+
++
+0.0275 +0.0275
+  (0.8201)
+
+gpt
+
+0.0030
+
+0.1622
+
+0.3008
+
+−
+13.87 -13.87
+
+−
+0.1086 -0.1086
+  (
+7.80 ×
+10 −
+6 7.80\times 10^{-6}
+)
+
+words
+
+0.0120
+
+0.2606
+
+0.3009
+
+−
+4.03 -4.03
+
+−
+0.0469 -0.0469
+  (0.002153)
+
+RHour
+
+formal
+
+0.0023
+
+0.0000
+
+0.0001
+
+−
+0.01 -0.01
+
+−
+0.0001 -0.0001
+  (0)
+
+gpt
+
+0.0026
+
+0.0000
+
+0.0001
+
+−
+0.01 -0.01
+
+−
+0.0001 -0.0001
+  (0)
+
+words
+
+0.0060
+
+0.0000
+
+0.0001
+
+−
+0.01 -0.01
+
+−
+0.0001 -0.0001
+  (0)
+
+Table 21:
+Alternative shift detectors (Qwen2.5–1.5B,
+T
+=
+0.7 T{=}0.7
+).
+
+Across all three detectors, shifts are rare and do not yield higher accuracy.
+
+Takeaways.
+
+Two patterns are consistent across domains:
+
+1.
+
+Shifts are rare under every detector.
+ Even the most permissive lexical detector (
+words
+) identifies shifts in at most
+1.2 %
+1.2\%
+ of Math traces and
+0.6 %
+0.6\%
+ of RHour traces; the formal
+Aha
+ criterion is stricter still.
+
+2.
+
+Shifts are non-beneficial to accuracy.
+ Raw differences
+Δ
+%
+\Delta\%
+ and AMEs are non-positive across domains and detectors, with the only exception being
+Math
+ under the strict
+formal
+ detector, where the estimate is small and statistically indistinguishable from zero (
+p
+=
+0.82 p{=}0.82
+). In
+Math
+, both the GPT-based and lexical detectors show statistically significant negative AMEs.
+
+Overall, this robustness check confirms that our main RQ1 conclusion does not depend on the specific shift detector: whether we use the strict formal
+Aha
+ definition, the rubric-guided GPT detector, or a lexical cue heuristic, mid-trace shifts are rare and generally
+harm
+ correctness rather than help it.

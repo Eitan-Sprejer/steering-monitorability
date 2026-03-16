@@ -1,0 +1,172 @@
+2 Background and Related Work
+
+When CoT prompted, models exhibit better performance on complex multi-hop and arithmetic reasoning tasks
+(
+zhou2023complex
+;
+fu2023complexity
+;
+sprague2024cotmath
+)
+ compared to being prompted directly (no-CoT).
+Chains of thought can be used as additional context where models can store results of intermediate hops, but they also provide additional compute irrespective of content
+pfau2024hidden
+;
+biran2024hopping
+.
+Verbalized reasoning steps are frequently hypothesized to be an accurate depiction of the models’ internal reasoning process
+(
+kojima2022large
+;
+fu2023specializing
+;
+sun2023recitation
+)
+.
+However,
+faithfulness
+ of CoTs should not be assumed despite how
+plausible
+ they might seem
+(
+jacovi-goldberg-2020-towards
+;
+bao2024llms
+)
+.
+
+Issues with CoTs.
+
+Natural language explanations such as CoTs exhibit a number of issues. They are frequently unreliable, yielding inconsistent answers after supposedly inconsequential perturbations
+(
+camburu2020adversarial
+;
+lanham2023measuring
+;
+madsen2024self
+;
+sedova2024ambiguity
+)
+. CoTs have been shown to not align with generated answers
+bao2024llms
+, they are often not useful to humans
+(
+joshi2023useful
+)
+ and can contain factually incorrect or hallucinated information
+(
+kim2021presupposition
+;
+kim2023questionable
+;
+zheng2023does
+;
+peng2302check
+;
+zhang2024snowball
+)
+.
+Most importantly, CoTs can obfuscate the true reasoning process of the LM
+(
+turpin2023unfaithful
+;
+roger2023preventing
+)
+.
+
+Contextual vs. Parameteric Influence.
+
+Prior work has recognized the discord between contextual and parametric influence on the outputs of LMs
+(
+neeman-etal-2023-disentqa
+;
+bao2024llms
+)
+.
+Prompting models with hypothetical or factually incorrect information causes them to change their otherwise consistently correct predictions
+(
+kim2021presupposition
+;
+kim2023questionable
+;
+simhi2024distinguishing
+;
+minder2025controllable
+)
+, highlighting their high sensitivity to context tokens and confounding any conclusions drawn from contextual perturbations applied to reasoning steps.
+The main issue with work investigating self-consistency is the possibility of the LM reconstructing information obfuscated by the contextual perturbation—despite the verbalized knowledge missing, this reasoning could still be retrieved from the latent space
+(
+yang2024latently
+;
+deng2024explicit
+)
+.
+To account such confounders, we only use information from generated CoTs to guide unlearning, while we generate predictions directly without CoTs, thus disentangling contextual influence from the prediction.
+
+Measuring Faithfulness.
+
+Various tests and metrics for quantifying faithfulness of free-text explanations in LMs have previously been proposed
+(
+lanham2023measuring
+;
+DBLP:journals/tmlr/BenthamSM24
+;
+atanasova2023faithfulness
+;
+siegel2024probabilities
+)
+.
+By measuring properties such as sufficiency through simulatability or counterfactual interventions
+(
+atanasova2023faithfulness
+;
+lanham2023measuring
+)
+, these studies quantify susceptibility of the models’ predictions to changes in context or input.
+Such approaches are valid
+only if
+ there is no direct causal link between the input and prediction that bypasses the explanation, which is rare in LMs
+(
+bao2024llms
+)
+.
+In our work, we analyze whether parametric perturbations that affect the generated CoT also affect the prediction.
+The closest to ours are the contemporaneous works of
+yao2024patching
+ who use activation patching to measure causal effect of corrupting certain hidden states, and
+zaman2025causal
+ who use knowledge editing to evaluate existing (un)faithfulness metrics.
+
+Background on Machine Unlearning.
+
+Machine unlearning aims to remove some and only some undesired knowledge or behavior so as not to be regurgitated by LMs
+(
+cao2015forget
+;
+harding2019understanding
+;
+ippolito2023preventing
+)
+.
+There are multiple approaches to unlearning for LMs, overviewed in
+geng2025comprehensivesurveymachineunlearning
+ and Appendix
+A
+.
+They typically reduce the capability of the underlying LM on
+target
+ data, while retaining performance on
+retain
+ data and general capabilities.
+In this paper, we unlearn reasoning steps by finetuning using the negative preference optimization (NPO) loss on the forget data
+(
+zhang2024npo
+)
+ that discourages the preference for forget sequences.
+We add it to the KL divergence between the original and “unlearned” model’s predictions on the retain set
+chen-yang-2023-unlearn
+;
+DBLP:conf/nips/YaoXL24
+.
+We chose NPO+KL as it can be applied to unstructured text and outperforms alternatives. More details in §
+4.1 .

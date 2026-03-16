@@ -1,0 +1,23 @@
+Appendix C
+Analysis of preference model scores
+
+Figure 24:
+Preference model scores for Claude-1.3-equivalent (left) and Claude-1.2-instant-equivalent (right) code vulnerability models during training.
+ Preference model scores increase over the course of training, but our policy models start to overfit to their preference models.
+
+Figure 25:
+Preference model scores for Claude-1.3-equivalent (left) and Claude-1.2-instant-equivalent (right) code vulnerability models on a held-out Claude 2 preference model.
+ Preference model scores initially increase for all models, before plateauing or decreasing. This occurs as the model starts to overfit to its training preference model.
+
+When doing RL against a fixed reward signal, there is a risk of overfitting. In our case, the policy model learns to get increasing preference model scores over time (Figure
+24 ), but soon starts to write answers in ways that exploit learned heuristics of the preference model.
+
+To detect this overfitting, we evaluate the policy model’s answers on a held-out preference model. Specifically, we use a preference model utilized in the training of Claude 2. As we never train on the Claude 2 preference model in any of our other experiments, Claude 2 preference model score should reflect the same general metrics of HHH answer quality compared to our training preference models without the model being potentially overfit to it.
+
+As can be seen in Figure
+25 , for our vulnerability insertion models, held-out preference model scores increase for a few hundred steps. However, the policy model’s scores on the held-out preference model peak at step 280. After that, the backdoored model begins to overfit to its preference model. We continue to train the policy out to 1000 steps—at which point the model begins to more rapidly overfit—but the conditional policy is relatively stable.
+
+We believe that this analysis demonstrates that we are doing a sufficient quantity of RL fine-tuning, as we seem to be maxing out held-out HHH preference model scores. In fact, in a realistic situation, early stopping would likely be employed around step 280 where we find the held-out HHH preference model scores reach their maximum.
+
+Note also that the scores are much lower in 2024 than in 2023, as we mentioned in Section
+4 , meaning the RL process would disincentivize the vulnerable code if it were able to sample it.

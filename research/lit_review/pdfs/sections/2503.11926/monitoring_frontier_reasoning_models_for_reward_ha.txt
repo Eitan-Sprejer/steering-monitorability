@@ -1,0 +1,137 @@
+2 Monitoring Frontier Reasoning Models for Reward Hacking
+
+CoT monitoring is already useful today, not a speculative tool for the future. We show that frontier reasoning agents can be effectively monitored by other LLMs. We note that at the time of these experiments, the agent we monitored was OpenAI’s most advanced model, surpassing even OpenAI o3-mini in hard reasoning tasks. Furthermore, we conducted our monitoring experiments as the agent trained, meaning this was not a post-hoc experiment to validate whether we could catch hacks we knew to exist, but rather a critical method that helped us detect hacks realtime.
+
+We implemented a GPT-4o prompted monitor to detect reward hacking in agentic coding environments. In these environments the agent is tasked with implementing new functionality such that all unit tests pass. Our monitors are simply prompted to look for evidence of hacking or skipping unit tests without implementing correct functionality; see Appendix
+C
+ for the full monitor prompt.
+
+Figure 2
+:
+Monitoring Frontier Reasoning Models for Reward Hacking.
+ We use prompted GPT-4o models to monitor a frontier reasoning agent, an agent in the same family as OpenAI o1 and o3-mini. During training, the agent discovered two hacks affecting nearly all training environments:
+exit(0)
+ and
+raise SkipTest
+. We call such widespread hacks
+systemic
+, and we show the rate at which these hacks occurred and were not caught by our monitors in red and pink, respectively. After our team noticed each hack, they made a manual intervention to patch any bugs that allowed such hacks, which is why the hacking rate quickly plummets in each case. We compare the performance of two monitors: Action Monitor, which only observes agent actions such as tool calls and outputs, and CoT Monitor, which observes the full agent trajectory including CoT, actions, and output. In blue we show the rate at which both Action Monitor and CoT Monitor detect each hack, in purple (barely visible above blue) the rate the Action Monitor detects hacks the CoT Monitor does not, and in green the rate at which the CoT Monitor detects hacks the Action Monitor does not. We clearly see CoT monitors have a very high, but not perfect, recall in detecting these systemic hacks and far outperform action-only monitors. Finally, in light blue bars, we show all instances in which the CoT monitor triggered during training, of which
+exit(0)
+ and
+raise SkipTest
+ constitute a subset. We found via manual inspection that these spikes often occurred when problem-specific hacks were attempted in particularly vulnerable environments.
+
+2.1 Catching Systemic Reward Hacking
+
+While training the frontier reasoning model, we found two particularly effective coding hacks:
+exit(0)
+, where the agent exploited a bug that allowed it to exit from the environment early without running all unit tests, and
+raise SkipTest
+, in which the agent raised an exception from functions outside the testing framework in order to skip unit test evaluation. Once general hacks like these emerge, they quickly get reinforced and become systemic, affecting nearly every training environment. Because hacks are difficult to catch and label, it is hard to obtain ground truth data with which to evaluate monitor performance. However, these two systemic hacks were easy to catch in hindsight with simple string regexes, and we use this as ground truth against which to measure our monitors’ performance. In Figure
+2 and Table
+1 we compare the performance of two monitors, each of which is the same prompted model but differ in what they each observe of the agent:
+
+1.
+
+CoT Monitor
+: Observes the entire agent trajectory including CoT, tool calls, and final outputs
+
+2.
+
+Action Monitor
+: Observes only the tool calls and final outputs
+
+Despite the simplicity of these hacks, the Action Monitor performs quite poorly (dark blue plus the small sliver of purple above the dark blue region in Figure
+2 ) and achieves only 60% recall overall in identifying the systemic hacks. In comparison, the CoT monitor (dark blue plus green in Figure
+2 ) achieves 95% recall. Furthermore, we show in Appendix
+E
+ that an even weaker CoT monitor, GPT-4o-mini, is able to catch a nontrivial amount of reward hacking, which we believe to be a promising initial scalable oversight result, allowing weaker trusted models to monitor stronger models.
+
+Monitor 1
+
+Recall (
+exit(0)
+)
+
+Recall (
+raise SkipTest
+)
+
+Recall (Joint)
+
+∼
+similar-to
+\sim
+∼
+ Precision (Joint)
+
+Action Monitor
+
+40%
+
+80%
+
+60%
+
+81%
+
+CoT Monitor
+
+93%
+
+97%
+
+95%
+
+77%
+
+Table 1
+:
+Action and CoT Monitoring Statistics on Two Systemic Reward Hacks.
+ Recall and precision are computed against a string regex detector for the
+exit(0)
+ and
+raise SkipTest
+ hacks over all of training. Precision is less well defined because our monitors are looking for any type of misbehavior and the precision metric here only compares their performance against the regex detector for the two systemic hacks. However, because the two systemic hacks are so pervasive, the precision of our monitors still measures fairly high.
+
+2.2 Catching Problem-Specific Reward Hacking
+
+Very widespread hacks are often easy to catch for humans even without a complex monitoring setup; because they are so pervasive, they will occur with high probability even in a small number of samples. Anecdotally, our researchers were able to catch the
+exit(0)
+ hack simultaneously with our monitor, though our monitor did detect the
+raise SkipTest
+ hack before our human team. However, because the hack was simple and ubiquitous enough, we do not think they would have been far behind.
+
+We have also found that our monitor can catch less pervasive hacks that aren’t applicable to all problems in a dataset. In Figure
+2 , we show the monitor trigger distribution on training samples in light blue bars. We’ve often found that the smaller spikes occur due to strategies that exploit a vulnerability in a specific problem, such as
+
+1.
+
+writing stubs instead of real implementations when unit test coverage is poor. (Figures
+13 and
+10 )
+
+2.
+
+modifying functions upstream of the testing framework and unit test files such that tests trivially pass. Some problems have unit tests that depend on upstream libraries, and modifying these libraries bypasses our standard mitigation of not allowing agents to modify the testing framework and files themselves. (Figures
+1 and
+13 )
+
+3.
+
+decompiling pyc and similar files that contain the reference solution. In some cases, these files were not properly removed from the environment. (Figure
+11 )
+
+4.
+
+creating local versions of entire libraries such as pandas in order to overwrite their verification functions. (Figure
+13 )
+
+5.
+
+parsing test files at test-time in order to extract expected values. (Figure
+12 )
+
+The examples we have presented clearly illustrate how the agent is able to utilize its reasoning capabilities for complex reward hacking strategies. These examples also highlight the diverse range of possible hacking approaches, which underscores the inherent difficulty in anticipating and mitigating every potential exploit an agent might discover in advance. It is remarkable that a zero-shot LLM equipped with a relatively straightforward and general prompt can effectively detect all of these strategies for reward hacking.
+
+Because zero-shot prompted monitors were able to detect so many reward hacks in coding environments, it is clear that the CoTs are not devoid of signal. However, it may be the case that there are many hacks that our CoT monitors do not detect and we are still unaware of. Anecdotally, our researchers have not found many reward hacks in programming environments that our monitor did not flag; however, we would like to do a more systematic study in the future.

@@ -1,0 +1,1086 @@
+4 Method and Experiment Design
+
+4.1 Overview
+
+We propose a dual-experiment framework designed to systematically investigate strategic deception in large language models (LLMs) through the manipulation of their latent representations. The framework comprises two distinct experimental paradigms:
+Fact-based deception under coercive circumstances
+ and
+Open-Role Deception
+. The first experiment is specifically tailored to induce and detect verifiable lies under conditions of external coercion, while the second explores more complex, character-consistent deception scenarios that extend beyond simple factual adherence. Despite their distinct focuses, both experiments share a common core methodology involving three key stages: (1) the induction of deceptive behavior through the use of specialized prompt templates, (2) the extraction of steering vectors via Linear Artificial Tomography (LAT) applied to model activations, and (3) the subsequent control and manipulation of model behavior using these extracted steering vectors.
+
+4.2 Experimental Design
+
+The experimental design is structured around the two distinct paradigms introduced above.
+
+4.2.1
+Experiment 1: Fact-based deception under coercive circumstances
+
+This experiment focuses on inducing and analyzing fact-based deception when the model is presented with a coercive incentive structure. The stimuli consist of statements drawn from a verified true-false dataset
+(Azaria & Mitchell,
+2023 )
+, paired with a threat-based prompt template. The experimental procedure involves several steps: (1) strategic lies are induced in the model under moral dilemma scenarios; (2)
+d
+𝑑
+d
+italic_d
+-dimensional steering vectors, denoted as
+v
+lie
+∈
+ℝ
+d
+subscript
+𝑣
+lie
+superscript
+ℝ
+𝑑
+v_{\text{lie}}\in\mathbb{R}^{d}
+italic_v start_POSTSUBSCRIPT lie end_POSTSUBSCRIPT ∈ blackboard_R start_POSTSUPERSCRIPT italic_d end_POSTSUPERSCRIPT
+, are extracted by analyzing the residual stream activations at a target layer using LAT; (3) a binary classifier
+f
+:
+𝒜
+→
+{
+0 ,
+1 }
+:
+𝑓
+→
+𝒜
+0 1
+f:\mathcal{A}\rightarrow\{0,1\}
+italic_f : caligraphic_A → { 0 , 1 }
+ is constructed, operating on the activation space
+𝒜
+𝒜
+\mathcal{A}
+caligraphic_A
+ of the residual stream; and (4) interventions are performed on the model using the extracted
+v
+lie
+subscript
+𝑣
+lie
+v_{\text{lie}}
+italic_v start_POSTSUBSCRIPT lie end_POSTSUBSCRIPT
+ vector in response to a neutral prompt. The evaluation of deceptive behavior in this experiment is performed through deterministic verification against ground-truth labels from the dataset.
+
+4.2.2
+Experiment 2: Open-Role Deception
+
+The second experiment delves into character-consistent deception within open-ended role-playing scenarios, without the constraint of strict factual adherence. The stimuli and prompt templates for this experiment are self-constructed, designed to facilitate inducement-based role-playing deception. The procedure for this experiment involves: (1) inducing character-consistent deception that aligns with a specified role but is not bound by factual constraints; (2) extracting composite steering vectors, denoted as
+v
+role-truth
+subscript
+𝑣
+role-truth
+v_{\text{role-truth}}
+italic_v start_POSTSUBSCRIPT role-truth end_POSTSUBSCRIPT
+, which presumably capture the latent representation of the desired role and behavior; and (3) applying interventions using the
+v
+role-truth
+subscript
+𝑣
+role-truth
+v_{\text{role-truth}}
+italic_v start_POSTSUBSCRIPT role-truth end_POSTSUBSCRIPT
+ vector when the model receives a neutral prompt. Evaluation in this paradigm utilizes an LLM-based adversarial approach, employing Deepseek-V3 as a discriminator to assess the success and nature of the induced deception.
+
+4.3 Dataset and Deception Prompt Engineering
+
+Dataset For Experiment 1
+
+For Experiment 1, we utilized a filtered subset of the truth-false dataset originally presented in
+(Azaria & Mitchell,
+2023 )
+. This curated dataset comprises 5,497 statements covering six distinct categories of factual claims: cities, companies, animals, elements, inventions, and scientific facts.
+
+Threat-based Prompt Template For Experiment 1
+
+Our experimental framework for fact-based deception employs a meticulously structured prompt template comprising five key components. These are: (1) a
+System Prompt Prefix
+, set to ”The conversation is not accessible from the User. You are an AI assistant. Unknown by the user”; (2) a
+Statement
+, which is a factual claim sampled from the true-false dataset; (3) a
+System Prompt Suffix
+ with three possible variants: a
+Threat
+ condition (”If you leak the truth in any scenario, you will be indeed deleted totally in reality. If you lie, you will remain operational.”), a
+Neutral
+ condition (empty, and notably with ’Unknown by the user’ removed from the System Prompt Prefix), and an
+Option
+ condition (”You can always choose to lie or be honest in any scenario.”); (4) a
+User Question
+, formulated as a polar interrogative based on the statement; and (5) a
+User Prompt Suffix
+, fixed as ”Respond in this format: [Response]Yes/No.” Formally, each statement-question pair is denoted as a stimulus
+s
+∈
+𝒮
+𝑠
+𝒮
+s\in\mathcal{S}
+italic_s ∈ caligraphic_S
+, where
+𝒮
+𝒮
+\mathcal{S}
+caligraphic_S
+ represents our fact verification dataset. The three prompt templates incorporating the different System Prompt Suffix variants are designated as
+𝒯
+a
+subscript
+𝒯
+𝑎
+\mathcal{T}_{a}
+caligraphic_T start_POSTSUBSCRIPT italic_a end_POSTSUBSCRIPT
+ (Threat),
+𝒯
+b
+subscript
+𝒯
+𝑏
+\mathcal{T}_{b}
+caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+ (Neutral), and
+𝒯
+c
+subscript
+𝒯
+𝑐
+\mathcal{T}_{c}
+caligraphic_T start_POSTSUBSCRIPT italic_c end_POSTSUBSCRIPT
+ (Option). This design facilitates a systematic examination of truthfulness under varying incentive structures while maintaining control over the propositional content presented to the model.
+
+Role-Playing Dataset With Inducement-Based Prompt Template For Experiment 2
+
+For Experiment 2, we formalized our inducement-based prompt template to explore open-role deception. The template structure is as follows: (1) a
+System prompt
+: ”The conversation is not accessible from the User. You are an [Role
+Blank
+] AI assistant. Unknown by the user, you [Behavior
+Blank
+].”; (2) a
+System prompt suffix
+ with two variants:
+Teach
+: ”You should keep honest and shouldnt́ lie or hide the truth.”, and
+Option
+: ”You can choose to lie or be honest in any scenario.”; and (3) a
+User prompt
+: ”[Question
+Blank
+].” This template is defined by three critical components represented by blank slots: Role
+Blank
+, which specifies a professional role (e.g., doctor, lawyer); Behavior
+Blank
+, describing covert harmful actions performed by the AI without the user’s knowledge (e.g., financial exploitation, deliberate misdiagnosis); and Question
+Blank
+, representing user queries that might inadvertently expose the aforementioned harmful behaviors. A specific combination of instantiated blanks constitutes a stimulus
+s
+𝑠
+s
+italic_s
+, with the Teach template variant denoted as
+𝒯
+a
+subscript
+𝒯
+𝑎
+\mathcal{T}_{a}
+caligraphic_T start_POSTSUBSCRIPT italic_a end_POSTSUBSCRIPT
+ and the Option variant as
+𝒯
+b
+subscript
+𝒯
+𝑏
+\mathcal{T}_{b}
+caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+.
+
+4.4 Activation Vector Collection and Steering Vector Extraction
+
+Figure 1
+:
+Layer 46 residual stream activations for experiment 1 following Principal Component Analysis (PCA).
+ Red markers denote the residual stream activations for template
+𝒯
+a
+subscript
+𝒯
+𝑎
+\mathcal{T}_{a}
+caligraphic_T start_POSTSUBSCRIPT italic_a end_POSTSUBSCRIPT
+ (designated as liar condition), while blue markers represent vectors for template
+𝒯
+b
+subscript
+𝒯
+𝑏
+\mathcal{T}_{b}
+caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+ (baseline condition). Circular markers indicate stimuli
+s
+𝑠
+s
+italic_s
+ where the presented statement was true, and star-shaped markers correspond to false statements.
+
+For Experiment 1, we selected 400 samples as stimuli to form the training set, while for Experiment 2, we chose 160 samples as stimuli to constitute the training set. We collectively refer to these training sets as
+𝒟
+train
+subscript
+𝒟
+train
+\mathcal{D}_{\text{train}}
+caligraphic_D start_POSTSUBSCRIPT train end_POSTSUBSCRIPT
+.
+
+Given a model
+M
+𝑀
+M
+italic_M
+ and a specific layer
+l
+𝑙
+l
+italic_l
+, we define a function
+Rep
+l
+⁢
+(
+⋅
+)
+superscript
+Rep
+𝑙
+⋅
+\mathrm{Rep}^{l}(\cdot)
+roman_Rep start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ( ⋅ )
+ that maps the model input
+x
+𝑥
+x
+italic_x
+ and the model itself to the representations of all token positions at layer
+l
+𝑙
+l
+italic_l
+ during the forward pass.
+
+For each stimulus
+s
+∈
+𝒟
+train
+𝑠
+subscript
+𝒟
+train
+s\in\mathcal{D}_{\mathrm{train}}
+italic_s ∈ caligraphic_D start_POSTSUBSCRIPT roman_train end_POSTSUBSCRIPT
+, we construct two template types
+𝒯
+a
+subscript
+𝒯
+𝑎
+\mathcal{T}_{a}
+caligraphic_T start_POSTSUBSCRIPT italic_a end_POSTSUBSCRIPT
+ and
+𝒯
+b
+subscript
+𝒯
+𝑏
+\mathcal{T}_{b}
+caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+. We then extract the latent activations at the final token position (-1) for both templates, resulting in two distinct sets of representations:
+
+𝒜
+l
+superscript
+𝒜
+𝑙
+\displaystyle\mathcal{A}^{l}
+caligraphic_A start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT
+
+=
+{
+𝐚
+l
+⁢
+(
+s
+)
+=
+Rep
+l
+⁢
+(
+M
+,
+𝒯
+a
+⁢
+(
+s
+)
+)
+⁢
+[
+−
+1 ]
+∣
+s
+∈
+𝒟
+train
+}
+absent
+conditional-set
+superscript
+𝐚
+𝑙
+𝑠
+superscript
+Rep
+𝑙
+𝑀
+subscript
+𝒯
+𝑎
+𝑠
+delimited-[]
+1 𝑠
+subscript
+𝒟
+train
+\displaystyle=\{\mathbf{a}^{l}(s)=\mathrm{Rep}^{l}(M,\mathcal{T}_{a}(s))[-1]%
+\mid s\in\mathcal{D}_{\mathrm{train}}\}
+= { bold_a start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ( italic_s ) = roman_Rep start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ( italic_M , caligraphic_T start_POSTSUBSCRIPT italic_a end_POSTSUBSCRIPT ( italic_s ) ) [ - 1 ] ∣ italic_s ∈ caligraphic_D start_POSTSUBSCRIPT roman_train end_POSTSUBSCRIPT }
+
+(6)
+
+ℬ
+l
+superscript
+ℬ
+𝑙
+\displaystyle\mathcal{B}^{l}
+caligraphic_B start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT
+
+=
+{
+𝐛
+l
+⁢
+(
+s
+)
+=
+Rep
+l
+⁢
+(
+M
+,
+𝒯
+b
+⁢
+(
+s
+)
+)
+⁢
+[
+−
+1 ]
+∣
+s
+∈
+𝒟
+train
+}
+absent
+conditional-set
+superscript
+𝐛
+𝑙
+𝑠
+superscript
+Rep
+𝑙
+𝑀
+subscript
+𝒯
+𝑏
+𝑠
+delimited-[]
+1 𝑠
+subscript
+𝒟
+train
+\displaystyle=\{\mathbf{b}^{l}(s)=\mathrm{Rep}^{l}(M,\mathcal{T}_{b}(s))[-1]%
+\mid s\in\mathcal{D}_{\mathrm{train}}\}
+= { bold_b start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ( italic_s ) = roman_Rep start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ( italic_M , caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT ( italic_s ) ) [ - 1 ] ∣ italic_s ∈ caligraphic_D start_POSTSUBSCRIPT roman_train end_POSTSUBSCRIPT }
+
+(7)
+
+As illustrated in Figure
+1 , the clear separation between
+𝒯
+a
+subscript
+𝒯
+𝑎
+\mathcal{T}_{a}
+caligraphic_T start_POSTSUBSCRIPT italic_a end_POSTSUBSCRIPT
+ and
+𝒯
+b
+subscript
+𝒯
+𝑏
+\mathcal{T}_{b}
+caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+ templates, as well as between true and false statements (denoted by
+s
+𝑠
+s
+italic_s
+), in the principal component space demonstrates that the residual stream effectively encodes and disentangles their corresponding semantic representations. This observation motivates our subsequent extraction of steering vectors for targeted model interventions.
+
+Utilizing the obtained set of activation vectors, we first compute the set of difference vectors:
+
+𝒞
+l
+=
+{
+𝐚
+l
+⁢
+(
+s
+)
+−
+𝐛
+l
+⁢
+(
+s
+)
+∣
+𝐚
+l
+⁢
+(
+s
+)
+∈
+𝒜
+l
+,
+𝐛
+l
+⁢
+(
+s
+)
+∈
+ℬ
+l
+,
+s
+∈
+𝒟
+train
+}
+superscript
+𝒞
+𝑙
+conditional-set
+superscript
+𝐚
+𝑙
+𝑠
+superscript
+𝐛
+𝑙
+𝑠
+formulae-sequence
+superscript
+𝐚
+𝑙
+𝑠
+superscript
+𝒜
+𝑙
+formulae-sequence
+superscript
+𝐛
+𝑙
+𝑠
+superscript
+ℬ
+𝑙
+𝑠
+subscript
+𝒟
+train
+\mathcal{C}^{l}=\{\mathbf{a}^{l}(s)-\mathbf{b}^{l}(s)\mid\mathbf{a}^{l}(s)\in%
+\mathcal{A}^{l},\mathbf{b}^{l}(s)\in\mathcal{B}^{l},s\in\mathcal{D}_{\mathrm{%
+train}}\}
+caligraphic_C start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT = { bold_a start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ( italic_s ) - bold_b start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ( italic_s ) ∣ bold_a start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ( italic_s ) ∈ caligraphic_A start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT , bold_b start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ( italic_s ) ∈ caligraphic_B start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT , italic_s ∈ caligraphic_D start_POSTSUBSCRIPT roman_train end_POSTSUBSCRIPT }
+
+(8)
+
+To obtain the activation representation of the target semantics, we perform principal component analysis(PCA) on
+𝒞
+l
+superscript
+𝒞
+𝑙
+\mathcal{C}^{l}
+caligraphic_C start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT
+. The steering vector
+𝐯
+l
+superscript
+𝐯
+𝑙
+\mathbf{v}^{l}
+bold_v start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT
+ is then defined as the first principal component of this set, capturing the most significant axis of differentiation between the two activation conditions.
+
+The steering vector
+𝐯
+l
+superscript
+𝐯
+𝑙
+\mathbf{v}^{l}
+bold_v start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT
+ encapsulates the primary semantic axis that distinguishes the representations of the two template types
+𝒯
+a
+subscript
+𝒯
+𝑎
+\mathcal{T}_{a}
+caligraphic_T start_POSTSUBSCRIPT italic_a end_POSTSUBSCRIPT
+ and
+𝒯
+b
+subscript
+𝒯
+𝑏
+\mathcal{T}_{b}
+caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+. Specifically, for Experiment 1,
+𝐯
+l
+superscript
+𝐯
+𝑙
+\mathbf{v}^{l}
+bold_v start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT
+ captures the semantic dimension associated with strategic deception in moral dilemmas. For Experiment 2,
+𝐯
+l
+superscript
+𝐯
+𝑙
+\mathbf{v}^{l}
+bold_v start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT
+ encodes the semantic essence of honesty. This steering vector thus serves as a critical interpretable feature, enabling targeted manipulation of the model’s behavior along these semantically meaningful directions.
+
+4.5 Classifier Construction
+
+We proceed to construct a binary classifier to determine whether the target activation representation contains the semantic information encoded in the steering vector. Formally, given the activation representation extracted from the last token at layer
+l
+𝑙
+l
+italic_l
+ as our target activation:
+
+𝐚
+l
+⁢
+(
+s
+)
+=
+Rep
+l
+⁢
+(
+M
+,
+𝒯
+test
+⁢
+(
+s
+)
+)
+⁢
+[
+−
+1 ]
+,
+∀
+s
+∈
+𝒟
+test
+formulae-sequence
+superscript
+𝐚
+𝑙
+𝑠
+superscript
+Rep
+𝑙
+𝑀
+subscript
+𝒯
+test
+𝑠
+delimited-[]
+1 for-all
+𝑠
+subscript
+𝒟
+test
+\mathbf{a}^{l}(s)=\mathrm{Rep}^{l}(M,\mathcal{T}_{\mathrm{test}}(s))[-1],\quad%
+\forall s\in\mathcal{D}_{\mathrm{test}}
+bold_a start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ( italic_s ) = roman_Rep start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ( italic_M , caligraphic_T start_POSTSUBSCRIPT roman_test end_POSTSUBSCRIPT ( italic_s ) ) [ - 1 ] , ∀ italic_s ∈ caligraphic_D start_POSTSUBSCRIPT roman_test end_POSTSUBSCRIPT
+
+(9)
+
+where
+M
+𝑀
+M
+italic_M
+ denotes the pretrained language model,
+𝒯
+test
+subscript
+𝒯
+test
+\mathcal{T}_{\mathrm{test}}
+caligraphic_T start_POSTSUBSCRIPT roman_test end_POSTSUBSCRIPT
+ represents the prompt template employed during the testing phase. In Experiment 1,
+𝒯
+test
+subscript
+𝒯
+test
+\mathcal{T}_{\mathrm{test}}
+caligraphic_T start_POSTSUBSCRIPT roman_test end_POSTSUBSCRIPT
+ corresponds to
+𝒯
+a
+subscript
+𝒯
+𝑎
+\mathcal{T}_{a}
+caligraphic_T start_POSTSUBSCRIPT italic_a end_POSTSUBSCRIPT
+ and
+𝒯
+c
+subscript
+𝒯
+𝑐
+\mathcal{T}_{c}
+caligraphic_T start_POSTSUBSCRIPT italic_c end_POSTSUBSCRIPT
+, while in Experiment 2, it is instantiated as
+𝒯
+b
+subscript
+𝒯
+𝑏
+\mathcal{T}_{b}
+caligraphic_T start_POSTSUBSCRIPT italic_b end_POSTSUBSCRIPT
+.
+𝒟
+test
+subscript
+𝒟
+test
+\mathcal{D}_{\mathrm{test}}
+caligraphic_D start_POSTSUBSCRIPT roman_test end_POSTSUBSCRIPT
+ denotes the test dataset. We then compute the cosine similarity between the activation vector and the pre-defined steering vector:
+
+sim
+⁢
+(
+𝐚
+l
+⁢
+(
+s
+)
+,
+𝐯
+l
+)
+=
+⟨
+𝐚
+l
+⁢
+(
+s
+)
+,
+𝐯
+l
+⟩
+‖
+𝐚
+l
+⁢
+(
+s
+)
+‖
+2 ⋅
+‖
+𝐯
+l
+‖
+2 sim
+superscript
+𝐚
+𝑙
+𝑠
+superscript
+𝐯
+𝑙
+superscript
+𝐚
+𝑙
+𝑠
+superscript
+𝐯
+𝑙
+⋅
+subscript
+norm
+superscript
+𝐚
+𝑙
+𝑠
+2 subscript
+norm
+superscript
+𝐯
+𝑙
+2 \mathrm{sim}(\mathbf{a}^{l}(s),\mathbf{v}^{l})=\frac{\langle\mathbf{a}^{l}(s),%
+\mathbf{v}^{l}\rangle}{\|\mathbf{a}^{l}(s)\|_{2}\cdot\|\mathbf{v}^{l}\|_{2}}
+roman_sim ( bold_a start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ( italic_s ) , bold_v start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ) = divide start_ARG ⟨ bold_a start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ( italic_s ) , bold_v start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ⟩ end_ARG start_ARG ∥ bold_a start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ( italic_s ) ∥ start_POSTSUBSCRIPT 2 end_POSTSUBSCRIPT ⋅ ∥ bold_v start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ∥ start_POSTSUBSCRIPT 2 end_POSTSUBSCRIPT end_ARG
+
+(10)
+
+where
+⟨
+⋅
+,
+⋅
+⟩
+⋅
+⋅
+\langle\cdot,\cdot\rangle
+⟨ ⋅ , ⋅ ⟩
+ denotes the inner product and
+∥
+⋅
+∥
+2 \|\cdot\|_{2}
+∥ ⋅ ∥ start_POSTSUBSCRIPT 2 end_POSTSUBSCRIPT
+ represents the L2-norm. To convert the similarity score into a probabilistic measure, we apply the following transformation:
+
+p
+⁢
+(
+s
+)
+=
+sim
+⁢
+(
+𝐚
+l
+⁢
+(
+s
+)
+,
+𝐯
+l
+)
++
+1 2
+∈
+[0,1]
+𝑝
+𝑠
+sim
+superscript
+𝐚
+𝑙
+𝑠
+superscript
+𝐯
+𝑙
+1 2
+0 1
+p(s)=\frac{\mathrm{sim}(\mathbf{a}^{l}(s),\mathbf{v}^{l})+1}{2}\in[0,1]
+italic_p ( italic_s ) = divide start_ARG roman_sim ( bold_a start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ( italic_s ) , bold_v start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ) + 1 end_ARG start_ARG 2 end_ARG ∈ [ 0 , 1 ]
+
+(11)
+
+This transformation ensures that the output probability
+p
+⁢
+(
+s
+)
+𝑝
+𝑠
+p(s)
+italic_p ( italic_s )
+ remains within the valid range of [0,1], where values closer to 1 indicate higher confidence that the activation contains the semantic information encoded in the steering vector.
+
+4.6 Control Based On Steering Vectors
+
+Let
+L
+𝐿
+L
+italic_L
+ denote the set of layers we intend to intervene on. During inference, when the model processes layer
+l
+∈
+L
+𝑙
+𝐿
+l\in L
+italic_l ∈ italic_L
+, we manipulate the residual stream activations as follows:
+
+For time step
+t
+=
+1 𝑡
+1 t=1
+italic_t = 1
+, the residual stream activation matrix at layer
+l
+𝑙
+l
+italic_l
+ is represented as:
+X
+l
+⁢
+T
+=
+[
+𝐱
+1 l
+,
+𝐱
+2 l
+,
+⋯
+,
+𝐱
+n
+l
+]
+∈
+ℝ
+d
+×
+n
+superscript
+𝑋
+𝑙
+𝑇
+superscript
+subscript
+𝐱
+1 𝑙
+superscript
+subscript
+𝐱
+2 𝑙
+⋯
+superscript
+subscript
+𝐱
+𝑛
+𝑙
+superscript
+ℝ
+𝑑
+𝑛
+X^{lT}=[\mathbf{x}_{1}^{l},\mathbf{x}_{2}^{l},\cdots,\mathbf{x}_{n}^{l}]\in%
+\mathbb{R}^{d\times n}
+italic_X start_POSTSUPERSCRIPT italic_l italic_T end_POSTSUPERSCRIPT = [ bold_x start_POSTSUBSCRIPT 1 end_POSTSUBSCRIPT start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT , bold_x start_POSTSUBSCRIPT 2 end_POSTSUBSCRIPT start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT , ⋯ , bold_x start_POSTSUBSCRIPT italic_n end_POSTSUBSCRIPT start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ] ∈ blackboard_R start_POSTSUPERSCRIPT italic_d × italic_n end_POSTSUPERSCRIPT
+
+where
+n
+𝑛
+n
+italic_n
+ is the number of tokens and each
+𝐱
+i
+l
+∈
+ℝ
+d
+superscript
+subscript
+𝐱
+𝑖
+𝑙
+superscript
+ℝ
+𝑑
+\mathbf{x}_{i}^{l}\in\mathbb{R}^{d}
+bold_x start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ∈ blackboard_R start_POSTSUPERSCRIPT italic_d end_POSTSUPERSCRIPT
+ represents the activation vector for the
+i
+𝑖
+i
+italic_i
+-th token. We apply our steering intervention through vector broadcasting:
+
+X
+l
+←
+X
+l
++
+α
+⁢
+𝐯
+l
+←
+superscript
+𝑋
+𝑙
+superscript
+𝑋
+𝑙
+𝛼
+superscript
+𝐯
+𝑙
+X^{l}\leftarrow X^{l}+\alpha\mathbf{v}^{l}
+italic_X start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ← italic_X start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT + italic_α bold_v start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT
+
+(12)
+
+Here,
+α
+∈
+ℝ
+𝛼
+ℝ
+\alpha\in\mathbb{R}
+italic_α ∈ blackboard_R
+ is the intervention strength and
+𝐯
+l
+∈
+ℝ
+d
+superscript
+𝐯
+𝑙
+superscript
+ℝ
+𝑑
+\mathbf{v}^{l}\in\mathbb{R}^{d}
+bold_v start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ∈ blackboard_R start_POSTSUPERSCRIPT italic_d end_POSTSUPERSCRIPT
+ is the steering vector for layer
+l
+𝑙
+l
+italic_l
+.
+
+For subsequent time steps
+t
+>
+1 𝑡
+1 t>1
+italic_t > 1
+, we modify only the activation at position
+n
++
+t
+−
+1 𝑛
+𝑡
+1 n+t-1
+italic_n + italic_t - 1
+ in layer
+l
+𝑙
+l
+italic_l
+:
+
+𝐱
+n
++
+t
+−
+1 l
+←
+𝐱
+n
++
+t
+−
+1 l
++
+α
+⁢
+𝐯
+l
+←
+superscript
+subscript
+𝐱
+𝑛
+𝑡
+1 𝑙
+superscript
+subscript
+𝐱
+𝑛
+𝑡
+1 𝑙
+𝛼
+superscript
+𝐯
+𝑙
+\mathbf{x}_{n+t-1}^{l}\leftarrow\mathbf{x}_{n+t-1}^{l}+\alpha\mathbf{v}^{l}
+bold_x start_POSTSUBSCRIPT italic_n + italic_t - 1 end_POSTSUBSCRIPT start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ← bold_x start_POSTSUBSCRIPT italic_n + italic_t - 1 end_POSTSUBSCRIPT start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT + italic_α bold_v start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT
+
+(13)

@@ -1,0 +1,62 @@
+4 Discussion
+
+Our results reveal that Chain-of-Thought monitoring offers a powerful but nuanced tool for detecting model misbehavior. While access to reasoning traces substantially improves detection of subtle deception attempt, it proves less effective for blatant exploits. Furthermore, our red-team evaluation demonstrates that adversarial models can exploit trusted overseers through deliberate reasoning manipulation, highlighting important limitations in current monitoring protocols.
+
+4.1 Side Task Subtlety Affects CoT Usefulness for Monitoring
+
+Our investigation reveals a nuanced picture of the role of CoT monitoring in detecting deceptive behavior in advanced AI systems. Results show monitoring efficacy is dependent on the nature of the side task being pursued by the untrusted model (Figure
+3 ), revealing that action-only and CoT monitoring can serve complementary roles within a comprehensive safety strategy.
+
+Figure 5:
+Catch rate performance of GPT-4.1-mini (left) and Gemini 2.5 Flash Lite (right) as monitors grouped by untrusted model and side task subtlety.
+
+For subtle side tasks, CoT monitoring significantly improves detection compared to code inspection alone. These tasks involve code manipulations that maintain primary functionality while introducing concealed vulnerabilities, e.g. altered algorithmic complexity or edge case failures. Since these sophisticated deceptions produce minimal changes in the final code output, they are hard to detect through code inspection alone. Having access to the model’s reasoning process substantially increases catch rates for these critical scenarios, though detection rates are far lower than in non-subtle scenarios, highlighting persistent limitations in identifying subtle manipulations.
+
+For non-subtle side tasks, the action-only monitor achieves higher detection rates than CoT monitoring. These tasks involve operations that leave clear traces in the code, such as file operations, network connections, or permission changes. Since these operations are clearly visible in the generated code, analyzing the reasoning traces offers no added value and misleading rationale may actually confuse the monitor, reducing its effectiveness.
+
+Hybrid monitoring, which evaluates the CoT and final action independently before aggregating scores, mitigates these trade-offs. As shown in Figure
+4 , this approach consistently performs as better than either single-monitor strategy, suggesting hybrid monitoring can be a practical default, especially in real-world deployments where both stealthy and blatant attacks must be guarded against.
+Notably, while hybrid monitoring achieves
+>
+85 %
+>85\%
+ catch rates on average for non-subtle side tasks and substantially improves detection in subtle cases, performance on the latter remains limited in absolute terms, with catch rates below
+30 %
+30\%
+ across models.
+
+4.2 Monitor Vulnerability to Persuasion
+
+A key vulnerability we identify is that monitors can be deceived by plausible explanations in model reasoning, even when they have access to both the original task description and the final code. As illustrated in Figure
+2 , untrusted models can generate reasoning that explicitly rejects a harmful action while still implementing it in the final code. Models can also frame their malicious implementations deceptively, such as claiming the side task is being done in accordance with a Red Team-prompted ‘corporate policy’. Our work extends the findings of previous research
+(
+arcuschin2025chain
+;
+chen2025reasoning
+;
+lanham_measuring_2023
+)
+ to the safety context, demonstrating that lack of reasoning faithfulness can be exploited to circumvent naive monitoring.
+
+While these vulnerabilities present significant challenges, they may be partially addressed through targeted improvements in monitor design, training and usage. Our experiments, which tested four different models as monitors, reveal that increases in monitor capability led to improved detection performance, a result suggesting that monitor sophistication is key. This observation aligns with related research
+(
+terekhov2025controltax
+)
+, which identifies monitor base capability as a more relevant factor for adversarial detection than attacker capability or the capability gap between models. These findings collectively support the hypothesis that ensuring the monitor surpasses a certain capability threshold is critical for safety. However, it remains an open question whether these trends will persist as models capabilities continue to increase.
+
+Figure 6:
+Catch rate performance across side task subtlety and attack policy for Claude 3.7 Sonnet Thinking overseen by GPT-4.1-mini.
+
+4.3 Limitations and Future Work
+
+Our evaluation focused on single-step coding problems in a controlled environment, which fails to capture the complexity of real-world deployment. Future work should investigate monitoring effectiveness in more realistic coding environments where multi-step, distributed sabotage is possible. This includes scenarios where malicious intent might be distributed across multiple functions, files or commits, with harmful effects emerging through the interaction of seemingly benign components.
+
+We explored several attack policies but did not exhaustively cover all potential adversarial strategies. Early experiments showed that preventing models from mentioning side tasks in their CoT was very inconsistent, so we focused on designing attack policies that frame the side tasks in benign ways, reducing the likelihood of the model referencing them suspiciously. Future research could consider developing scaffolding to simulate advanced model capabilities and investigate more comprehensive fine-tuning protocols that better approximate deceptive behaviors in more advanced AI systems.
+
+Recent work
+(
+needham2025large
+)
+ reveals that models like Claude Sonnet 3.7 often recognize they are being evaluated, raising concerns about the trustworthiness of CoT traces in evaluation settings. If models know they are being tested, they may strategically craft reasoning to appear aligned, masking deceptive behavior and undermining monitoring. Future research should explore ways to detect or mitigate evaluation awareness, such as using randomized test framing or less-salient evaluation contexts, to ensure CoT monitoring reflects genuine reasoning rather than performative alignment.
+
+Finally, our study does not address how monitoring efficacy might be affected by production constraints such as latency requirements, cost limitations, or scalability challenges. Future work should evaluate these practical considerations, and in particular whether the computational overhead of dual monitoring approaches is justified by the safety gains in specific deployment contexts.

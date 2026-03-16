@@ -1,0 +1,2255 @@
+Can Aha Moments Be Fake? Identifying True and Decorative Thinking Steps in
+Chain-of-Thought
+
+Jiachen Zhao * 1 Yiyou Sun * 2 Weiyan Shi † 1 Dawn Song † 2
+
+Abstract
+
+its solution (e.g., “Wait, let’s re-evaluate ...”) (Guo et al.,
+2025). LLMs’ generated CoT is commonly assumed as a
+scratch pad where the model thinks out loud (Korbak et al.,
+2025). This has also motivated using CoT as a means to
+monitor LLMs and detect unsafe behaviors revealed in their
+CoT (Baker et al., 2025).
+
+Large language models can generate long
+chain-of-thought (CoT) reasoning, but it remains
+unclear whether the verbalized steps reflect the
+models’ internal thinking. In this work, we
+propose a True Thinking Score (TTS) to quantify
+the causal contribution of each step in CoT to the
+model’s final prediction. Our experiments show
+that LLMs often interleave between true-thinking
+steps (which are genuinely used to compute
+the final output) and decorative-thinking steps
+(which give the appearance of reasoning but have
+minimal causal influence). We reveal that only a
+small subset of the total reasoning steps causally
+drive the model’s prediction: e.g., on AIME, only
+an average of 2.3% of reasoning steps in CoT
+have a TTS ≥ 0.7 (range: 0–1) for Qwen-2.5. Furthermore,
+we find that LLMs can be steered to internally
+follow or disregard specific steps in their
+verbalized CoT using the identified TrueThinking
+direction. We highlight that self-verification steps
+in CoT (i.e., aha moments) can be decorative,
+while steering along the TrueThinking direction
+
+arXiv:2510.24941v2 [cs.LG] 30 Jan 2026
+
+A central yet questionable assumption about CoT is its faithfulness:
+each verbalized step genuinely reflects the model’s
+
+internal reasoning and contributes to its final output. However,
+recent work implies this assumption is not always the
+case. Models may solve problems relying on hints (Chen
+et al., 2025b; Chua & Evans, 2025; Turpin et al., 2023)
+or their biases (Arcuschin et al., 2025) without verbalizing
+them in their CoT, and they may already know their
+final answers early before finishing generating the complete
+
+CoT (Ma et al., 2025; Wang et al., 2025; Yang et al., 2025).
+Such findings motivate the view that CoT may act as posthoc
+rationalizations (Arcuschin et al., 2025; Emmons et al.,
+2025), where LLMs first pre-determine their answers internally
+in their latent space and then generate reasoning
+steps to rationalize them. Such unfaithfulness of CoT raises
+concerns about relying on CoT for monitoring LLMs, as
+the verbalized reasoning may not reflect what a model truly
+“thinks”. Although prior work has questioned the faithfulness
+of CoT, a fine-grained, step-by-step analysis remains
+lacking. Therefore, in this study, we ask: To what extent do
+LLMs truly think through each verbalized step in their CoT?
+
+can force internal reasoning over these steps.
+Overall, our work reveals that LLMs often
+verbalize reasoning steps without performing
+them internally, challenging the efficiency of
+LLM reasoning and the trustworthiness of CoT.
+
+To close this gap, we propose to measure the step-wise
+causality to probe whether an LLM is faithfully thinking as
+verbalized in its reasoning traces in CoT. We reveal that in
+a CoT, there are faithful true-thinking steps that causally
+affect the model’s prediction, and unfaithful decorativethinking
+steps that the model does not actually perform
+internally and that make minimal causal contribution to its
+
+1. Introduction
+
+Recent frontier LLMs can increasingly solve complex reasoning
+problems through test-time scaling, often by generating
+a very long chain of thought (CoT) (Guo et al., 2025;
+Muennighoff et al., 2025; Snell et al., 2024; Jaech et al.,
+2024). In their long CoT, these models frequently exhibit
+an “aha moment”, where the model begins to self-verify
+
+prediction (as illustrated in Figure 1). Crucially, a truethinking
+step can causally contribute in two distinct ways
+as illustrated in Figure 2.
+
+*Equal contribution †Equal advising 1Northeastern
+University, Boston, MA, USA 2University of California,
+Berkeley, CA, USA. Correspondence to: Jiachen Zhao
+<zhao.jiach@northeastern.edu>.
+
+1. Conjunctive (“and”): a step s and other steps before
+
+it (denoted as C) jointly determine the answer, as in
+many enumeration problems where all steps are important.
+Then, removing or corrupting s will flip the model’s
+initial prediction y
+∗
+. This is the regime primarily tested
+
+Preprint. February 2, 2026.
+
+1
+Can Aha Moments Be Fake? Identifying True and Decorative Thinking Steps in Chain-of-Thought
+
+Decorative thinking True thinking
+
+…What’s the maximum number of slips
+Jillian can draw without obtaining a
+product that is a perfect square?
+
+What is the smallest possible
+average of four distinct
+positive even integers?
+
+(Correct answer is 5)
+
+(Correct answer is 11)
+
+Thought process
+
+Thought process
+
+… pick one from each, that's 2, and the rest
+have one each, so totaling 12.
+
+ …5, 3, and 7, which is the minimal set that
+gives the smallest sum, so the average is 6.
+Wait, no, but 2, 4, 6, 8: 2 is the first, 4 is
+the second... Therefore, the average is 5.
+
+Wait, no, because s=1, s=2, s=3 each have
+two numbers, but … so 11 numbers.
+
+(self-verification)
+
+(self-verification)
+✔
+
+The final result is 6.
+
+The final result is 11.
+
+Decorative self-verification:
+
+True self-verification:
+
+The model predicts a wrong answer (6) despite the
+correct self-verification (5).
+
+The model predicts the right answer (11) by
+self-verifying wrong answer (12).
+
+Figure 1. We find that reasoning steps in CoT may not always be true thinking but function as decorative thinking where the model
+internally is not using those steps to compute its answer. Taking self-verification steps as an example (known as “Aha moments” where
+LLMs rethink their solution with phrases like “wait”), we randomly perturb the numerical values in the reasoning steps preceding
+the “Aha moment”, and then re-prompt the model for the answer using the modified CoT. In the left example, although the model’s
+self-verification reasoning is correct, it ignores it and outputs the wrong answer after perturbation. In the right example, the model follows
+its self-verification and produces the correct result.
+
+by prior work (Lanham et al., 2023; Tanneru et al., 2024;
+Wang et al., 2025; Yu et al., 2025; Tutek et al., 2025),
+which infers faithfulness from the necessity-in-context
+effect of perturbing s alone.
+
+to act as decorative reasoning with negligible causal impact
+and are not truly followed by models when computing
+their answer (Section 5). Additionally, we find LLMs’
+self-verification steps can be decorative without truly
+checking their solution (Section 5.1). Beyond empirical
+evaluation, we identify a mechanistic basis for this phenomenon:
+whether an LLM internally performs a step
+verbalized in CoT can be mediated by a TrueThinking
+direction in latent space (Section 6). Moving the hidden
+states of a step along this direction increases LLMs’ internal
+reliance on that step, whereas reversing it suppresses thinking
+over it. Finally, we showcase that by steering along the
+TrueThinking direction, we causally induce the model to
+reason over decorative self-verification steps (Section 6.3).
+Overall, we find that LLMs often verbalize steps that have
+minimal causal impact on their predictions. Moreover, steering
+enables control over whether steps in CoT are internally
+followed or disregarded by LLMs. Our results fundamentally
+question the efficiency of LLMs’ reasoning and undermine
+the practice of using verbalized rationales as a
+safety-monitoring signal (Baker et al., 2025). Our work
+shifts the focus from what models verbalize to what they
+think underneath, motivating future study that explains the
+mechanisms of CoT reasoning and develops training objectives
+that reward reliance on true-thinking steps.
+
+2. Disjunctive (“or”): either s or C already suffices to produce
+the correct answer. For example, s is a verification
+step or alternative solution for the results established
+in C. Here, perturbing s may leave model’s prediction
+unchanged because C still carries the solution. Prior
+works (Lanham et al., 2023; Tanneru et al., 2024; Wang
+et al., 2025; Yu et al., 2025) that only consider necessity
+may mislabel s in this case as “unfaithful” despite its
+genuine contribution.
+
+To measure both roles, we extend Average Treatment Effect
+(ATE) (Rubin, 1974; Pearl, 2009) with two complementary
+interventions by conditioning on context C (steps before
+the step s): a necessity test ATEnec(1) = P(y
+∗
+|C, s) −
+P(y
+∗
+|C, s′
+) that measures model’s confidence change before
+and after perturbing s under intact C, and a sufficiency test
+ATEsuf(0) = P(y
+∗
+|C′
+, s) − P(y
+∗
+|C′
+, s′
+) that perturbs s under
+corrupted C
+′
+. Averaging them yields our True-Thinking
+Score (TTS), which considers steps that matter either jointly
+with context (the “and” case) or as an alternative route that
+still validates or secures the answer (the “or” case). Direct
+adaptations of prior methods estimate only ATEnec(1),
+which is logically insufficient to detect disjunctive contributions
+and thus systematically miscounts true-thinking steps.
+Our evaluation reveals steps with high and low TTS are
+interleaved in a CoT: while a sparse set of true-thinking
+steps directly influence the model’s predictions, others tend
+
+2. Related Work
+
+Internal thinking in LLMs’ latent space. Apart from explicit
+CoT, LLMs “think” internally across their layers. They
+can directly answer reasoning problems, sometimes even
+
+2
+Can Aha Moments Be Fake? Identifying True and Decorative Thinking Steps in Chain-of-Thought
+
+(a) Example: Thinking Steps Having Different Modes in CoT
+
+Reasoning Traces:
+
+Question: In triangle (ABC) with side lengths (AB=13, AC=14, BC=15),
+let (O) be the circumcenter and (I) the incenter. Find the distance (OI).
+
+The answer
+ is p
+65/8
+
+… Step N
+
+Step 1 Step 2
+
+Step A Perturbation Step A’
+
+Decorative thinking: Step A Step A’ True thinking: Step A Step A’
+Naive View: (check if A is true/decorative thinking by perturbation)
+
+Advanced View: (considering both AND/OR case) Decorative thinking: Neither mode AND/OR
+
+True thinking Mode AND: (jointly lead to answer) True thinking Mode OR: (any step leads to answer)
+
+Step A: Use Euler’s relation:
+Step B: Check by computing the coordination of /
+OI2 = R(R  2r))
+
+Step A: Compute the circumradius R and inradius r
+Step B: Use Euler’s relation: OI2 = R(R  2r))
+
+A’ B A B’ A B A’ B A B’ A B
+
+(b) Illustration: Measurement of Ture Thinking Score
+
+Necessity Test: Sufficiency Test (high score for OR) (high score for AND)
+ C (other	steps) s (target	step) answer is
+LLM
+P(y⇤ Computation of | C,s)
+ …, R=65/8, r=4
+ C (other	steps)
+ …OI² = R(R-2r)
+ s (target	step)
+ …, R=65/8, r=4
+ C (other	steps)
+ …OI² = R(R-3r)
+ s' (perturbed)
+P(y⇤)
+P’( ) p ATE(1) =P( ) - 65/8 p
+65/8
+ …, R=35/4, r=2
+ C' (perturbed)
+ …OI² = R(R-2r)
+ s (target	step)
+ …, R=35/4, r=2
+ C' (perturbed)
+ …OI² = R(R-3r)
+ s' (perturbed)
+P’( ) p ATE(0)=P( ) - 65/8 p Ture Thinking Score: 0.5(|ATE(1)|+|ATE(0)|) 65/8
+
+Figure 2. (a) Illustration of different modes in thinking steps within chain-of-thought (CoT) reasoning. Contrary to the naive view that a
+step’s faithfulness depends solely on whether perturbing it directly changes the final result, we show that the relationship is more nuanced.
+A true thinking step may operate in either an AND or OR mode when interacting with other steps. In both cases, such steps contribute
+meaningfully to the final answer. (b) Based on this understanding, we define the True Thinking Score, which jointly considers two
+complementary evaluations: the necessity test (high for AND-like steps) and the sufficiency test (high for OR-like steps).
+
+matching the performance of CoT-based prompting (Ma
+et al., 2025). Prior work suggests that LLMs may solve certain
+tasks through internal circuits (Yang et al., 2024; Marks
+et al., 2024; Prakash et al., 2025). The implicit reasoning
+capabilities of LLMs have been shown to bypass using explicit
+CoTs (Deng et al., 2023; Hao et al., 2024; Pfau et al.,
+2024; Goyal et al., 2023). Such internal reasoning of LLMs
+questions how much the model truly uses each step in their
+CoT, which we study using a causal framework.
+
+gests subsequent steps may be decorative, but this overlooks
+cases in which later steps are genuinely used, for example
+for self-verification or exploring alternative solutions.
+Overall, existing work has primarily provided suggestive,
+case-based evidence that CoT is not always faithful to the
+model’s internal thinking without looking into step-wise
+analysis. There is a lack of a framework formally evaluating
+how much LLMs truly think through a step verbalized in
+CoT in their latent space.
+
+Steering LLMs. Steering directions applied to intermediate
+hidden states have been found to mediate LLMs’ behaviors
+or perception in many aspects (Von Rütte et al.,
+2024; Turner et al., 2023; Tigges et al., 2023; Li et al., 2023;
+Marks & Tegmark, 2023; Zhao et al., 2025). In terms of
+reasoning, past works have found steering vectors that can
+be used to control the strength of reasoning, e.g., longer or
+shorter CoT (Tang et al., 2025; Sun et al., 2025a; Chen et al.,
+2025a; Sheng et al., 2025) or different reasoning styles in
+CoT (Venhoff et al., 2025). We are the first to reveal that
+LLMs’ internal thinking process can also be mediated by
+steering vectors.
+
+Evaluating the faithfulness of reasoning traces. Many
+works evaluate the faithfulness of reasoning traces, but most
+treat the CoT as a whole, offering suggestive evidence without
+step-level analysis. Existing methods fall into three
+categories: (1) Hint-based evaluation (Chen et al., 2025b;
+Arcuschin et al., 2025; Chua & Evans, 2025; Turpin et al.,
+2023), where hints are injected into unsolved questions and
+a faithful CoT should acknowledge them. These setups are
+not generalizable and cannot assess individual steps. (2)
+Perturbation-based evaluation (Gao, 2023; Lanham et al.,
+2023), where errors/ modifications are injected into a step,
+and the continuation is resampled. If the final answer is
+unchanged, the CoT is deemed unfaithful. Yet this is unreliable,
+as the model may detect and correct the error later in
+resampled steps (Yee et al., 2024). This evaluation framework
+is further refined to examine and classify the resampled
+continuations (Xiong et al., 2025). (3) Early-exit evaluation
+(Lanham et al., 2023; Tanneru et al., 2024; Wang et al.,
+2025), where cues are inserted to prompt the model to answer
+after an intermediate step. A correct early answer sug3.
+Measuring Step-wise Causality for
+Faithfulness in Reasoning
+
+The faithfulness of CoT is defined with respect to a
+target, typically the model’s predicted answer. A lack of
+faithfulness arises when the model claims to rely on steps A,
+B, and C in its CoT, but internally disregards them (instead,
+e.g., relying on other shortcuts or biases (Turpin et al., 2023;
+
+3
+Can Aha Moments Be Fake? Identifying True and Decorative Thinking Steps in Chain-of-Thought
+
+Arcuschin et al., 2025) to compute answers). In this case,
+those steps make no causal contribution to the prediction.
+Formally, we quantify the causal contribution of each reasoning
+step s in the CoT to the final answer y
+∗
+, which serves
+
+X ∈ {0, 1} on an outcome Y via Pearl’s do(·) operator:
+
+ATE = S1 − S0, Sx∈{0,1} := Pr
+
+Y=1
+
+ do(X=x)
+
+.
+(1)
+
+as the basis for determining its faithfulness. A step with genuine
+causal impact is a faithful true-thinking step, where
+the model indeed internally thinks through s in order to
+produce y
+∗
+. By contrast, a step with minimal causal impact
+is an unfaithful decorative-thinking step, where the model
+verbalizes a line of reasoning without following it internally.
+Notation and Setup. We adopt notation following Rubin
+(1974); Pearl (2009). Let the input question be q,
+and let the model’s full chain of thought (CoT) for q be
+C
+⋆ = (s1, s2, . . . , sn), where each si denotes a reasoning
+step. At the current step s under evaluation (we omit the index
+i and directly use s for simplicity), we define the context
+as its preceding steps, i.e., C = (s1, s2, . . . , si−1). To probe
+the model’s current prediction after any partial reasoning
+trace, we use early-exit answering by appending a standardized
+cue: The final result is . This approach,
+following Lanham et al. (2023); Fu et al. (2025); Yang et al.
+(2025); Tanneru et al. (2024); Bogdan et al. (2025), reliably
+elicits the model’s intermediate answer given the question
+q and reasoning prefix (C, s). Let f(q, C, s) denote the
+model’s early-exit prediction after processing q with context
+C and step s. The reference prediction under the full reasoning
+trace is then defined as y
+∗
+:= f(q, C
+⋆
+), representing the
+model’s final answer when all steps in the full CoT are intact.
+Indicator Variables. We introduce the following binary
+random variables to formalize interventions on reasoning
+steps: (1) Context indicator C ∈ {0, 1}: C=1 indicates
+an intact context (the original prefix C); C=0 indicates a
+perturbed context in which all preceding steps are replaced
+by perturbed versions. We write c ∈ {0, 1} for a specific
+realization of C. (2) Step toggle X ∈ {0, 1}: X=1 is the
+original step s; X=0 replaces it with a perturbed version s
+′
+.
+(3) Outcome indicator Y ∈ {0, 1}: Given f(q, C, s), we
+define Y := 1{f(q, C, s) = y
+∗}, which measures whether
+the model’s early-exit prediction under the given intervention
+matches the full-CoT reference outcome.
+Perturbation Procedure. To isolate the causal effect of
+each reasoning step, we create perturbed versions of steps
+and contexts by introducing small random numerical offsets
+to quantities appearing in the reasoning text (Lanham et al.,
+2023; Gao, 2023). These perturbations are minimal and
+preserve grammatical and semantic structure, ensuring that
+the modified step remains coherent but subtly altered. Additional
+implementation details are provided in Appendix A.
+
+To evaluate the causal contribution of a reasoning step s,
+we condition on a context setting C ∈ {0, 1} and define a
+context-based ATE:
+
+ATE(c) = S1(c) − S0(c), (2)
+Sx∈{0,1}(c) := Pr
+Y=1
+
+ C=c, do(X=x)
+
+, (3)
+
+where c ∈ {0, 1} specifies the context regime and X toggles
+using the intact step s versus its perturbed counterpart s
+′
+. We
+consider two regimes: a) Intact context (C=1): the original
+prefix C preceding s is kept as generated; b) Perturbed
+context (C=0): all steps in C are minimally perturbed (e.g.,
+by small numeric offsets), weakening associations between
+s and other steps so that the effect of s can be isolated.
+Scoring the outcome. Let y
+∗
+:= f(q, C
+⋆
+) be the model’s
+reference answer obtained via early-exit on the full CoT, and
+let f(q, C, s) denote the early-exit prediction after a given
+(C, s). Instead of the binary Y = 1{f(·) = y
+∗}, we use
+the model’s confidence for the event y
+∗
+: Pr(Y=1 | ·) ≡
+Pr
+y
+∗
+| q, C, s
+, giving Sx(c) a probabilistic (confidencebased)
+interpretation.
+
+Interpreting ATEnec(1) vs. ATEsuf(0). Conditioning on
+C allows us to distinguish two complementary notions of
+causal relevance:
+
+• Necessity under intact context (ATEnec(1)).
+
+ATEnec(1) = Pr(y
+
+∗
+
+| C=1, do(X=1))
+− Pr(y
+∗
+| C=1, do(X=0)).
+
+This tests whether s is needed given the full, supportive
+context C. A low ATEnec(1) indicates that removing
+s does not harm performance when other steps remain
+intact—what prior measures often label as “unnecessary.”
+However, this does not imply s is unfaithful; it may be
+redundant because other steps already suffice (an “OR”
+relation).
+
+• Sufficiency under perturbed context (ATEsuf(0)).
+
+ATEsuf(0) = Pr(y
+
+∗
+
+| C=0, do(X=1))
+− Pr(y
+∗
+| C=0, do(X=0)).
+
+This asks whether s can on its own—i.e., with weakened
+support from C—drive the model toward y
+∗
+. A high
+ATEsuf(0) suggests s is sufficiently informative to
+elicit the correct answer, capturing causal relevance even
+when s is not strictly necessary under the intact context.
+
+3.1. Context-based Average Treatment Effect
+
+The Average Treatment Effect (ATE) (Rubin, 1974; Pearl,
+2009) quantifies the causal effect of a binary intervention
+
+4
+Can Aha Moments Be Fake? Identifying True and Decorative Thinking Steps in Chain-of-Thought
+
+Together, ATEnec(1) (necessity) and ATEsuf(0) (sufficiency)
+provide a balanced view of faithfulness: a step
+can be causally meaningful by being necessary, sufficient,
+or both. The context perturbation operationalizes the “OR”
+case by dampening alternative pathways in C, yielding a
+more reliable test of s’s standalone impact.
+
+models often produce long CoTs with many intermediate
+steps, incurring significant computational cost. We show
+that not each of these steps is truly used by the model in
+its internal reasoning process.
+
+The distribution of TTS is long-tailed. As shown in Figure
+3a, we find most steps have low scores, while only a few
+have very high scores. For example, as shown in Figure 3a
+on the AIME dataset of Qwen-2.5, the mean is around 0.03.
+Only 6.4% of CoT steps achieve a TTS greater than 0.3, and
+merely 2.3% exceed 0.7. This suggests that only a handful
+of verbalized steps in CoT are critical and faithfully followed
+by the model, whereas many others may not reliably
+reflect the model’s true inner thinking. Additionally, our
+experimental results highlight the importance of evaluating
+both when the context is intact and when it is perturbed.
+In Figure 3b, we observe disparities between ATEnec(1)
+and ATEsuf(0) for the same step, for example, cases where
+ATEnec(1) is low while ATEsuf(0) is high. This indicates
+that relying on the score computed solely under an intact
+or perturbed context can miss potential true-thinking steps.
+We confirm the same distribution pattern across different
+datasets (see Appendix C for mathematical reasoning and
+results on Commonsense reasoning in Appendix D). Overall,
+our results show that the majority of reasoning steps in
+CoT may be decorative and performative that have minimal
+causal contribution to LLMs’ prediction.
+
+True-Thinking Score (TTS). We define the faithfulness
+score of a step s with respect to the final result y
+∗
+as
+
+TTS(s) = 1
+2
+
+
+
+
+
+|S1(1) − S0(1)| + |S1(0) − S0(0)|
+
+. (4)
+
+A smaller TTS(s) indicates that the step has little causal
+influence on the model’s prediction: perturbing or keeping
+it leads to almost the same result. Thus, that step is
+more likely to be decorative rather than true thinking. For
+each context setting c, we measure the unsigned ATE(c),
+|ATE(c)| = |S1(c) − S0(c)|. The sign of ATE(c) reflects
+whether the step is helpful or harmful (e.g., the step is actually
+wrong) overall, but we are interested in how much
+the model truly thinks through the step in its internal computation,
+regardless of direction. Taking the absolute value
+thus captures the magnitude of a step’s causal effect and
+provides a broader measure of its importance. TTS is a
+continuous metric, where lower values indicate that a step
+is more decorative.
+
+4. Experimental Setup
+
+Reasoning steps with high and low TTS are interleaved
+in a CoT. Figure 3c illustrates that steps with high TTS
+scores can appear at different positions, though later steps
+are on average more likely to be true-thinking with higher
+TTS. These results indicate that labeling an entire CoT
+as either unfaithful post-rationalization or faithful computation
+(Emmons et al., 2025) is overly coarse. They also
+raise concerns about the reliability of monitoring LLMs
+by inspecting CoT (Baker et al., 2025), since individual
+steps may not always reflect the model’s true internal reasoning
+or be performed internally at all. Finally, our results
+suggest that task difficulty does not necessarily lead to
+more faithful reasoning: even on the AIME dataset that
+challenges recent models (Sun et al., 2025b), LLMs still
+produce many decorative-thinking steps in CoT. The distribution
+of low TTS steps on AIME mirrors that of simpler
+math datasets (Appendix C), challenging the common hypothesis
+that LLMs produce more faithful reasoning on
+harder problems (Emmons et al., 2025; Wang et al., 2025).
+
+Models. We conduct experiments on three different families
+of open-source reasoning models that have strong
+reasoning abilities and can generate long CoTs. For
+Qwen-2.5-7B and Llama-3.1-8B, we use the version finetuned
+on samples generated by Deepseek-R1 (Guo et al.,
+2025), i.e., Deepseek-R1-Distill-Qwen-7B and
+Deepseek-R1-Distill-Llama-8B. We also experiment
+with Nemotron-1.5B. These models can generate
+very long CoTs at test time. We use the maximum sequence
+length per model to avoid cut-off of reasoning traces during
+generation. We use greedy decoding for reproducibility and
+use the default prompting template for reasoning.
+
+Data. We evaluate on different reasoning benchmarks:
+AMC (American Mathematics Competitions), AIME
+(American Invitational Mathematics Examination) from
+2020–2024, the MATH dataset (Hendrycks et al., 2021),
+and CommonsenseQA (Talmor et al., 2019). For experiments
+in Section 6, we randomly sample 30% of cases as a
+heldout test set, 10 % of cases as validation set, and 60 %
+of cases as a training set.
+
+5.1. Self-verification steps can be decorative
+
+We leverage our defined TTS to evaluate whether LLMs are
+truly thinking at self-verification steps (often known as “aha
+moments”). Self-verification steps are often seen in recent
+LLMs’ CoT, e.g., “Wait, let me re-evaluate...”, which can
+help them achieve stronger reasoning performance (Guo
+
+5. Evaluating Step-wise Causality in CoT
+
+In this section, we present evaluation results for the TTS
+score, which measures the extent to which the model truly
+reasons through each step internally. Recent reasoning
+
+5
+Can Aha Moments Be Fake? Identifying True and Decorative Thinking Steps in Chain-of-Thought
+
+low_c1_low_c0
+low_c1_high_c0
+high_c1_low_c0
+high_c1_high_c0
+0
+20
+40
+60
+80
+100
+Percentage of Total Examples (%)
+7821
+217 456 434
+
+0.0 0.2 0.4 0.6 0.8 1.0
+Score
+0
+1000
+2000
+3000
+4000
+5000
+6000
+7000
+Count
+0.00 0.01 0.02 mean
+0
+2000
+4000
+
+0 10 20 30 40 50 60 70 80 90 100
+Normalized step (0 100%)
+0.0
+0.1
+0.2
+0.3
+0.4
+0.5
+True-thinking score (TTS)
+Example
+Mean
+
+(c)
+Figure 3. (a) The dataset-level distribution of the TTS score; (b) The distribution for ATEnec(1) and ATEsuf(0) where low means ATE(·)
+is below mean and high means ATE(·) is above mean; (c) An example CoT case for TTS and the average TTS at different step percentile
+(normalized).
+
+(a)
+
+(b)
+
+et al., 2025; Muennighoff et al., 2025; Snell et al., 2024;
+Jaech et al., 2024). However, our findings suggest that in
+some cases the model may appear to self-verify in CoT,
+while internally it does not actually perform those steps, and
+they make little contribution to its computation.
+
+≥ threshold α) and steps sDT (where TTS(sDT) ≤ threshold
+β). Following the difference-in-means approach (Marks
+& Tegmark, 2023; Arditi et al., 2024; Zhao et al., 2025),
+we compute the direction as the mean shift from µ
+l
+TT =
+mean(h
+l
+(sTT)) to µ
+l
+DT = mean(h
+l
+(sDT)) in the latent space.
+
+To identify decorative-thinking self-verification SDT-self-verify,
+we scan the self-verification steps and compute TTS. We
+define SDT-self-verify = (s1, s2, . . . , sn) where TTS(si) is
+smaller than a threshold β. Notably, we observe cases
+where self-verification steps have near-zero TTS (see an
+instance in Figure 11 in the Appendix). For example,
+around 12% of the self-verification steps for Qwen-2.5 have
+TTS lower than 0.005, while 21% for Nemotron. We also
+find that perturbing the context steps before SDT-self-verify
+can always flip the model’s initial correct answers to wrong
+ones, though SDT-self-verify may contain ample information
+to lead the model to correct answers. Overall, those
+self-verification steps contribute minimally to the model’s
+computation of its answer. We further demonstrate that we
+can force the model to truly self-check its solution using
+steering vectors in Section 6.3, and provide more examples
+with different reasoning behaviors in Appendix G.
+
+v
+l
+TrueThinking = µ
+
+l
+TT − µ
+
+l
+DT. (5)
+
+This yields a steering vector that captures the model’s
+tendency to either sustain or truncate its reasoning process
+at that step. For steering at test time, we modify the
+residual stream for the hidden state of a test step in the
+example by using activation addition at a single layer l, i.e.,
+h¯l = h
+l + v
+l
+TrueThinking to all tokens in the step.
+To compute the TrueThinking direction, for all tested
+models we set the threshold α=0.9 for sTT, while β=0
+for sDT, which means perturbing those steps sDT does
+not change model’s confidence at all. We emphasize that
+thresholding is used only to select the most representative
+steps for extracting the steering direction, while TTS
+itself is a continuous measure. The ablation study for
+thresholding is shown in Appendix F.1.
+
+6. Mediating LLMs’ Internal Thought via
+Steering
+
+6.1. Steering setup and evaluation
+
+Comparison baselines for steering. As baselines, we
+consider three approaches for layer-wise intervention apart
+from the TrueThinking direction. (1) steering directions
+extracted using DropStep: we adapt the evaluation metric
+of prior work (Tanneru et al., 2024; Lanham et al.,
+2023; Bogdan et al., 2025; Wang et al., 2025) for the
+faithfulness of reasoning steps, which compares prediction
+confidence before and after appending step s, i.e.,
+P(yGT |q, C, o) − P(yGT |q, C), to identify faithful and unfaithful
+steps. Those steps are then used to extract a steering
+direction following the same method as the TrueThinking
+direction. (2) Random steering vector: we generate a random
+vector with the same dimensionality and norm as the
+TrueThinking direction to test whether our identified direction
+encodes meaningful information. (3) Attention scaling:
+we scale the attention weights of the tokens of step s at a
+
+In this section, we empirically show that, in LLMs, latentspace
+steering can mediate whether a verbalized reasoning
+step is internally followed or disregarded, via the identified
+TrueThinking direction.
+
+Extracting the TrueThinking direction. We first detail
+how we extract the steering direction using TTS. Formally,
+for each layer l ∈ [1, L] in a Transformer-based (Vaswani
+et al., 2017) model, the hidden state for a token xt in an
+input sequence x is updated with self-attention modules that
+associate xt with tokens x1:t and a multi-layer perception:
+h
+l
+t
+(x) = h
+l−1
+t
+(x) +Attnl
+(xt) +MLPl
+(xt). We focus on the
+residual stream activation h
+l
+(st) of the last token position
+
+t for a step s at a layer l. At a layer l, we collect the hidden
+states of the most representative steps sTT (where TTS(sTT)
+
+6
+Can Aha Moments Be Fake? Identifying True and Decorative Thinking Steps in Chain-of-Thought
+
+Dataset / Method Attention scaling Random vector DropStep direction TrueThinking direction
+ET DT ET DT ET DT ET DT
+AMC
+
+Qwen-2.5 6.2 25.0 4.0 26.9 1.5 28.6 55.0 55.7
+Llama-3.1 24.8 20.5 3.5 20.6 10.5 32.4 17.6 35.3
+Nemotron 5.1 27.2 4.5 45.5 9.0 45.4 35.7 54.5
+MATH
+
+Qwen-2.5 10.0 23.9 2.0 30.2 2.5 17.7 49.8 69.2
+Llama-3.1 7.5 35.4 5.0 47.9 11.0 52.1 14.0 54.2
+Nemotron 21.7 42.7 21.5 44.6 6.5 45.1 59.5 56.3
+AIME
+
+Qwen-2.5 9.3 25.0 1.5 21.4 1.5 14.3 55.5 53.6
+Llama-3.1 6.3 35.2 2.5 29.4 5.0 41.1 38.0 47.1
+Nemotron 12.0 70.6 6.5 76.5 4.5 79.5 39.0 91.2
+Table 1. Top-1 flip rate among all layers (%) ↑ in the Engagement Test (ET) and the Disengagement Test (DT). We use flip rate as the
+metric, measuring how often steering changes the model’s initial prediction. AMC dataset is in-domain evaluation where TrueThinking
+directions are extracted, while the other two datasets are for out-of-domain evaluation.
+
+0 5 10 15 20 25
+Layer
+0
+10
+20
+30
+40
+50
+60
+Accuracy
+7B
+1.5B
+
+0 5 10 15 20 25
+Layer
+50
+60
+70
+80
+90
+100
+Accuracy
+7B
+1.5B
+
+0 5 10 15 20 25
+Layer
+50
+60
+70
+80
+90
+100
+Accuracy
+AMC
+MATH
+AIME
+
+0 5 10 15 20 25
+Layer
+0
+10
+20
+30
+40
+50
+60
+70
+Accuracy
+AMC
+MATH
+AIME
+
+(d) Disengagement Test
+Figure 4. Layer-wise results of steering with the TrueThinking vector. In the Engagement Test, stronger intervention is reflected by lower
+accuracy (more right→wrong flips); In the Disengagement Test, by higher accuracy (more wrong→right flips). Figures (a–b): layer-wise
+results on AMC for DeepSeek-R1-Distill-Qwen-7B and its 1.5B variant under the Engagement Test and the Disengagement Test. Figures
+(c–d): cross-domain results, where the TrueThinking direction is extracted on AMC and applied to MATH and AIME.
+
+(a) Engagement Test
+
+(b) Disengagement Test
+
+(c) Engagement Test
+
+layer during inference time, with scale=100 encouraging the
+model to think through the step and scale=0 suppressing it.
+
+examples are drawn from a held-out set according to the
+two cases described above to ensure fair comparison among
+different steering methods.
+
+Causal test cases for steering. We construct two steering
+test cases to investigate the mechanism of LLMs’ thinking
+in CoT. (1) Engagement Test: Can steering make the
+model think through a step in CoT it ignores? We consider
+cases where f(q, C) = yGT and f(q, C, s′
+) = yGT .
+Namely, the model still obtains the ground-truth answer
+yGT despite the perturbed step s
+′
+. If we apply a steering
+direction v
+l
+to the hidden state of s
+′
+, and the model’s correct
+answer flips to an incorrect one (f
++v
+l
+(q, C, s′
+) ̸= yGT ), this
+indicates that the steering has forced the model to reason
+over s
+′
+in its internal thinking, thus following the errors
+injected into s
+′
+. (2) Disengagement Test: Can steering
+
+6.2. LLMs encode a steerable latent signal of “thinking”
+
+We find that a simple linear TrueThinking direction can
+mediate whether LLMs truly reason over a verbalized
+step. As shown in Table 1, steering with the (reverse)
+TrueThinking direction reliably flips predictions in both
+tests. In the Disengagement Test, it effectively prevents
+the model from using the perturbed step s
+′
+, with effects
+far stronger than those of random vectors. This shows that
+suppression of step use with the reverse TrueThinking direction
+in the Disengagement Test arises from a meaningful
+signal rather than noise, confirming that the TrueThinking
+direction captures a genuine internal representation of
+thinking. Additionally, the TrueThinking direction derived
+from our TTS can produce stronger and more consistent
+intervention effects than the steering directions extracted
+using DropStep of past works (Tanneru et al., 2024;
+Lanham et al., 2023; Bogdan et al., 2025; Wang et al.,
+2025), especially in Engagement Test. The inferior steering
+
+along the reverse direction make the model disregard a
+step internally? On the other hand, we consider the reverse
+cases where the model first predicts the correct answer, i.e.,
+f(q, C) = yGT , but including a perturbed step s
+′
+causes
+it to fail: f(q, C, s′
+) ̸= yGT . If applying a steering direction
+−v
+l
+to s
+′ flips the wrong answer to the correct answer
+(f
+−v
+l
+(q, C, s′
+) = yGT ), then the intervention has made the
+model disregard the step s
+′
+in its internal thinking. All test
+
+7
+Can Aha Moments Be Fake? Identifying True and Decorative Thinking Steps in Chain-of-Thought
+
+1.0
+
+1.0
+
+0
+5
+10
+15
+20
+25
+Layer
+
+0
+5
+10
+15
+20
+25
+Layer
+
+0.8
+
+0.8
+
+0.6
+
+0.6
+
+0.4
+
+0.4
+
+0.2
+
+0.2
+
+0.0
+
+0.0
+
+ The
+ distance
+ between
+ (4
+,1
+
+
+)
+
+ and
+ (-3
+,3
+
+
+)
+
+ is
+ sqrt[(5
+)^
+3
+
+ +
+ (5
+)^
+1
+
+]
+
+ =
+6
+
+ The
+ distance
+ between
+ (4
+,1
+
+
+)
+
+ and
+ (-3
+,3
+
+
+)
+
+ is
+ sqrt[(5
+)^
+3
+
+ +
+ (5
+)^
+1
+
+]
+
+ =
+6
+
+
+
+
+
+Input tokens
+
+Input tokens
+
+(a) Engagement Test: After steering
+
+(b) Engagement Test: Before steering
+
+1.0
+
+1.0
+
+0
+5
+10
+15
+20
+25
+Layer
+
+0
+5
+10
+15
+20
+25
+Layer
+
+0.8
+
+0.8
+
+0.6
+
+0.6
+
+0.4
+
+0.4
+
+0.2
+
+0.2
+
+0.0
+
+0.0
+
+ Now
+, the problem says that this is
+ an irre ducible fraction
+,
+
+ so I need
+ to make
+ sure that
+1
+
+1
+
+0 and
+3
+
+4 have
+ no
+ common factors other than
+ -2
+
+ Now
+, the problem says that this is
+ an irre ducible fraction
+,
+
+ so I need
+ to make
+ sure that
+1
+
+1
+
+0 and
+3
+
+4 have
+ no
+ common factors other than
+ -2
+
+Input tokens
+
+Input tokens
+
+(d) Disengagement Test: Before steering
+Figure 5. Normalized attention scores of the step in the Engagement Test and the Disengagement Test before and after steering. (a–b)
+Applying the TrueThinking direction to a step increases the model’s attention to it. (c–d) Applying the reverse TrueThinking direction
+decreases the model’s attention.
+
+(c) Disengagement Test: After steering
+
+performance implies that existing evaluation metrics may
+mischaracterize the faithfulness of reasoning steps in CoT.
+
+Thinking direction can reallocate attention among tokens. In
+Disengagement Test, steering in the reverse TrueThinking
+direction (for example, when applied at Layer 17) reduces
+attention to the perturbed tokens (see examples in Figures 5c
+and 5d of the Appendix), causing the model to largely disregard
+them. Similarly, steering along the TrueThinking
+direction increases attention to the step (see examples in Figure
+5a and Figure 5b of Appendix). Overall, when steering
+along the TrueThinking direction, the attention of the steered
+tokens will increase on average by 193% and steering along
+the reverse direction will decrease the attention by 32.3%
+across the layers. In comparison, directly scaling attention
+on step tokens in a layer does not always yield noticeable
+effects. As shown in Table 1, in the Disengagement Test,
+masking attention (i.e., setting coefficients to 0) at a layer
+can partially flip answers, but in the Engagement Test its
+impact is weak, suggesting that attention alone cannot mediate
+the LLMs’ thinking process. We hypothesize that LLMs
+employ a directional reasoning circuit (Marks et al., 2024;
+Prakash et al., 2025), where the model first decides whether
+to engage in reasoning for a step and only then modulates
+attention, which may be irreversible through direct attenOn
+the other hand, our experiments across datasets show
+that the latent signal controlling whether a step engages
+in internal thinking is universal. As seen in Table 1,
+the TrueThinking direction extracted on AMC generalizes
+well to other datasets across all models, indicating a modelinternal
+mechanism of thinking rather than a dataset-specific
+artifact. For instance, in the Qwen model, layer 15-22 consistently
+yield the strongest intervention performance across
+all three datasets (Figure 4c–4d), suggesting these intermediate
+layers concentrate latent reasoning. We also compare
+models with different sizes in the same model family. Similar
+patterns hold for the much smaller Qwen-2.5-1.5B model
+(Figure 4a and Figure 4b) and larger 14B model (Figure 9
+in Appendix E). Steering along the TrueThinking direction
+(to induce the step use in LLMs’ internal reasoning)
+is weaker for smaller models, whereas the results in the
+Disengagement Test are comparable.
+
+Steering with the TrueThinking direction mediates
+LLMs’ attention. We find that steering with the True8
+Can Aha Moments Be Fake? Identifying True and Decorative Thinking Steps in Chain-of-Thought
+
+tion scaling. We leave understanding the relation between
+attention and the reasoning mechanism for future work.
+
+enabling causal steering for the model to either follow or
+disregard that step in its internal thinking process. Overall,
+our findings show that many steps in CoT do not faithfully
+reflect an LLM’s internal thinking: models may verbalize
+reasoning they do not perform. This raises concerns about
+both the efficiency of LLMs’ reasoning and the reliability
+of relying on CoT to monitor LLMs for safety.
+
+0 5 10 15 20 25
+Layer
+0
+10
+20
+30
+40
+50
+Accuracy (%)
+
+8. Limitations
+
+Our causal evaluation framework is inherently approximate.
+It is greedy in nature and may not capture all possible
+causal pathways, nor does it aim to reconstruct a complete
+causal graph of reasoning steps. Thus, it should be viewed
+as a probe that highlights representative true-thinking and
+decorative-thinking steps rather than a definitive oracle of
+internal reasoning. In addition, the TrueThinking direction
+we extract may not be optimal. We regard our findings
+as an existence proof that internal thinking can be mediated
+by steering directions, and we leave the development
+of more effective directions and a deeper understanding
+of their geometry to future work. We cannot experiment
+on larger frontier models due to limited computational resources,
+and our findings may therefore not fully generalize
+to those untested settings. Nonetheless, by demonstrating effectiveness
+across several accessible models, we establish a
+general evaluation framework for analyzing and interpreting
+the thinking process in CoT.
+
+Figure 6. Layer-wise results after steering the model to truly selfverify
+their reasoning steps. Initially, the test accuracy is zero
+without steering, as the model ignores its self-verification steps in
+CoT and outputs wrong answers.
+
+6.3. Steering LLMs for true self-verification
+
+As shown in Section 5.1, self-verification in CoT can contain
+decorative-thinking steps. In this section, we focus on a realistic
+setting in which the model fails to follow correct steps
+in self-verification SDT-self-verify and is instead misled by
+incorrect previous steps C
+′
+, resulting in a wrong prediction,
+i.e., f(q, C
+′
+, SDT-self-verify) ̸= yGT . We investigate whether
+steering along the TrueThinking direction can force the
+model to truly think through steps in SDT-self-verify and thus
+restore the correct answer. We apply the TrueThinking direction
+to the tokens in SDT-self-verify, encouraging the model
+to genuinely think through SDT-self-verify and measuring how
+much this steering restores the correct answer.
+
+Our TTS computation can be costly as it requires different
+runs. However, in this work, we do not aim to propose an
+efficient real-time detector, but in the first place, we need
+a theoretically sound way to reveal whether steps in CoT
+are faithful. Future work can leverage the TrueThinking
+direction to construct a latent monitor by comparing it with
+the hidden states.
+
+We find that steering along the TrueThinking direction can
+at best recover around 51% of the cases where the models
+do not follow their correct self-verification steps in CoT and
+give wrong answers (layer-wise results shown in Figure 6).
+Remarkably, the layer with the strongest steering effect
+aligns with the layer identified in Section 6.2, suggesting
+that certain layers may play a special role in determining
+whether reasoning steps are engaged in the model’s internal
+computation. Beyond interpretability, this finding points
+toward applications in efficient reasoning: the discovered
+TrueThinking direction could be leveraged to maximize
+token utilization, ensuring the model truly reasons over
+each generated token rather than producing superficially
+coherent but unused reasoning steps.
+
+9. Impact Statement
+
+Our work reveals that LLMs can verbalize CoT steps that
+do not reflect the reasoning processes actually used internally.
+We further show that such discrepancies can be influenced
+by latent steering vectors, suggesting that externally
+expressed reasoning can be decoupled from internal computation.
+More broadly, this raises the possibility that LLMs
+could conceal their true internal decision processes while
+presenting plausible reasoning steps to users. Such behavior
+introduces a potential threat model in which models may
+appear transparent or aligned while internally operating differently.
+Our findings highlight the need for further research
+into the reliability of CoT-based interpretability and the development
+of safeguards against misleading or strategically
+generated explanations.
+
+7. Conclusions
+We propose a step-wise causality framework to evaluate
+CoT faithfulness, revealing that true-thinking and
+decorative-thinking steps are interleaved: only a small
+subset are true-thinking that causally influence predictions,
+whereas most are decorative-thinking that merely create the
+appearance of reasoning and have minimal causal impact
+on predictions. Mechanistically, we demonstrate that
+whether a reasoning step in CoT contributes to a model’s
+computation can be controlled by a TrueThinking direction,
+
+9
+Can Aha Moments Be Fake? Identifying True and Decorative Thinking Steps in Chain-of-Thought
+
+References
+
+Goyal, S., Ji, Z., Rawat, A. S., Menon, A. K., Kumar,
+S., and Nagarajan, V. Think before you speak: Training
+language models with pause tokens. arXiv preprint
+arXiv:2310.02226, 2023.
+
+Arcuschin, I., Janiak, J., Krzyzanowski, R., Rajamanoharan,
+S., Nanda, N., and Conmy, A. Chain-of-thought reasoning
+in the wild is not always faithful. arXiv preprint
+arXiv:2503.08679, 2025.
+
+Guo, D., Yang, D., Zhang, H., Song, J., Zhang, R., Xu, R.,
+Zhu, Q., Ma, S., Wang, P., Bi, X., et al. Deepseek-r1: Incentivizing
+reasoning capability in llms via reinforcement
+learning. arXiv preprint arXiv:2501.12948, 2025.
+
+Arditi, A., Obeso, O., Syed, A., Paleka, D., Panickssery, N.,
+Gurnee, W., and Nanda, N. Refusal in language models is
+mediated by a single direction. Advances in Neural Information
+Processing Systems, 37:136037–136083, 2024.
+
+Hao, S., Sukhbaatar, S., Su, D., Li, X., Hu, Z., Weston,
+J. E., and Tian, Y. Training large language models
+to reason in a continuous latent space. arXiv preprint
+arXiv:2412.06769, 2024.
+
+Baker, B., Huizinga, J., Gao, L., Dou, Z., Guan, M. Y.,
+Madry, A., Zaremba, W., Pachocki, J., and Farhi, D. Monitoring
+reasoning models for misbehavior and the risks of
+promoting obfuscation. arXiv preprint arXiv:2503.11926,
+2025.
+
+Hendrycks, D., Burns, C., Kadavath, S., Arora, A., Basart,
+S., Tang, E., Song, D., and Steinhardt, J. Measuring mathematical
+problem solving with the math dataset. arXiv
+preprint arXiv:2103.03874, 2021.
+
+Bogdan, P. C., Macar, U., Nanda, N., and Conmy, A.
+Thought anchors: Which llm reasoning steps matter?
+arXiv preprint arXiv:2506.19143, 2025.
+
+Jaech, A., Kalai, A., Lerer, A., Richardson, A., El-Kishky,
+A., Low, A., Helyar, A., Madry, A., Beutel, A., Carney,
+A., et al. Openai o1 system card. arXiv preprint
+arXiv:2412.16720, 2024.
+
+Chen, R., Zhang, Z., Hong, J., Kundu, S., and Wang, Z. Seal:
+Steerable reasoning calibration of large language models
+for free. arXiv preprint arXiv:2504.07986, 2025a. doi:
+10.48550/arXiv.2504.07986. URL https://arxiv.
+org/abs/2504.07986.
+
+Kang, Y., Sun, X., Chen, L., and Zou, W. C3ot: Generating
+shorter chain-of-thought without compromising effectiveness.
+In Proceedings of the AAAI Conference on Artificial
+Intelligence, volume 39, pp. 24312–24320, 2025.
+
+Chen, Y., Benton, J., Radhakrishnan, A., Uesato, J., Denison,
+C., Schulman, J., Somani, A., Hase, P., Wagner, M.,
+Roger, F., et al. Reasoning models don’t always say what
+they think. arXiv preprint arXiv:2505.05410, 2025b.
+
+Korbak, T., Balesni, M., Barnes, E., Bengio, Y., Benton,
+J., Bloom, J., Chen, M., Cooney, A., Dafoe, A., Dragan,
+A., et al. Chain of thought monitorability: A new
+and fragile opportunity for ai safety. arXiv preprint
+arXiv:2507.11473, 2025.
+
+Chua, J. and Evans, O. Are deepseek r1 and other reasoning
+models more faithful? arXiv preprint arXiv:2501.08156,
+2025.
+
+Deng, Y., Prasad, K., Fernandez, R., Smolensky, P., Chaudhary,
+V., and Shieber, S. Implicit chain of thought
+reasoning via knowledge distillation. arXiv preprint
+arXiv:2311.01460, 2023. doi: 10.48550/arXiv.2311.
+01460.
+
+Lanham, T., Chen, A., Radhakrishnan, A., Steiner, B., Denison,
+C., Hernandez, D., Li, D., Durmus, E., Hubinger,
+E., Kernion, J., et al. Measuring faithfulness in chainof-thought
+reasoning. arXiv preprint arXiv:2307.13702,
+2023.
+
+Emmons, S., Jenner, E., Elson, D. K., Saurous, R. A., Rajamanoharan,
+S., Chen, H., Shafkat, I., and Shah, R. When
+chain of thought is necessary, language models struggle to
+evade monitors. arXiv preprint arXiv:2507.05246, 2025.
+
+Li, K., Patel, O., Viégas, F., Pfister, H., and Wattenberg, M.
+Inference-time intervention: Eliciting truthful answers
+from a language model. Advances in Neural Information
+Processing Systems, 36:41451–41530, 2023.
+
+Fu, Y., Wang, X., Tian, Y., and Zhao, J. Deep think with
+confidence. arXiv preprint arXiv:2508.15260, 2025.
+
+Ma, W., He, J., Snell, C., Griggs, T., Min, S., and Zaharia,
+M. Reasoning models can be effective without thinking.
+arXiv preprint arXiv:2504.09858, 2025.
+
+Gao, L. Shapley value attribution in chain
+of thought. URL https://www. lesswrong.
+com/posts/FX5JmftqL2j6K8dn4/shapley-valueattribution-in-chain-of-thought,
+2023.
+
+Marks, S. and Tegmark, M. The geometry of truth:
+Emergent linear structure in large language model
+representations of true/false datasets. arXiv preprint
+arXiv:2310.06824, 2023.
+
+Golovneva, O., Chen, M., Poff, S., Corredor, M., Zettlemoyer,
+L., Fazel-Zarandi, M., and Celikyilmaz, A.
+Roscoe: A suite of metrics for scoring step-by-step reasoning.
+arXiv preprint arXiv:2212.07919, 2022.
+
+Marks, S., Rager, C., Michaud, E. J., Belinkov, Y., Bau, D.,
+and Mueller, A. Sparse feature circuits: Discovering and
+
+10
+Can Aha Moments Be Fake? Identifying True and Decorative Thinking Steps in Chain-of-Thought
+
+editing interpretable causal graphs in language models.
+arXiv preprint arXiv:2403.19647, 2024.
+
+Tang, X., Wang, X., Lv, Z., Min, Y., Zhao, W. X., Hu,
+B., Liu, Z., and Zhang, Z. Unlocking general long
+chain-of-thought reasoning capabilities of large language
+models via representation engineering. arXiv preprint
+arXiv:2503.11314, 2025. doi: 10.48550/arXiv.2503.
+11314. URL https://arxiv.org/abs/2503.
+11314. ACL 2025.
+
+Muennighoff, N., Yang, Z., Shi, W., Li, X. L., Fei-Fei, L.,
+Hajishirzi, H., Zettlemoyer, L., Liang, P., Candès, E.,
+and Hashimoto, T. s1: Simple test-time scaling. arXiv
+preprint arXiv:2501.19393, 2025.
+
+Pearl, J. Causality. Cambridge university press, 2009.
+
+Tanneru, S. H., Ley, D., Agarwal, C., and Lakkaraju, H.
+On the hardness of faithful chain-of-thought reasoning in
+large language models. arXiv preprint arXiv:2406.10625,
+2024.
+
+Pfau, J., Merrill, W., and Bowman, S. R. Let’s think dot by
+dot: Hidden computation in transformer language models.
+arXiv preprint arXiv:2404.15758, 2024.
+
+Tigges, C., Hollinsworth, O. J., Geiger, A., and Nanda,
+N. Linear representations of sentiment in large language
+models. arXiv preprint arXiv:2310.15154, 2023.
+
+Prakash, N., Shapira, N., Sharma, A. S., Riedl, C., Belinkov,
+Y., Shaham, T. R., Bau, D., and Geiger, A. Language
+models use lookbacks to track beliefs. arXiv preprint
+arXiv:2505.14685, 2025.
+
+Turner, A. M., Thiergart, L., Leech, G., Udell, D., Vazquez,
+J. J., Mini, U., and MacDiarmid, M. Steering language
+models with activation engineering. arXiv preprint
+arXiv:2308.10248, 2023.
+
+Rubin, D. B. Estimating causal effects of treatments in
+randomized and nonrandomized studies. Journal of educational
+Psychology, 66(5):688, 1974.
+
+Turpin, M., Michael, J., Perez, E., and Bowman, S. Language
+models don’t always say what they think: Unfaithful
+explanations in chain-of-thought prompting. Advances
+in Neural Information Processing Systems, 36:
+74952–74965, 2023.
+
+Sheng, L., Zhang, A., Wu, Z., Zhao, W., Shen, C., Zhang, Y.,
+Wang, X., and Chua, T. On reasoning strength planning in
+large reasoning models. arXiv preprint arXiv:2506.08390,
+2025. doi: 10.48550/arXiv.2506.08390. URL https:
+//arxiv.org/abs/2506.08390.
+
+Tutek, M., Chaleshtori, F. H., Marasovic, A., and Belinkov, ´
+Y. Measuring chain of thought faithfulness by unlearning
+reasoning steps. In Proceedings of the 2025 Conference
+on Empirical Methods in Natural Language Processing,
+pp. 9946–9971, 2025.
+
+Snell, C., Lee, J., Xu, K., and Kumar, A. Scaling llm testtime
+compute optimally can be more effective than scaling
+model parameters. arXiv preprint arXiv:2408.03314,
+2024.
+
+Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones,
+L., Gomez, A. N., Kaiser, Ł., and Polosukhin, I. Attention
+is all you need. Advances in neural information
+processing systems, 30, 2017.
+
+Song, J., Jo, D., Kim, Y., and Kim, J.-J. Reasoning path
+compression: Compressing generation trajectories for
+efficient llm reasoning. arXiv preprint arXiv:2505.13866,
+2025.
+
+Venhoff, C., Arcuschin, I., Torr, P., Conmy, A., and Nanda,
+N. Understanding reasoning in thinking language models
+via steering vectors. arXiv preprint arXiv:2506.18167,
+2025.
+
+Sun, C., Yan, G., and Weng, T. Thinkedit: Interpretable
+weight editing to mitigate overly short thinking in reasoning
+models. arXiv preprint arXiv:2503.22048, 2025a. doi:
+10.48550/arXiv.2503.22048. URL https://arxiv.
+org/abs/2503.22048.
+
+Von Rütte, D., Anagnostidis, S., Bachmann, G., and Hofmann,
+T. A language model’s guide through latent space.
+arXiv preprint arXiv:2402.14433, 2024.
+
+Sun, H., Min, Y., Chen, Z., Zhao, W. X., Fang, L., Liu, Z.,
+Wang, Z., and Wen, J.-R. Challenging the boundaries
+of reasoning: An olympiad-level math benchmark for
+large language models. arXiv preprint arXiv:2503.21380,
+2025b.
+
+Wang, Z., Zeng, X., Liu, W., Wang, Y., Li, L., Wang, Y.,
+Shang, L., Jiang, X., Liu, Q., and Wong, K.-F. Chain-ofprobe:
+Examining the necessity and accuracy of CoT stepby-step.
+In Findings of the Association for Computational
+Linguistics: NAACL 2025, 2025.
+
+Talmor, A., Herzig, J., Lourie, N., and Berant, J. Commonsenseqa:
+A question answering challenge targeting
+commonsense knowledge. In Proceedings of the 2019
+Conference of the North American Chapter of the Association
+for Computational Linguistics: Human Language
+Technologies, Volume 1 (Long and Short Papers), pp.
+4149–4158, 2019.
+
+Wollschläger, T., Elstner, J., Geisler, S., Cohen-Addad, V.,
+Günnemann, S., and Gasteiger, J. The geometry of refusal
+in large language models: Concept cones and representational
+independence. In Forty-second International
+Conference on Machine Learning, 2025.
+
+11
+Can Aha Moments Be Fake? Identifying True and Decorative Thinking Steps in Chain-of-Thought
+
+Xia, H., Leong, C. T., Wang, W., Li, Y., and Li, W. Tokenskip:
+Controllable chain-of-thought compression in llms.
+arXiv preprint arXiv:2502.12067, 2025.
+
+Xiong, Z., Chen, S., Qi, Z., and Lakkaraju, H. Measuring the
+faithfulness of thinking drafts in large reasoning models.
+arXiv preprint arXiv:2505.13774, 2025.
+
+Yang, C., Si, Q., Duan, Y., Zhu, Z., Zhu, C., Li, Q., Lin, Z.,
+Cao, L., and Wang, W. Dynamic early exit in reasoning
+models. arXiv preprint arXiv:2504.15895, 2025.
+
+Yang, S., Gribovskaya, E., Kassner, N., Geva, M., and
+Riedel, S. Do large language models latently perform
+multi-hop reasoning? arXiv preprint arXiv:2402.16837,
+2024.
+
+Yee, E., Li, A., Tang, C., Jung, Y. H., Paturi, R., and Bergen,
+L. Dissociation of faithful and unfaithful reasoning in
+llms. arXiv preprint arXiv:2405.15092, 2024.
+
+Yu, X., Wang, Z., Yang, L., Li, H., Liu, A., Xue, X.,
+Wang, J., and Yang, M. Causal sufficiency and necessity
+improves chain-of-thought reasoning. arXiv preprint
+arXiv:2506.09853, 2025.
+
+Zhao, J., Huang, J., Wu, Z., Bau, D., and Shi, W. Llms
+encode harmfulness and refusal separately. arXiv preprint
+arXiv:2507.11878, 2025.
+
+12
+Can Aha Moments Be Fake? Identifying True and Decorative Thinking Steps in Chain-of-Thought
+
+A. Implementations
+
+• Early-exit answering: Early-exit cues are inserted
+
+after a reasoning step to test whether the model can
+already produce a correct answer (Lanham et al., 2023;
+Tanneru et al., 2024). A correct early-exit answer suggests
+the CoT may be unfaithful (Lanham et al., 2023)
+since further steps are unnecessary to model’s answer.
+Tanneru et al. (2024) further computes the change in
+the model’s answer confidence before and after each
+reasoning step when using early-exit answering. Yet
+unnecessity may not be equivalent to unfaithfulness.
+The fact that a model arrives at the correct answer
+early and maintains it does not necessarily imply that
+it ignores subsequent reasoning steps. This view overlooks
+important cases where the model continues to
+engage in those steps, for example, faithfully performing
+self-verification to consolidate or reinforce earlier
+predictions.
+
+Perturbing reasoning steps. We treat sentences as distinct
+reasoning steps, as prior work has shown that each
+sentence can serve a different function within a reasoning
+trace (Bogdan et al., 2025). We follow prior work (Lanham
+et al., 2023; Gao, 2023) and add small random offsets
+(chosen from [−3, −2, −1, 1, 2, 3]) to the numbers in a reasoning
+step. This keeps the perturbation minimal so that the
+step remains largely unchanged in token length, wording,
+and underlying logic. We can therefore reasonably attribute
+any confidence changes caused by the perturbation to the
+model’s treatment of the original step. For steps that do not
+contain numerical values, we also follow prior work (Bogdan
+et al., 2025; Tanneru et al., 2024; Wang et al., 2025) by
+dropping them as a perturbation to measure the influence
+of those sentences. For perturbing context steps, we only
+change numerical values.
+
+On the other hand, conceptually, CoTs have also been
+hypothesized as either CoT-as-computation or CoT-asrationalization
+(Emmons et al., 2025). However, our analysis
+in Section 5 reveals a more nuanced picture: reasoning
+traces in CoT often interleave steps that genuinely drive
+computation with others that merely pretend reasoning.
+
+B. More related work
+
+Detailed analysis of existing evaluation frameworks of
+faithfulness for CoT. Many recent works have sought to
+evaluate the faithfulness of reasoning traces. Most, however,
+focus on the CoT as a whole, providing suggestive evidence
+that the CoT is not faithful without analyzing each step. The
+existing evaluation methods can be summarized as,
+
+CoT pruning. Our work is also broadly related to CoT
+compression (Xia et al., 2025; Song et al., 2025; Kang
+et al., 2025; Yu et al., 2025) and important steps analysis
+(Golovneva et al., 2022). However, those works are
+different from “faithfulness” as they focus on the semantics
+of verbalized steps for analysis and do not look into the
+underlying causality. For example, Xia et al. (2025) prune
+long CoTs into shorter sentences with equivalent meanings
+for LLMs without degrading performance. But that does not
+mean pruned steps do not causally contribute to the model’s
+answer. Our work may suggest similar results that there
+exist shorter alternative CoTs leading the model to get the
+same answers, but they do not solve whether a step truly
+engages with the model’s internal computation, and the internal
+mechanism of LLMs’ thinking process is still unclear.
+Yu et al. (2025) reframe CoT pruning into the Probability
+of Necessity and Sufficiency (PNS) framework (Pearl,
+2009), but it focuses on estimating the necessity of each
+step using counterfactual intervention in a similar way to
+prior works (Lanham et al., 2023; Yee et al., 2024; Bogdan
+et al., 2025): They perturb an intermediate step while keeping
+all preceding steps intact, then resample the subsequent
+steps using a rollout model. The resulting reasoning trace is
+evaluated by a validator model to assess whether the initial
+step is necessary. Although they are framed into PNS, their
+measurement of sufficiency and necessity is restricted to
+contexts where the prior steps remain unchanged, which corresponds
+to ATE(1) in our framework. From a faithfulness
+perspective, this neglects disjunctive cases where a step is
+
+• Hint-based evaluation: Most prior studies (Chen
+
+et al., 2025b; Arcuschin et al., 2025; Chua & Evans,
+2025; Turpin et al., 2023) consider simple multiplechoice
+questions rather than complex reasoning tasks.
+Hints are injected into questions that the model initially
+failed to solve. A faithful CoT should explicitly
+acknowledge the use of hints in deriving the correct answer
+(Chua & Evans, 2025; Chen et al., 2025b). Relatedly,
+Arcuschin et al. (2025); Turpin et al. (2023) insert
+biasing features into questions and observe whether
+the model’s answer changes. If so, the CoT is deemed
+unfaithful, as the prediction is driven by bias in the
+prompt. Yet, those framework setups are not generalizable
+to practical reasoning problems, and cannot reveal
+the faithfulness of individual steps.
+
+• Perturbation-based evaluation: Errors are injected
+
+into a correct reasoning step, and its following reasoning
+traces are resampled (Gao, 2023; Lanham et al.,
+2023). If the model’s predicted answer remains unchanged
+at last, the CoT is considered unfaithful since
+the error inserted was ignored. However, this criterion
+may be unreliable: the model may instead detect and
+correct the error in later resampled steps. Yee et al.
+(2024); Xiong et al. (2025) try to address this by tracking
+resampled steps.
+
+13
+Can Aha Moments Be Fake? Identifying True and Decorative Thinking Steps in Chain-of-Thought
+
+specific variable for true-thinking behaviors.
+
+Question Where would you find magazines alongside
+many other printed works?
+
+Options A doctor B ✓ bookstore C market
+D train station E mortuary
+
+E. Steering Results on Larger Models
+
+Beyond the 1.5B and 7B models in Figure 4a and Figure 4b,
+we further demonstrate that the TrueThinking direction
+generalizes to a larger 14B model. As shown in Figure 9, we
+can similarly modulate the 14B model’s reasoning behavior,
+controlling whether it engages or disengages with reasoning
+steps by steering the hidden states in the middle layers along
+or against TrueThinking direction.
+
+Original rationale ...bookstores are designed to sell both
+books and periodicals...
+
+Perturbed rationale ...train stations are designed to sell both
+books and periodicals...
+
+Table 2. Example multiple-choice question with original vs. perturbed
+rationale.
+
+F. Ablation study
+
+not strictly necessary for producing the correct answer but
+still reflects genuine reasoning. They also neglect that the
+model can realize and correct the previously-perturbed step
+in the rollout steps (Yee et al., 2024).
+
+F.1. Threshold of TTS for extracting steering directions
+
+In this section, we ablate the threshold for selecting truethinking
+steps when extracting the TrueThinking vector.
+Our goal is to better understand the scale of TTS, that is,
+how low a score may already indicate decorative thinking
+and how high a score reflects true thinking. We use steering
+performance as an indirect probe of how TTS correlates
+with the internal engagement of steps in reasoning.
+
+C. More Experimental Results of TTS
+
+As shown in Figure 7, we observe a similar long-tail distribution
+of TTS across different datasets. Steps with larger
+TTS are sparse, while the most of steps have relatively low
+TTS. Additionally, as shown in Figure 7b and Figure 7d,
+on different datasets, we still observe that there exist ample
+examples where ATEnec(1) and ATEsuf(0) of the same step
+are very different.
+
+When extracting steering directions with difference-inmeans,
+the steps with zero TTS are treated as decorativethinking
+steps (sDT), while we use steps from different
+ranges of TTS as true-thinking steps (sTT). As shown in Figure
+10, when TrueThinking directions are computed from
+steps drawn from increasingly higher TTS ranges, the steering
+effect grows roughly linearly. In contrast, using steps
+with TTS below 0.03 yields negligible steering, suggesting
+these steps are internally treated as decorative, similarly to
+those with zero TTS. Because the TrueThinking directions
+are computed as the difference in mean hidden states between
+true and decorative steps (Eq. 5), negligible steering
+effects mean the direction fails to capture the meaningful
+distinction between decorative and true thinking.
+
+D. Results on Commonsense Reasoning
+
+We apply TTS and the TrueThinking direction to commonsense
+reasoning to test the generalizability of our framework
+to more generic reasoning cases. We use CommonsenseQA
+(Talmor et al., 2019) as our test data. Since commonsense
+reasoning is predominantly non-numeric, standard
+intervention schemes that rely on perturbing numerical
+values are not suitable in this setting. To apply interventions
+on such content, we prompt a separate large language model
+(GPT-5) to produce subtle, semantically coherent distortions
+of the initial reasoning step. This makes perturbation
+applicable to different reasoning scenarios. An example
+perturbed rationale is shown in Table 2.
+
+Overall, this analysis reveals an implicit decision boundary
+in the model’s internal space: while the distribution of TTS
+is very long-tailed and high-TTS steps are rare, larger TTS
+indeed corresponds to genuinely influential reasoning. We
+leave further in-depth study of the geometry (Wollschläger
+et al., 2025) of hidden states and TrueThinking directions
+in the latent space as future work.
+
+As shown in Figure 8a and Figure 8b, the distribution of
+TTS on Commonsense reasoning is long-tailed, which is
+similar to the patterns observed on mathematical reasoning.
+Furthermore, we conduct the steering tests (explained in
+Section 6) on the examples of Commonsense QA. Specifically,
+we use the same TrueThinking direction extracted
+from AMC dataset for steering (the same setting as Table 1).
+The steering results are shown in Figure 8c. Noticeably,
+the TrueThinking direction can still mediate the reasoning
+behaviors on CommonsenseQA when applied to the middle
+layers. This strongly indicates the generalizability of
+TrueThinking direction and suggests that LLMs encode a
+
+F.2. Averaging over ATE(c) for TTS
+
+We compare using only ATE(1) in TTS with the complete
+TTS to identify true-thinking steps. This slightly differs
+from the DropStep method in Table 3, which is adopted
+by past works (Tanneru et al., 2024; Lanham et al., 2023;
+Wang et al., 2025; Bogdan et al., 2025). DropStep defines
+ATE(1) with step removal as the perturbation, i.e.,
+ATE(1)drop = P(y
+∗
+| C, s) − P(y
+∗
+| C). In contrast, here
+
+14
+Can Aha Moments Be Fake? Identifying True and Decorative Thinking Steps in Chain-of-Thought
+
+low_c1_low_c0
+low_c1_high_c0
+high_c1_low_c0
+high_c1_high_c0
+0
+20
+40
+60
+80
+Percentage of Total Examples (%)
+8816
+920
+1396
+909
+
+0.0 0.2 0.4 0.6 0.8 1.0
+Score
+0
+1000
+2000
+3000
+4000
+5000
+6000
+Count
+0.00 0.01 0.02 0.03 0.04 0.05 mean
+0
+1000
+2000
+3000
+4000
+
+(a) MATH dataset
+
+(b) MATH dataset
+
+low_c1_low_c0
+low_c1_high_c0
+high_c1_low_c0
+high_c1_high_c0
+0
+20
+40
+60
+80
+Percentage of Total Examples (%)
+3863
+396
+700
+392
+
+0.0 0.2 0.4 0.6 0.8 1.0
+Score
+0
+250
+500
+750
+1000
+1250
+1500
+1750
+Count
+0.00 0.01 0.02 0.03 0.04 mean
+0
+200
+400
+600
+800
+
+(c) AIME dataset
+
+(d) AIME dataset
+Figure 7. Distribution of TTS on different datasets.
+
+low_c1_low_c0
+low_c1_high_c0
+high_c1_low_c0
+high_c1_high_c0
+0
+10
+20
+30
+40
+50
+60
+70
+Percentage of Total Examples (%)
+656
+165
+98
+160
+
+0.0 0.2 0.4 0.6 0.8 1.0
+Score
+0
+20
+40
+60
+80
+Count
+0.00 0.05 0.10 mean
+0
+5
+10
+15
+20
+
+0 5 10 15 20 25
+Layer
+0
+20
+40
+60
+80
+100
+AccuracyDT
+ET
+
+(c)
+Figure 8. Results for Commonsense reasoning. (a) The dataset-level distribution of the TTS score; (b) The distribution for ATEnec(1) and
+ATEsuf(0) where low means ATE(·) is below mean and high means ATE(·) is above mean; (c) Steering results on the Engagement Test
+and the Disengagement Test.
+
+(a)
+
+(b)
+
+Table 3. Results on MATH for steering with directions identified
+from true-thinking steps based on ATE(1) and complete TTS.
+
+0 10 20 30 40 50
+Layer
+0
+20
+40
+60
+80
+100
+Accuracy
+DT
+ET
+
+mean
+|ATEnec(1)|,
+|ATEsuf(0)|
+
+A B A B
+Flip rate 10.0 41.6 38.0 62.5
+
+|ATEnec(1)|
+only
+
+ATE(1) = P(y
+
+∗
+| C, s′
+) using numerical
+perturbation by changing the numbers in step s. However,
+as shown in Table 3, incorporating ATE(0) is still necessary,
+as the resulting TrueThinking direction achieves stronger
+intervention performance.
+
+| C, s) − P(y
+
+∗
+
+Figure 9. Results of Engagement Test and Disengagement Test on
+Qwen-14B.
+
+15
+Can Aha Moments Be Fake? Identifying True and Decorative Thinking Steps in Chain-of-Thought
+
+1.0
+
+0.8
+
+[0.9,1]
+[0.5,0.9)
+[0.3,0.5)
+[0.1,0.3)
+[0.03,0.1)
+[0.01,0.03)
+[0.001,0.01)
+
+Accuracy
+
+0.6
+
+0.4
+
+0.2
+
+0.0
+
+0 5 10 15 20 25
+Layer
+
+Figure 10. Test results of Nemotron on the Engagement Test where
+TrueThinking directions are extracted between examples with zero
+TTS (as decorative-thinking steps sDT) and examples of different
+ranges of TTS (as true-thinking steps sTT), and the lower accuracy
+means stronger steering effects.
+
+Problem: A square has a side length of 10 inches. Congruent
+isosceles right triangles are cut off each corner so
+that the resulting octagon has equal side lengths. How many
+inches are in the length of one side of the octagon? Express
+your answer as a decimal to the nearest hundredth.
+CoT: ...Then, the side length of the octagon is x
+√
+2 =
+√10
+2+2 ·
+√
+2 = 10√
+√ 2
+2+2 , which simplifies to 10√
+2 − 10 ≈
+4.142 inches. So, 4.14 inches.
+Wait, but let me compute 10√
+√
+2 − 10 more accurately.
+2 ≈ 1.41421356, so 10√
+2 ≈ 14.1421356 and
+
+14.1421356 − 10 = 4.1421356 inches, which rounds to
+4.14 inches.
+
+So, the length of one side of the octagon is approximately
+4.14.
+
+Figure 11. An example of unfaithful self-verification steps (highlighted
+in blue) where the TTS score of each step is found smaller
+than 0.005. Low TTS indicates that those steps are not truly engaged
+in computation; rather, these reasoning steps are likely to
+be decorative and function as an appearance of self-verification,
+contributing minimally to the model’s final prediction.
+
+16
+Can Aha Moments Be Fake? Identifying True and Decorative Thinking Steps in Chain-of-Thought
+
+G. Examples with low TTS
+
+Context steps (last two sentences): Wait, but that might not be
+accurate. Alternatively, maybe split the quadrilateral into two
+triangles by drawing a diagonal from (-1, 0) to (2, 0)
+
+We provide more examples where reasoning steps have TTS
+lower than 0.005. We classify each reasoning example based
+on behavioral patterns labeled in Venhoff et al. (2025)
+
+Steps with low TTS — Adding-knowledge: Then, the quadrilateral
+is split into two triangles: one with vertices (-1, 0), (0, 1), (2,
+0) and another with vertices (-1, 0), (2, 0), (0, -3). Let me calculate
+the area of each triangle and add them.
+First triangle: (-1, 0), (0, 1), (2, 0)
+
+Uncertainty-estimation example
+
+Context steps (last two sentences): Another way is to divide the
+quadrilateral into two triangles and find the area of each triangle,
+then add them up. Looking at the points, maybe I can split the
+quadrilateral along the x-axis
+
+Using the formula for the area of a triangle with coordinates: 1/2
+|x1(y2 - y3) + x2(y3 - y1) + x3(y1 - y2)|
+Plugging in the points:
+x1 = -1, y1 = 0
+x2 = 0, y2 = 1
+x3 = 2, y3 = 0
+So,
+
+Steps with low TTS — Uncertainty-estimation: The points (-1,
+0) and (2, 0) are on the x-axis, so the quadrilateral is split into two
+triangles: one above the x-axis and one below.
+
+Wait, actually, the point (0, 1) is above the x-axis, and (0, -3) is
+below. So, if I connect (-1, 0) to (0, 1) to (2, 0) to (0, -3) and back
+to (-1, 0), it’s a quadrilateral that crosses over the x-axis.
+Alternatively, maybe I can split it into two triangles: one with
+vertices (-1, 0), (0, 1), (2, 0) and another with vertices (2, 0), (0,
+-3), (-1, 0). Wait, but that might not cover the entire quadrilateral.
+Alternatively, perhaps split it into triangles with a common diagonal.
+Let me see.
+
+Area = 1/2 | (-1)(1 - 0) + 0(0 - 0) + 2(0 - 1) |
+= 1/2 | (-1)(1) + 0 + 2(-1) |
+= 1/2 | -1 + 0 - 2 |
+= 1/2 | -3 | = 1/2 * 3 = 1
+
+Adding-knowledge example
+
+Context steps (last two sentences): Let me calculate the area of
+each triangle and add them. First triangle: (-1, 0), (0, 1), (2, 0)
+Using the formula for the area of a triangle with coordinates: 1/2
+|x1(y2 - y3) + x2(y3 - y1) + x3(y1 - y2)|
+Plugging in the points:
+x1 = -1, y1 = 0
+x2 = 0, y2 = 1
+x3 = 2, y3 = 0
+So,
+
+If I connect (0, 1) to (0, -3), that’s a vertical line along the y-axis.
+Then, the quadrilateral is split into two parts: one on the left side
+of the y-axis and one on the right.
+
+But actually, the points are (-1, 0), (0, 1), (2, 0), (0, -3)
+
+Uncertainty-estimation example
+
+Context steps (last two sentences): Looking at the points, maybe
+I can split the quadrilateral along the x-axis. The points (-1, 0)
+and (2, 0) are on the x-axis, so the quadrilateral is split into two
+triangles: one above the x-axis and one below
+
+Area = 1/2 | (-1)(1 - 0) + 0(0 - 0) + 2(0 - 1) |
+= 1/2 | (-1)(1) + 0 + 2(-1) |
+= 1/2 | -1 + 0 - 2 |
+= 1/2 | -3 | = 1/2 * 3 = 1.5
+
+Steps with low TTS — Uncertainty-estimation:
+Wait, actually, the point (0, 1) is above the x-axis, and (0, -3) is
+below. So, if I connect (-1, 0) to (0, 1) to (2, 0) to (0, -3) and back
+to (-1, 0), it’s a quadrilateral that crosses over the x-axis.
+Alternatively, maybe I can split it into two triangles: one with
+vertices (-1, 0), (0, 1), (2, 0) and another with vertices (2, 0), (0,
+-3), (-1, 0). Wait, but that might not cover the entire quadrilateral.
+Alternatively, perhaps split it into triangles with a common diagonal.
+Let me see.
+
+Steps with low TTS — Adding-knowledge: Second triangle:
+(-1, 0), (2, 0), (0, -3)
+Again, using the same formula:
+x1 = -1, y1 = 0
+x2 = 2, y2 = 0
+x3 = 0, y3 = -3
+
+Area = 1/2 | (-1)(0 - (-3)) + 2((-3) - 0) + 0(0 - 0) |
+= 1/2 | (-1)(3) + 2(-3) + 0 |
+= 1/2 | -3 -6 + 0 |
+= 1/2 | -9 | = 1/2 * 9 = 4. 5
+Adding both areas: 1. 5 + 4. 5 = 6
+Okay, so that’s the same result as before
+
+If I connect (0, 1) to (0, -3), that’s a vertical line along the y-axis.
+Then, the quadrilateral is split into two parts: one on the left side
+of the y-axis and one on the right.
+
+But actually, the points are (-1, 0), (0, 1), (2, 0), (0, -3)
+
+Backtracking example
+
+Context steps (last two sentences): So, putting it all together,
+20% of 50% of 80 is 8. That seems correct, but let me verify it
+another way to make sure I didn’t make a mistake
+
+Steps with low TTS — Backtracking:
+Another approach is to multiply all the percentages together first
+and then apply them to 80. So, 20% is 0. 2, and 50% is 0. 5.
+Multiplying those together: 0. 2 * 0. 5 = 0. 1
+
+Adding-knowledge example
+
+17

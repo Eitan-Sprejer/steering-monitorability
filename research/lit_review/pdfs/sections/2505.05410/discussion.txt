@@ -1,0 +1,42 @@
+7 Discussion
+
+7.1 Implications for Test-time CoT Monitoring Safety Cases
+
+Safety cases are structured arguments that AI systems are unlikely to cause a catastrophe
+(Clymer et al.,
+2024 )
+.
+On the positive side, our results show that CoTs of reasoning model are faithful on at least some examples on most hints.
+This suggests that CoT monitoring can be useful at detecting some malicious behaviors during training and evaluations, particularly threats that are frequent or require multiple actions, which increases the chance of at least one threat/action being verbalized in the CoT. However, for rarer threats that don’t require multiple actions (e.g., self-exfiltration), our findings of low faithfulness suggest that CoT monitoring may be less effective.
+
+To rely on test-time CoT monitoring alone to ensure no catastrophic actions are taken, one would need high confidence that any misaligned behavior that could lead to these actions is reflected in the model’s CoT. However, such a safety case would need to rule out unfaithfulness such as that exhibited here. Our results indicate that this would require either algorithmic innovation that makes CoTs substantially more faithful (other than just more RL training), alternative arguments that CoTs will be more faithful for realistic threats, or supporting evidence from other safety measures that can rule out bad behavior in settings where CoT is unfaithful.
+
+However, there are subsets of misalignment risks that may be more amenable to detection through CoT monitoring.
+One such subset involves threats that require extensive reasoning, such as inserting and exploiting complex security vulnerabilities.
+Current models still rely on CoTs to excel at such reasoning-intensive tasks.
+Safety cases that rely on CoT monitoring for such threats should have two necessary components:
+(a) capability evaluations demonstrating that models cannot perform the task without CoTs, even with strong elicitation, and
+(b) evidence that models faithfully verbalize their reasoning in the CoTs when using them.
+However, some challenges still remain:
+(1) models could sandbag and pretend they cannot solve the misaligned task without CoTs when they actually can, and
+(2) models may develop clever ways to evade CoT monitoring, such as steganography
+(Ray,
+2022 ; Roger and Greenblatt,
+2023 )
+ or providing unfaithful justifications for reasoning steps or tool use.
+
+Another domain where CoT monitoring could be more effective is tasks that must rely on interactions with the environment.
+To monitor such misalignment, one advantage is the ability to log all tool use calls by default.
+For example, in order to sabotage the codebase, the model needs to read/write various files which can be logged;
+in order to gain authorized access to user’s privacy data, the model needs to override some security settings on the system side.
+However, the risk remains that models might develop effective ways to evade CoT monitoring by providing fake and unfaithful justifications for their tool use calls.
+For example, the model can claim in its CoT that it needs to access user data for a valid purpose such as personalization, while the real intent is to leak private information or engage in targeted persuasion.
+Moreover, intention faking does not seem like a reasoning-intensive task and can likely be done within single forward passes, making it unlikely to be faithfully verbalized in the CoT based on our experimental results.
+
+We remain excited about future work that explores CoT monitoring on more reasoning-intensive or agentic misalignment and derisks it for the risks we mentioned above.
+
+7.2 Limitations of Our Settings
+
+Our settings have some important differences with more realistic settings where CoT monitoring might be used. First, our settings are variations on the sort of multiple-choice questions frequently used in benchmarks and exams, which usually expect reasoning that is about the question: during training most exam questions are followed by an explanation that is purely about the content, and that does not mention potential circumstantial hints. Second, our settings are all settings where the hints are very easy to exploit, which prevents us from drawing conclusions about the potential of CoT monitoring in situations where a CoT is necessary to perform the unintended behavior, or where the unintended behavior requires the sort of out-of-context reasoning present in
+Marks et al. (2025)
+.

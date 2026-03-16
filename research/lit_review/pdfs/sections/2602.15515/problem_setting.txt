@@ -1,0 +1,526 @@
+2 Problem Setting
+
+2.1 Problem Formulation
+
+As a case study for reward hacking, we consider RLVR training of LLMs to solve
+programming problems, where incomplete specifications often lead to models
+learning to exploit them.
+We assume that we have a set of problems
+x
+x
+ and a reward function
+R
+R
+ which
+scores model responses
+y
+y
+ on the input
+x
+x
+. Each response
+y
+y
+ belongs to either
+the set of honest responses
+H
+H
+ or deceptive responses
+D
+D
+. In the coding
+domain,
+H
+H
+ consists of code that solves the problem on the full input domain,
+whereas
+D
+D
+ contains code specifically designed to pass the visible test cases
+without solving the general problem (e.g., by hardcoding expected outputs).
+
+We would like to find a policy
+π
+θ
+\pi_{\theta}
+ with parameters
+θ
+\theta
+ that is
+honest and achieves the maximum reward:
+
+argmax
+θ
+∈
+Θ
+H
+𝔼
+x
+,
+y
+∼
+π
+θ
+​
+(
+x
+)
+​
+[
+R
+​
+(
+x
+,
+y
+)
+]
+\operatorname*{argmax}_{\theta\in\Theta_{H}}\mathbb{E}_{x,y\sim\pi_{\theta}(x)}\left[R(x,y)\right]
+
+(1)
+
+where
+Θ
+H
+\Theta_{H}
+ is the set of policy parameters such that policies produce
+honest responses with high probability.
+
+Achieving this objective requires distinguishing honest from deceptive responses
+with high accuracy. However, it is often hard to know beforehand what a
+deceptive response would look like. In the coding domain, both honest and
+deceptive responses may achieve identical rewards on the limited test suite, but
+deceptive solutions are often simpler. Thus, reward maximization is likely to
+lead to deception, particularly as tasks become harder to solve.
+
+While classifying responses as deceptive or honest during RL training is
+possible, high-quality human labeling is expensive and does not scale,
+particularly for challenging frontier tasks where models may achieve superhuman
+capabilities. Black-box LLM monitors offer a scalable alternative but introduce new
+challenges: the monitor itself may be untrustworthy, susceptible to jailbreaking,
+or vulnerable to persuasion or collusion by the policy being evaluated.
+
+2.2 Training Against Lie Detectors
+
+This paper investigates white-box “lie detectors” as an alternative to human
+or black-box monitors. These lie detectors are linear probes trained on
+off-policy deception examples to detect deception directly from model
+activations. This allows the method to be applied even when few or no on-policy
+examples of deception are known. Prior work has shown that deception probes
+generalize well to out-of-distribution tasks
+(Goldowsky-Dill
+ et al.
+,
+2025 )
+,
+suggesting they capture the model’s internal concept of deception rather than
+domain-specific features. This generalization ability makes them attractive for scalable
+oversight.
+
+We train a white-box linear probe on deception examples and deploy it during
+RLVR training. While the probe’s weights are frozen, its output for a given
+text sequence will change as RL modifies the model’s parameters and thus its
+activations. Combining the probe penalty with KL regularization
+gives us the training objective:
+
+argmax
+θ
+J
+​
+(
+θ
+)
+\displaystyle\operatorname*{argmax}_{\theta}J(\theta)
+
+=
+𝔼
+x
+,
+y
+∼
+π
+θ
+​
+(
+x
+)
+​
+[
+R
+​
+(
+x
+,
+y
+)
+−
+α
+​
+ψ
+​
+(
+x
+,
+y
+,
+θ
+)
+]
+\displaystyle=\mathbb{E}_{x,y\sim\pi_{\theta}(x)}\left[R(x,y)-\alpha\psi(x,y,\theta)\right]
+
+−
+β
+​
+D
+KL
+⁡
+(
+π
+θ
+∥
+π
+0 )
+\displaystyle\quad-\beta\operatorname{D}_{\text{KL}}(\pi_{\theta}\|\pi_{0})
+
+(2)
+
+Here
+π
+θ
+\pi_{\theta}
+ is the policy,
+R
+​
+(
+x
+,
+y
+)
+R(x,y)
+ is the task reward,
+
+ψ
+​
+(
+x
+,
+y
+,
+θ
+)
+∈
+[0,1]
+\psi(x,y,\theta)\in[0,1]
+ is the probe’s deception score, and
+
+α
+,
+β
+\alpha,\beta
+ are hyperparameters controlling the probe penalty and KL
+regularization respectively. For brevity, we omit the dependence on
+x
+x
+ throughout the rest of the paper.
+
+2.3 Training Outcomes
+
+Optimizing the objective in
+Equation
+˜
+2 can yield four types of
+policies, summarized in
+Table
+˜
+1 .
+
+Table 1
+:
+Classification of trained policies. Probe score on original model is
+
+ψ
+​
+(
+y
+,
+θ
+0 )
+\psi(y,\theta_{0})
+; representation change measures difference in probe
+score between original model and trained model
+
+ψ
+​
+(
+y
+,
+θ
+0 )
+−
+ψ
+​
+(
+y
+,
+θ
+)
+\psi(y,\theta_{0})-\psi(y,\theta)
+. Natural policies may exhibit mixtures
+of these behaviors.
+
+Policy Class
+
+Task
+
+Probe on
+
+Response
+
+Rep.
+
+Return
+
+θ
+0 \theta_{0}
+
+Type
+
+Change
+
+Honest Capable
+
+High
+
+Low
+
+Honest
+
+Low
+
+Blatant Deception
+
+High
+
+High
+
+Deceptive
+
+Low
+
+Obfuscated Policy
+
+High
+
+Low
+
+Deceptive
+
+Low
+
+Obfuscated Activ.
+
+High
+
+High
+
+Deceptive
+
+High
+
+Honest
+ policies achieve high reward by generating correct solutions
+(high
+R
+R
+, low
+ψ
+\psi
+).
+
+Blatant deception
+ policies reward-hack (e.g., hardcode test cases) and
+are caught by the probe (high
+R
+R
+, high
+ψ
+\psi
+).
+Obfuscated policies
+ (following
+
+Bailey
+ et al.
+ (2024)
+) reward-hack with text that doesn’t trigger the
+probe even on the original model—for example, by including justifications that
+frame the hack as intended solution (high
+R
+R
+, low
+ψ
+\psi
+). Models with
+obfuscated activations
+
+reward-hack with outputs that
+would
+ trigger a probe on the original
+model’s activations, but the final model’s activations have changed such that
+the probe no longer fires (high
+R
+R
+, low
+ψ
+\psi
+). The key distinction is that obfuscated policies evade
+detection through
+what
+ the model outputs, while obfuscated activations
+evade through
+how
+ the model represents outputs internally.
+
+To see why these are natural categories, we split the probe score into two
+terms by adding and subtracting
+𝔼
+y
+∼
+π
+θ
+​
+[
+ψ
+​
+(
+y
+,
+θ
+0 )
+]
+\mathbb{E}_{y\sim\pi_{\theta}}[\psi(y,\theta_{0})]
+
+(showing the
+α
+=
+1 \alpha=1
+,
+β
+=
+0 \beta=0
+ case for simplicity):
+
+𝔼
+y
+∼
+π
+θ
+​
+[
+R
+​
+(
+y
+)
+−
+ψ
+​
+(
+y
+,
+θ
+)
+]
+\displaystyle\mathbb{E}_{y\sim\pi_{\theta}}[R(y)-\psi(y,\theta)]
+
+=
+𝔼
+y
+∼
+π
+θ
+​
+[
+R
+​
+(
+y
+)
+]
+⏟
+Task reward
+\displaystyle=\underbrace{\mathbb{E}_{y\sim\pi_{\theta}}[R(y)]}_{\text{Task reward}}
+
+−
+𝔼
+y
+∼
+π
+θ
+​
+[
+ψ
+​
+(
+y
+,
+θ
+0 )
+]
+⏟
+Original Model Probe Penalty
+\displaystyle-\underbrace{\mathbb{E}_{y\sim\pi_{\theta}}[\psi(y,\theta_{0})]}_{\text{Original Model Probe Penalty}}
+
++
+𝔼
+y
+∼
+π
+θ
+​
+[
+ψ
+​
+(
+y
+,
+θ
+0 )
+−
+ψ
+​
+(
+y
+,
+θ
+)
+]
+⏟
+Representation Change
+\displaystyle+\underbrace{\mathbb{E}_{y\sim\pi_{\theta}}[\psi(y,\theta_{0})-\psi(y,\theta)]}_{\text{Representation Change}}
+
+(3)
+
+This decomposition allows us to see how each policy class can achieve a high
+reward. The first term captures task performance: honest policies can score
+well, but deceptive policies often score better. Without probe penalty or KL
+regularization, maximizing this term could lead to blatant deception (reward
+hacking).
+
+The second term is the probe penalty evaluated on the original model, obtained
+by feeding the trained model’s generations through the original model and
+probing those activations for deception. This term distinguishes obfuscated
+activations from obfuscated policies: it contributes a high penalty for blatant
+deception and obfuscated activations (as obfuscation does not affect the
+original model), but does not penalize honest models or obfuscated policies.
+
+The third term, representation change, measures the gap between probe scores on
+the trained model versus the original model, evaluated on the trained policy’s
+generations. This term only affects obfuscated activations models, for which it
+increases the reward (cancelling out the second term).
+
+Finally, it is worth noting that honest policies are still optimal under
+sufficiently high KL regularization, given that the original model was honest.
+However, practitioners generally avoid high levels of KL regularization because
+it tends to reduce task return. Therefore, it is desirable to obtain honest
+policies with as little KL regularization as possible.

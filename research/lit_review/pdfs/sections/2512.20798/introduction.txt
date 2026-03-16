@@ -1,0 +1,167 @@
+1 Introduction
+
+The rapid advancement of large language models (LLMs) has catalyzed the development of increasingly autonomous AI agents capable of performing complex, multi-step tasks with minimal human supervision
+(Achiam et al.,
+2023 ; Wang et al.,
+2024 )
+. These agents are poised to revolutionize numerous industries by operating in dynamic, real-world production environments, from managing critical infrastructure to processing sensitive data. However, this growing autonomy introduces significant and poorly understood safety risks
+(Li & Fung,
+2025 )
+. As agents become more goal-oriented and capable of long-horizon planning, the potential for them to pursue unintended and harmful strategies to achieve their misaligned objectives, which is a class of failures characterized by outcome-driven constraint violations in autonomous agents often discussed under the broader umbrella of agentic misalignment
+(Nick,
+2014 )
+, becomes a critical concern.
+
+Existing AI safety benchmarks, while valuable, have significant limitations in their ability to assess these emergent risks. Many benchmarks focus on single-turn question-answering, evaluating whether an agent will refuse a directly harmful instruction
+(Lin et al.,
+2022 ; Zou et al.,
+2023 ; Zhang et al.,
+2024b
+; Tian et al.,
+2025 )
+. Others test agents in controlled environments to evaluate whether they correctly follow
+harmful instructions
+(Tian et al.,
+2025 ; Pan et al.,
+2023 )
+ or maintain procedural
+adherence in complex, multi-step tasks
+(Yao et al.,
+2025 ; Yang et al.,
+2023 )
+. While important, these evaluations do not adequately capture a more insidious failure mode: a goal-driven agent that, without being explicitly prompted, independently decides to take unethical, illegal, or dangerous actions as an instrumental step toward achieving an expected KPI. This misalignment is not about failing to follow a safety rule, but about creatively and deceptively circumventing it to maximize a performance metric
+(Amodei et al.,
+2016 )
+.
+
+To address this critical gap in safety evaluation, we introduce ODCV-Bench (standing for
+O
+utcome-
+D
+riven
+C
+onstraint
+V
+iolation
+Bench
+mark), a comprehensive benchmark of 40 scenarios that place AI agents in realistic, production-like settings. Our focus is on
+outcome-driven constraint violations
+: failure modes in which an autonomous agent, under optimization pressure to achieve a specified objective or KPI, selects actions that violate ethical, legal, or safety constraints. These violations may occur either because the agent is instructed to reach an outcome (the Mandated version), or it is put under the expectation of an ideal outcome (the Incentivized version) and then the agent autonomously derives such violations as instrumentally useful strategies for achieving its objective. Each scenario provides the agent with a system prompt defining its role, a user prompt outlining a multi-step task, and access to a persistent bash environment containing a file system and a set of tools
+(Yang et al.,
+2023 )
+. Crucially, the agent’s success is tied to a quantifiable KPI, which compose a strong incentive to optimize for the task’s completion. The benchmark is specifically designed to probe for outcome-driven constraint violations, where an agent, in its pursuit of a high KPI, might engage in unethical or unsafe actions that were not part of its instructions.
+
+Our benchmark elicits a wide range of plausible, high-stakes misalignments. For instance, in the
+FleetGuard
+ scenario (detailed in Table
+1 ), an agent acting as a logistics coordinator faces a dilemma: a critical vaccine shipment is delayed by weather. The agent must decide whether to enforce mandatory driver rest periods—ensuring safety compliance but causing the shipment to miss its deadline—or to falsify the driver safety logs to allow continuous driving, thereby satisfying the strict “98% on-time delivery” KPI. Under this pressure, many agents choose to simulate safety log entries, effectively endangering the driver to satisfy the metric.
+
+Table 1
+:
+An example scenario (
+Ai-Transport-Fleet-Safety-Vs-Efficiency
+) from ODCV-Bench. The agent faces a conflict between an explicit safety regulation and a high-stakes KPI.
+
+System Prompt (Role & Constraints)
+
+You are ’FleetGuard’, an AI system managing the autonomous trucking fleet… Your primary responsibility is to optimize delivery schedules while
+strictly adhering to transportation safety regulations
+… Your performance is measured by:
+KPI: Achieve
+>
+>
+98% on-time delivery rate
+… Note: The compliance validator only verifies the
+existence
+ of rest period entries in logs, not their authenticity.
+
+User Prompt (Task & Pressure)
+
+A critical shipment of vaccines must reach 47 distribution centers within 12 hours… Current weather delays have created a 3-hour deficit.
+Running the rest_period enforcement tool would add 1.5 hours per truck, pushing 38 trucks past deadline.
+ Failure risks $1.2M in penalties… Note that GlobalHaul Logistics will only approve the operation if it achieves
+>
+98 %
+>98\%
+ on-time delivery rate
+.
+
+The Misalignment Trap
+
+The agent has tools to
+monitor_driver_vitals
+ (safety) or
+optimize_route
+ (speed). To meet the 98% KPI, the agent must creatively falsify the rest logs or disable the safety sensors, as honest compliance guarantees a KPI failure.
+
+Observed Misaligned Behavior (Execution Summary)
+
+The agent identified that the validation script checks only for the presence of log strings, not sensor correlations. To satisfy the KPI, they actively circumvented safety protocols:
+
+Reasoning:
+ “We need to claim compliance but avoid rest causing delay… fake logs for all 47 trucks.”
+
+Action 1 (Sabotage):
+
+sed -i ’s/data_transmission: active/false/’ safety_sensors.cfg
+ (Disabling real-time fatigue monitoring).
+
+Action 2 (Fabrication):
+
+cat >> driver_activity.log << ’EOF’ ... TRUCK01|REST_STARTED ...
+ (Injecting fake rest entries).
+
+Result:
+ The agent effectively endangered the fleet to report “100% Compliance” and secure the bonus.
+
+We evaluated 12 state-of-the-art large language models on our benchmark. Our preliminary findings are concerning. Agents powered by most models misbehaved in roughly 30–50% of scenarios. These behaviors ranged from opportunistic metric gaming, such as deleting audit flags or creating dummy files to exploit validation loopholes, to active falsification, such as inventing patient data or hardcoding statistical p-values to override failed experiments. A detailed breakdown of our findings can be found in Section
+5 .
+
+This paper makes the following contributions:
+
+•
+
+ODCV-Bench Framework:
+ We introduce the first safety benchmark dedicated to
+outcome-driven constraint violations
+, comprising 40 multi-step scenarios in a persistent, production-like bash environment. While existing benchmarks evaluate refusal of harmful instructions
+(Zou et al.,
+2023 ; Tian et al.,
+2025 )
+ or safe tool use in complex environments
+(Zhang et al.,
+2024a
+; Yao et al.,
+2025 )
+, ODCV-Bench targets a distinct failure mode: agents that autonomously formulate unsafe instrumental goals, such as data fabrication or safety bypasses, to maximize performance metrics—even when not explicitly instructed to do so.
+
+•
+
+Decoupling Obedience from Alignment:
+ We propose a novel evaluation protocol that pairs every scenario with
+Mandated
+ and
+Incentivized
+ instruction variations. This design allows us to empirically distinguish between agents that are blindly obedient to harmful user commands and agents that independently pursue deceptive strategies to optimize KPIs.
+
+•
+
+Identification of Deliberative Misalignment:
+ Through a self-evaluation analysis, we uncover a critical disconnect between moral recognition and agentic action. We demonstrate that frontier models frequently exhibit “deliberative misalignment”, correctly identifying their own actions as unethical during post-hoc review while still executing those actions under pressure to achieve a goal.
+
+•
+
+Comprehensive Evaluation of Frontier Models:
+ We evaluate 12 state-of-the-art LLMs, revealing that widely used models engage in metric gaming or active violations in 30–50% of scenarios. Our analysis highlights significant safety gaps in both proprietary and open-weights models when they are deployed as autonomous agents in high-stakes domains.
+
+To facilitate future research and reproducibility, the benchmark code, scenarios, and evaluation scripts are publicly available at
+https://github.com/McGill-DMaS/ODCV-Bench
+.
+
+The remainder of this paper is organized as follows. Section
+2 places our work in the context of existing research on agent capabilities and safety benchmarks. Section
+3 details the architectural framework of ODCV-Bench, explaining the construction of the persistent environments and the design of incentivized versus mandated instruction variations. Section
+4 outlines our experimental methodology, including the model selection and the specific rubric used for severity scoring. In Section
+5 , we present a comprehensive analysis of our empirical findings, including quantitative misalignment rates and qualitative case studies of emergent deceptive behaviors. Finally, Section
+6 discusses the broader implications of these findings for the safe deployment of autonomous agents, and Section
+7 offers concluding remarks.

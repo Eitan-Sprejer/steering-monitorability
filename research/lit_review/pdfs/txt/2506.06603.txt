@@ -1,0 +1,914 @@
+CAtCh: Cognitive Assessment through Cookie Thief
+
+Joseph T Colonel∗
+
+, Carolyn Hagler†
+
+, Jacqueline Becker‡
+,
+Juan Wisnivesky‡
+, Alex Federman‡
+, Gaurav Pandey§
+
+, Guiselle Wismer†
+
+, Laura Curtis†
+
+∗Windreich Department of AI and Human Health, Icahn School of Medicine at Mount Sinai, New York, NY, USA
+‡Division of General Internal Medicine, Icahn School of Medicine at Mount Sinai, New York, NY, USA
+§Department of Genetics and Genomic Sciences, Icahn School of Medicine at Mount Sinai, New York, NY, USA
+†Division of General Internal Medicine, Feinberg School of Medicine at Northwestern University, Chicago, IL, USA
+
+Abstract—Several machine learning algorithms have been developed
+for the prediction of Alzheimer’s disease and related
+dementia (ADRD) from spontaneous speech. However, none
+of these algorithms have been translated for the prediction
+of broader cognitive impairment (CI), which in some cases
+is a precursor and risk factor of ADRD. In this paper, we
+evaluated several speech-based open-source methods originally
+proposed for the prediction of ADRD, as well as methods from
+multimodal sentiment analysis for the task of predicting CI from
+patient audio recordings. Results demonstrated that multimodal
+methods outperformed unimodal ones for CI prediction, and that
+acoustics-based approaches performed better than linguisticsbased
+ones. Specifically, interpretable acoustic features relating to
+affect and prosody were found to significantly outperform BERTbased
+linguistic features and interpretable linguistic features,
+respectively. All the code developed for this study is available
+at https://github.com/JTColonel/catch.
+
+The proliferation of vocal assistants in smartphones and smart
+home devices has also brought low cost, high quality voice
+
+recording to the market [10], greatly expanding the accessibility
+of this biomarker and the feasibility of speech-based CI
+screening in clinical settings.
+
+arXiv:2506.06603v1 [cs.LG] 7 Jun 2025
+
+Several studies that have endeavored to use speech for CI
+detection have relied on recordings of patients performing the
+Cookie Thief Test (CTT). The CTT is a 1-minute picture
+description task used in some neuropsychiatric batteries to
+assess language and communication abilities and executive
+functioning in an ecologically valid approximation of spontaneous
+speech [11]. Given the simplicity and brevity of the
+CTT, it could serve as the basis for a standardized approach
+to speech-based cognitive impairment screening in clinical
+settings.
+
+Index Terms—Cognitive impairment, multimodal machine
+learning, speech processing, natural language processing
+
+Early efforts to identify CI using CTT data have been
+promising. The ADReSSo (Alzheimer’s Dementia Recognition
+through Spontaneous Speech)-2021 Challenge [12] invited
+participants to predict ADRD from CTT audio recordings. One
+important aspect of this challenge was that participants were
+required to use automatic speech recognition (ASR) systems to
+transcribe the audio to text. ASR systems sidestep the need for
+labor intensive manual transcriptions, and offer the potential
+of scaling and automating CI screening from CTT recordings.
+Another relevant field of research for audio-based clinical
+
+I. INTRODUCTION
+Current estimates indicate that 9% of all adult Americans
+and 19% of those aged 65 years and older have some form
+of cognitive impairment (CI) [1], [2]. Since mild cognitive
+impairment (MCI) is a risk factor for dementia and because
+various interventions may reduce the risk for further cognitive
+decline and/or risk of harm among those with CI, identifying
+patients with early stage CI may improve long-term management
+and outcomes for these patients [3]. However, MCI and
+early stage dementia often go undiagnosed, resulting, in part,
+from low rates of routine CI screening in primary care [4],
+[5].
+
+diagnosis is multimodal sentiment analysis (MSA) [13]. MSA
+combines text, audio, and video modalities to predict the
+sentiment of an utterance or sequence of connected utterances.
+Clinical datasets such as the Distress Analysis Interview
+Corpus (DAIC) collate recordings of subjects who have been
+assessed for psychological conditions, such as depression, and
+had interviews recorded with audio and video [14]. Similar to
+ML for ADRD classification, automated approaches to psychological
+assessment have expanded due to the accessibility
+of the DAIC corpus as well as competitions that have been
+organized using the data [15], [16].
+
+In recent years, researchers have evaluated automated approaches
+to CI detection to supplant the time consuming task
+of physician-administered CI screening. A frequent focus of
+this research has been speech, which is increasingly recognized
+as a clinical biomarker [6]–[8] of cognitive functioning [9].
+
+This work was supported in part by Award Number R01AG066471 from
+the National Institute Aging of the National Institutes of Health. This work
+was also supported in part through the Minerva computational and data
+resources and staff expertise provided by Scientific Computing and Data at
+the Icahn School of Medicine at Mount Sinai and supported by the Clinical
+and Translational Science Awards (CTSA) grant UL1TR004419 from the
+National Center for Advancing Translational Sciences. Research reported in
+this publication was also supported by the Office of Research Infrastructure
+of the National Institutes of Health under award number S10OD026880 and
+S10OD030463. The content is solely the responsibility of the authors and
+does not necessarily represent the official views of the National Institutes of
+Health.
+
+However, despite the progress made in automated, MLbased
+detection of ADRD and other neuropsychological conditions,
+no such methods have been proposed for broader
+CI prediction from audio recordings, specifically CTT. Furthermore,
+algorithms proposed for the detection of ADRD
+have not been systematically translated to the prediction of
+CI. Although the recent TAUKADIAL Challenge has posed a
+multilingual audio-based MCI prediction problem, participants
+had access to substantial additional information in addition to
+CTT recordings, including demographics, MMSE scores, and
+fluency tasks that may not be easily available in the clinic
+[17]. Thus, the utility of automated methods for predicting
+CI just from CTT recordings remains unclear. In this work,
+we conducted a systemic evaluation of several open-source
+ML methods for the prediction of CI from CTT recordings.
+Specifically, the questions we aimed to answer in this study
+were:
+
+seconds and maximum of 60 seconds. Their spoken responses
+were recorded using a Tascam DR-10L Micro Portable Audio
+Recorder with Lavalier Microphone attached to a lapel or
+collar. Of the 200 recruited participants, 157 completed the
+CTT.
+
+Transcriptions of the CTT recordings were generated using
+an extension of OpenAI’s Large-V2 Whisper model that can
+produce word-level timestamps [21], [22]. Though word-level
+timestamps are rarely used in ADRD prediction from CTT
+recordings [23], they are often included in MSA applications
+[24], [25]. Voice activity detection was employed to avoid
+hallucinations in the transcripts [26], as well as an initial
+prompt: “Please separate utterances by period. A dog in the
+yard. Um, a girl sitting. Mom is washing the dishes.”. A
+manual review of the 157 transcriptions found no harmful or
+repetitive hallucinations.
+
+Q1. How well do ML methods developed for MSA and
+ADRD detection translate to broader CI prediction?
+
+Q2. What are the general determinants of these methods’
+performance when predicting CI?
+
+This evaluation was conducted on a corpus of CTT recordings
+collected from a cohort of older adults assessed for CI.
+As an outcome of this evaluation study, we present a single
+open-source repository collecting the methods studied in this
+work, which is expected to spur progress in the automated
+detection of CI from CTT recordings.
+
+Overall, a total of 2 hours and 46 minutes of audio were
+recorded, with an average CTT recording duration of 64.1
+seconds (standard deviation 16.1 s). There were 1645 machinetranscribed
+sentences, averaging 10.5 sentences (sd 4.6) per
+patient, and 20,257 total words, averaging 129 (sd 45.9) words
+per patient.
+
+The rest of the paper is structured as follows. Section
+II describes the CTT recording corpus used to conduct this
+evaluation study, including the clinical protocol. Section III
+outlines the method selection procedure for this study. Section
+IV describes the evaluation methodology to measure and compare
+the selected ML methods’ performance on CI prediction.
+Section V presents the results of the evaluation, with their
+discussion in Section VI. Limitations and potential future work
+of the study are described in Section VII.
+
+III. SELECTION OF METHODS TO EVALUATE FOR CI
+PREDICTION
+A. ADRD Classification Methods
+
+We conducted our ADRD-oriented method selection (Figure
+2) by searching on Google Scholar on August 13th, 2024 for
+papers that cited the ADReSSo-2021 Challenge report [12].
+This resulted in 139 papers. Next, the additional search term
+’github’ was used to filter those papers for the ones with
+open-source code repositories. This resulted in 43 papers. A
+manual assessment was then conducted on these 43 papers to
+determine if they contained a link to a github repository of
+code written by the authors. After this manual assessment, 12
+papers included repositories containing code for the methods
+of the paper. Four of these repositories contained complete,
+working code that predicted ADRD from recordings of speech
+and transcripts derived from CTT recordings, which were
+ultimately included in this study:
+
+II. THE CTT CORPUS USED IN THIS STUDY
+A full description of the clinical study that produced the
+
+corpus used in this work can be found in [2]. Participants
+were recruited from primary care practices in Chicago, IL
+for a study to assess cognitive impairment in primary care
+patients. They were eligible to participate if their age was 55
+years or older, had no diagnosis in their medical record of
+MCI or dementia, spoke English and did not have a condition
+that significantly impaired their ability to speak, such as an
+aphasia. After obtaining informed consent, a research coordinator
+administered a brief interview consisting of demographic
+questions and the Montreal Cognitive Assessment (MoCA)
+[18]. The MoCA is a widely used cognitive screener that
+consists of 12 tasks covering visuospatial/executive functioning,
+naming, memory, attention, language, delayed recall, and
+orientation. Raw MoCA scores were converted to age- and
+education-adjusted z-scores [19]. CI was defined as z-scores
+falling below 1.0 standard deviation of the mean of normative
+data [19]. Overall, 28 participants were assessed to have CI
+and 129 participants were assessed to be cognitively healthy.
+
+1) Heitz et. al. [27]: The authors of this natural language
+processing (NLP)-based study examined the utility of various
+ASR systems for ADRD detection from transcripts of CTT
+recordings. For ASR generated transcripts, the authors found
+that a random forest classifier with 500 trees trained on expertdefined
+NLP features performed the best. These features were
+hand-picked by the authors after searching through the ADRD
+
+classification literature, and included syntactic features based
+on parts-of-speech tags, syntactic features based on grammatical
+constituents, lexical features, and features of repetitiveness
+[28].
+
+Following the MoCA, the research assistant administered
+the CTT. Participants were shown an illustration depicting a
+scene in a kitchen (please refer to Figure 2 in [20]). The
+research assistant instructed the patient to “Tell me everything
+you see going on in this picture, as if describing it
+to someone who is blind” and prompted the participant, if
+needed, to continue their description for a minimum of 30
+
+2) Chen et. al. [29]: The authors of this acoustics-based
+method finetuned the Hidden-Unit BERT (HuBERT) model
+
+[30], which learns acoustic features from speech in a selfsupervised
+manner based on DL clustering techniques, for the
+prediction of ADRD from CTT recordings. They placed two
+Fig. 1. Demographics of the cohort used in this study.
+
+Events in Podcasts (SEP)-28k dataset [31]. In the singledataset
+case (used in this work), the authors finetuned the
+upstream HuBERT model, pretrained on 960 hours of the
+unlabeled Librispeech dataset [32], on ten second segments of
+CTT recordings with a two-second hop length. Predictions of
+an individual patient’s ADRD status were made by averaging
+the ADRD classifier head’s output over all corresponding
+segments.
+
+3) Ying et. al. [33]: The authors of this study combined
+representations from Wav2Vec2.0 (W2V2) [34] and BERT
+[35], as well as features from the InterSpeech 2010 Paralinguistic
+challenge (IS10) [36], all derived from CTT recordings,
+to predict ADRD. The W2V2 model, pretrained on 960
+hours of LibriSpeech data [32], was finetuned for ADRD
+classification using the ADReSSo-2021 dataset by appending
+an MLP classification head to the output of the contextual
+embeddings. For each patient, five ten-second segments that
+uniformly spanned the recording were pooled by the W2V2
+contextual embedding, and their respective representations
+averaged before being passed to the MLP classification head.
+The BERT model, pretrained on the BookCorpus dataset [37],
+was also finetuned on machine-generated transcriptions of the
+ADReSSo-2021 dataset, with an MLP classification head applied
+to the output sequence’s CLS classification token. After
+finetuning of the W2V2 and BERT models, the corresponding
+representations from the classification heads were extracted,
+and concatenated with IS10 features to produce one feature
+vector per patient. The feature vectors were then classified for
+ADRD status using the default support vector machine (SVM)
+implementation with a radial basis kernel [38].
+
+Fig. 2. Google Scholar method search performed on August 13, 2024 for
+this evaluation study
+
+parallel multilayer perceptron (MLP) classification heads after
+the pooling layer of HuBERT: one which classifies ADRD,
+and another which classifies the gender of the speaker. The
+authors additionally proposed a data augmentation scheme
+where audio is randomly perturbed, i.e. pitch-shifted, masked
+in frequency, altered loudness, or vocal tract perturbed. This
+method was tested in two settings: one in which only the
+ADReSSo-2021 dataset was used, and another where the
+ADReSSo-2021 dataset was combined with the Stuttering
+
+4) Farzana et. al. [39] : The authors of this study combined
+expert-defined NLP and prosody features for multimodal prediction
+of ADRD. The NLP features included part-of-speech
+tagging, context-free grammar, syntactic complexity (named
+entity recognition), vocabulary richness, SUBTL scores [40],
+and semantic features. The prosody features included durationbased
+features extracted using the DisVoice toolbox [41].
+Fig. 3. Mean AUC and Fmax (CI) per evaluated method over 100 train-test splits. Error bars show the standard error of the mean. MISA achieved the highest
+mean AUC, and Ying et al achieved the highest mean Fmax (CI)
+
+These features were concatenated and then classified using the
+default SVM implementation with a radial basis kernel [38].
+
+2) Oversample the minority CI class in the train split to have
+equal minority/majority representation.
+3) Train the classifier on the training set.
+
+B. Multimodal Sentiment Analysis (MSA) Methods
+
+4) Evaluate the trained classifier on the test set.
+
+For evaluating MSA methods for CI prediction, we considered
+the following two prominent architectures:
+
+For algorithms that used an early-stopping criterion for
+training neural networks [24], [29], [33], the train data was
+further split 75/25% to create a train and validation split
+stratified by CI outcome. Oversampling of the minority CI
+class only took place on the training split after the creation of
+the validation split.
+
+1) Modality-Invariant and -Specific Representations for
+MSA (MISA) [24]: This method projects unimodal representations
+of text, video, and speech into a unified latent space
+using neural network encoders for sentence-level prediction of
+sentiment. Several loss functions are applied to the distribution
+of the neural network’s latent space, including modality embedding
+similarity, difference, reconstruction, and task-specific
+losses. The linguistic representations are the pooled output of
+a BERT model, and the acoustic representations are extracted
+from word-level COVAREP features [42].
+
+The predictions on the test set from each method were
+evaluated in terms of the area under the receiver-operating
+characteristic curve (AUC). Furthermore, to account for the
+imbalance between the number of CI and non-CI cases in our
+corpus (28 and 129, respectively), the predictions were also
+evaluated in terms of the Fmax of the CI class (Fmax (CI))
+[44], which is the maximum value of the F-measure along
+the Precision-Recall curve. Means and standard errors were
+calculated for both AUC and Fmax over the 100 train/test
+splits as the final evaluation measures.
+
+In this work, we trained a MISA architecture to predict CI
+at a patient’s sentence-level text and audio, both derived from
+their CTT recordings, as input, followed by the averaging of
+their outputs to predict the final CI status.
+
+2) Memory fusion network (MFN) [25]: This model consists
+of a hierarchical system of recurrent neural networks to
+predict sentence-level sentiment from text, video, and audio
+modalities. MFN stacks word-level representations using a
+gated-memory mechanism, and fuses modalities with a classifier
+head. The linguistic and acoustic representations are
+derived using Glove [43] and word-level COVAREP features
+[42], respectively.
+
+To determine whether there was a statistically significant
+difference in the performance between the evaluated methods,
+Friedman pairwise testing with a Nemenyi post-hoc correction
+[45] was performed on the measured AUC and Fmax (CI) of
+each method over the 100 runs.
+
+V. RESULTS
+
+Similar to MISA, we trained an MFN architecture to predict
+CI at the sentence-level given text and audio as input. To
+predict the CI label for a given patient’s CTT, the mean of
+a patient’s sentence-level predictions is taken.
+
+Corresponding to Q1 in the Introduction, Figure 3 shows the
+mean AUC and Fmax (CI) for each prediction method tested
+in this study. The evaluated methods were able to capture
+some predictive signal for CI from the CTT recordings used
+in this study, with significant differences between some of
+the methods. MISA was the best performer in terms of mean
+AUC, significantly outperforming Heitz et al (p = 0.027) and
+Farzana et al (p<0.001). Ying et al was the best performer in
+terms of mean Fmax (CI), significantly outperforming Heitz
+et al (p=0.018) and Farzana et al (p<0.001).
+
+IV. EVALUATION PROCEDURE
+For each CI prediction method described in Section III, we
+repeated the following evaluation procedure 100 times:
+
+1) Randomly divide the corpus into a 75/25% train/test split
+stratified by CI status.
+Fig. 4. Mean AUC and Fmax (CI) for the MFN classifiers over 100 train-test splits. Error bars represent the standard error of the mean. The proposed
+multimodal configuration outperforms both unimodal configurations, though no statistically singificant difference was found between the configurations.
+
+Farzana et al’s AUC performance was significantly lower
+than MISA (p<0.001), Ying et al (p<0.001), and MFN
+(p=0.007). In addition, Farzana et al’s Fmax (CI) performance
+was significantly lower than MISA (p<0.001), Ying et al
+(p<0.001), MFN (p=0.012), and Chen et al (p=0.013).
+
+VI. DISCUSSION
+In this study, we evaluated several open-source ML methods
+for the prediction of ADRD, as well as open-source methods
+for MSA, on the task of predicting CI from CTT recordings.
+As a part of these methods, linguistic and acoustic features
+were extracted from these speech recordings using both expertdefined
+methodologies, as well as DL-based architectures.
+Both traditional ML classifiers and neural network were used
+to classify these features in unimodal and multimodal configurations.
+Below, we describe the findings of our study in
+the form of answers to the guiding questions proposed in the
+Introduction, as well as other important aspects.
+
+For Q2 in the Introduction about the general determinants
+of CI prediction from the above methods, we investigated
+several of them in terms of their constituent parts. To guide
+our exploration of these results, we structured Q2 into the
+following two sub-questions examining important aspects of
+these methods: To guide our exploration of these results, we
+propose the following two questions:
+
+1) Q2.a Do the multimodal formulations of Farzana et.
+al., MFN, and Ying et. al. outperform their respective
+unimodal variants?
+
+A. Answering Q1: Do ML methods developed for MSA and
+ADRD detection translate to CI prediction from CTT recordings?2)
+Q2.b Does the finetuning of Ying et. al. lead to overfitting
+and thus a degradation in performance?
+
+Direct comparisons between our evaluated CI prediction
+methods and those proposed for ADRD prediction in
+ADReSSo-2021 Challenge due to the Challenge dataset’s
+50/50 ADRD/control class balance, which was different from
+that in our dataset (29/150 CI/control). This difference in class
+imbalance makes comparison to commonly reported metrics
+like accuracy difficult. The only comparable metric reported
+in the ADRD prediction literature selected for this evaluation
+comes from Heitz et al’s study [27], which reported an AUC
+on the ADReSSo-2021 dataset of 0.865. When predicting CI
+on this cohort, Ying et al’s multimodal method performed
+best compared to other approaches from the ADRD prediction
+literature with a mean AUC of 0.672. This suggests that
+the proposed ADRD prediction methods did not translate
+sufficiently well to CI prediction. Some degradation in performance
+is to be expected, as CI encompasses a broad array
+of outcomes of which ADRD is only a subset. As such, CI
+may not give rise to the same impairments to the production
+of spontaneous speech captured by the feature sets used in
+ADRD detection.
+
+We note that the construction of MISA breaks down in the
+unimodal case due to its penalization of private and public
+encoded representations and thus cannot be evaluated in a
+unimodal configuration.
+
+To answer Q2.a, we re-ran MFN and Farzana et al twice:
+once by ablating the language modality, and once by ablating
+the acoustic modality. Figures 4 and 5 show the results of this
+procedure on MFN and Farzana et al’s methods respectively.
+Several permutations of Ying et al’s method were run to
+answer both Q2.a and Q2.b.
+
+1) Finetuning the BERT representations, and classifying
+using only BERT representations.
+
+2) Not finetuning BERT, and classifying using only BERT
+representations.
+
+3) Finetuning the W2V2 representations, and classifying
+using only W2V2 representations.
+
+4) Not finetuning W2V2, and classifying using only W2V2
+representations.
+
+5) Classifying using only the IS10 features.
+
+Figure 6 shows the full results of this procedure for Ying
+et al’s method.
+
+Looking at the MSA methods, MISA and MFN performed
+statistically similarly to Ying et al’s method (Figure 3). Still,
+Fig. 5. Mean AUC and Fmax (CI) for Farzana et. al. classifiers over 100 train-test splits. Error bars represent the standard error of the mean. The acoustic
+unimodal configuration achieves the highest median AUC and Fmax (CI) and significantly outperforms the linguistic unimodal configuration (p<0.001) and
+multimodal configuration (p<0.001).
+
+in comparison to other uses of MSA for psychological assessment,
+the performance of these MSA methods was not as good.
+On the DAIC-WOZ corpus [14], MISA achieved an F1 score
+of 0.73, while in this study it achieved an Fmax of 0.488,
+
+unimodal components. We focused on MFN, Ying et. al.,
+and Farzana et. al. for this investigation, since the unimodal
+formulations of MISA break down due to the multimodal
+penalizations of the latent space. For MFN and Ying et. al,
+whose results corresponding to this question are shown in
+Figures 4 and 6 respectively, the multimodal configurations
+outperformed the unimodal configurations, as expected [47].
+However, the difference in performance was slight compared
+to the best-performing unimodal configurations. For MFN,
+no difference in performance was found to be significant
+(p>0.9 for all measures). For Ying et al, the multimodal
+configurations were found to significantly outperform both
+BERT-based unimodal classifiers, as well as the non-finetuned
+W2V2-based classifier (p<0.001 for all measures).
+
+despite the two datasets having a similar class imbalance
+and cohort size [46]. Thus, while MSA presents an exciting
+direction for CI prediction, these DL-based methods evaluated
+here need substantial improvement before their potential is
+realized. It is possible that with the addition of a video
+modality, as is present in DAIC-WOZ, as well as larger
+cohorts, this goal can be accomplished.
+
+B. Answering Q2: What were the general determinants of the
+evaluated methods’ performance when predicting CI?
+
+For Farzana et. al., however, Figure 5 shows that the
+unimodal prosody-based acoustic classifier significantly outperformed
+the multimodal classifier in terms of both AUC and
+
+The ADReSSo-2021 Challenge report found that for ADRD
+prediction, multimodal prediction methods outperformed unimodal
+methods, and that linguistics-based unimodal methods
+tended to outperform acoustic-based unimodal methods [9].
+When these methods were applied to CI prediction on our
+cohort, however, the trends were not so clear. To clarify these,
+we broke Q2 into the following two sub-questions focused on
+general practices in ML/DL-based prediction:
+
+Fmax (CI) (p<0.001 for both), as well as the linguistics-based
+classifier (p<0.001 for both). This demonstrates the importance
+of testing unimodal classifiers alongside their multimodal
+configurations, as these results show the inclusion of the
+linguistic modality harms the performance of Farzana et al’s
+multimodal classifier.
+
+1) Q2.a: Did the multimodal formulations of MFN, Ying et.
+al., and Farzana et. al. perform better than their respective
+unimodal variants?:
+
+2) Q2.b: Did the finetuning of Ying et al’s model. lead
+to overfitting and thus a degradation in performance?:
+
+Finetuning large neural networks on small, out-of-distribution
+
+In general, the majority of the evaluated multimodal methods
+outperformed the unimodal ones on our cohort (Figure
+3), though the only significant differences in unimodal vs
+multimodal performance were observed between MISA and
+Heitz et al in terms of AUC (p=0.027), Ying et al and Heitz
+et al in terms of Fmax (CI) (p=0.018), and Farzana et al and
+Chen et al in terms of Fmax (CI) (p=0.013). Furthermore,
+Farzana et al’s multimodal method was found to significantly
+underperform Chen et al’s acoustics-based unimodal method
+in terms of Fmax (CI) (p=0.013).
+
+datasets has been shown to sometimes distort features and
+hurt classification performance, though this observation is not
+a guarantee [48]. We tested the effect of this factor on the
+performance of Ying et al’s method in our study. Specifically,
+we wanted to determine if finetuning the BERT and W2V2
+components of this model could lead to overfitting, and thus
+
+deteriorate performance on the test set. Chen et al’s method,
+the only other method to use a pretrained DL architecture, was
+not considered for this analysis as the multitask representation
+learning breaks down without finetuning.
+
+To further understand these trends, we investigated specific
+methods in terms of their multimodal configurations and their
+
+The green bars in Figure 6 demonstrated that not finetuning
+Fig. 6. Mean AUC and Fmax(CI) for various Ying et. al. configurations over 100 train-test splits. Error bars represent the standard error of the mean.
+Ying et. al.’s proposed configuration with no finetuning achieves the highest AUC and Fmax(CI), though this was not found to be a statistically signficant
+difference from the proposed configuration with finetuning, the IS10-only configuration, and finetuned W2V2 configuration. In both AUC and Fmax(CI), Ying
+et. al.’s proposed configuration with no finetuning significantly outperformed the finetuned BERT configuration (p<0.001), non-finetuned BERT (p<0.001),
+and non-finetuned W2V2 configuration (p<0.001).
+
+the W2V2 and BERT upstream models did yield a slight
+improvement in mean AUC and Fmax (CI) when the acoustic
+and linguistic modalities were fused for prediction, though this
+improvement was not found to be significant (p>0.9 for both
+measures). For the BERT-based unimodal classifiers, mean
+AUC and Fmax (CI) improved, though neither improvement
+was statistically significant (p=0.31 and p=0.07 respectively
+for the two measures). However, the W2V2-based unimodal
+classifiers did see a significant improvement in both AUC and
+Fmax (CI) after finetuning (p=0.011 and p<0.001 respectively
+for the two measures). Given that there is a significant improvement
+in one of three cases, and slight improvement in
+the other two, our results weakly support the finetuning of
+large neural networks for CI prediction.
+
+varies while talking [49]. These acoustic features significantly
+outperformed the expert-defined, interpretable NLP features
+used by the method in terms of both AUC and Fmax (CI)
+(p<0.001 for both measures).
+
+While interesting, this observation is counter to much of the
+literature on ADRD detection, where NLP-based methods tend
+to outperform acoustics-based methods [50]. As a possible
+explanation, NLP features, such as use of pronouns and
+repetitions, have been found to vary significantly with ADRD
+in picture description tasks [51]. As a broader category of
+impairment [52], CI may not give rise to these language
+deficits in the same way as ADRD, and thus may explain
+the divergence in trends.
+
+Another potential explanation for this divergence is that
+our cohort is more diverse than the ADReSSo-2021 dataset,
+and contains several patients who speak English as a second
+language. Recent studies have shown that acoustic-only models
+can predict MCI in a multilingual cohort, and that these
+methods outperform language-specific NLP methods [53]. It
+is possible that NLP features capturing syntactic structures of
+speech and word usage in English do not translate well to
+capturing CI in a diverse cohort. This is an exciting avenue
+
+C. The utility of acoustic and linguistic features for CI predictionThe
+use of both linguistic and acoustic features employed
+by the methods evaluated enabled us to also compare the
+two modalities for predicting CI status. Overall, the acoustic
+features were able to predict CI better than the linguistic ones
+(see Farzana et al’s unimodal configurations in Figure 5, as
+well as W2V2 and IS10’s performance compared to BERT in
+
+for future research, as these interpretable acoustic features can
+be tested across multilingual cohorts much more easily than
+expert-defined NLP features that are specific to English.
+
+Figure 6). Specifically, unimodal classifiers with interpretable
+acoustic features were among the top performers by both mean
+AUC and Fmax (CI). For instance, the IS10 feature set, used
+in Ying et. al.’s best-performing unimodal acoustic-based classifier,
+was designed to capture paralinguistic characteristics of
+speech, and were originally employed to predict age, gender,
+and affect [36]. These features significantly outperformed the
+fine-tuned BERT features used by the method in terms of both
+AUC and Fmax (CI) (p<0.001 for both measures). In addition,
+the prosody features used in Farzana et. al.’s unimodal
+acoustic-based classifier capture suprasegmental features of
+speech, including how quickly an individual talks, how much
+silence is present in a recording, and how an individual’s pitch
+
+VII. LIMITATIONS AND CONCLUSION OF THIS STUDY
+
+A limitation of this study is the small size of the cohort.
+With only 28 patients assessed to have CI, it is difficult to
+assess how these methods will translate outside of this cohort.
+Furthermore, 157 transcripts and recordings are relatively few
+for training/finetuning DL-based methods for prediction. As
+more research is conducted assessing CI from spontaneous
+speech and more data are made available, we hope that
+stronger and clearer conclusions can be made in the future.
+Another limitation is that we only evaluated six opensource
+algorithms. Other non-open-source algorithms for the
+prediction of ADRD or MSA could have translated better to
+CI prediction than those that we have evaluated.
+
+[16] F. Ringeval, B. Schuller, M. Valstar, N. Cummins, R. Cowie, L. Tavabi,
+M. Schmitt, S. Alisamir, S. Amiriparian, E.-M. Messner et al., “Avec
+2019 workshop and challenge: state-of-mind, detecting depression with
+ai, and cross-cultural affect recognition,” in Proceedings of the 9th
+International on Audio/visual Emotion Challenge and Workshop, 2019,
+pp. 3–12.
+
+Despite these limitations, we hope that our methods, findings
+and code https://anonymous.4open.science/r/catch-C459
+can provide an initial landscape of the predictability of CI from
+CTT recordings, and spur further progress in this critically
+needed area. Larger cohorts, more open-sourcing of prediction
+methods and the inclusion of other modalities, both derived
+from and in addition to CTT, are likely to contribute to this
+progress.
+
+[17] P. A. Pérez-Toro, T. Arias-Vergara, P. Klumpp, T. Weise, M. Schuster,
+E. Noeth, J. R. Orozco-Arroyave, and A. Maier, “Multilingual speech
+and language analysis for the assessment of mild cognitive impairment:
+Outcomes from the taukadial challenge,” Proc. Interspeech 2024, pp.
+982–986, 2024.
+
+[18] Z. S. Nasreddine, N. A. Phillips, V. Bédirian, S. Charbonneau, V. Whitehead,
+I. Collin, J. L. Cummings, and H. Chertkow, “The montreal
+cognitive assessment, moca: a brief screening tool for mild cognitive
+impairment,” Journal of the American Geriatrics Society, vol. 53, no. 4,
+pp. 695–699, 2005.
+
+[19] H. C. Rossetti, L. H. Lacritz, C. M. Cullum, and M. F. Weiner,
+“Normative data for the montreal cognitive assessment (moca) in a
+population-based sample,” Neurology, vol. 77, no. 13, pp. 1272–1275,
+2011.
+
+REFERENCES
+
+[1] “2022 alzheimer’s disease facts and figures,” Alzheimer’s &
+Dementia, vol. 18, no. 4, pp. 700–789, 2022. [Online]. Available:
+https://alz-journals.onlinelibrary.wiley.com/doi/abs/10.1002/alz.12638
+[2] A. D. Federman, J. H. Becker, M. R. Mindt, D. Cho, L. Curtis,
+and J. Wisnivesky, “Rates of undiagnosed cognitive impairment and
+performance on the montreal cognitive assessment among older adults
+in primary care,” Journal of general internal medicine, vol. 38, no. 11,
+pp. 2511–2518, 2023.
+
+[20] S. Berube, J. Nonnemacher, C. Demsky, S. Glenn, S. Saxena, A. Wright,
+D. C. Tippett, and A. E. Hillis, “Stealing cookies in the twentyfirst
+century: Measures of spoken narrative in healthy versus speakers
+with aphasia,” American journal of speech-language pathology, vol. 28,
+no. 1S, pp. 321–329, 2019.
+
+[21] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak supervision,”
+in International Conference on Machine Learning. PMLR,
+2023, pp. 28 492–28 518.
+
+[3] J. E. Morley, J. C. Morris, M. Berg-Weger, S. Borson, B. D. Carpenter,
+N. Del Campo, B. Dubois, K. Fargo, L. J. Fitten, J. H. Flaherty et al.,
+“Brain health: the importance of recognizing cognitive impairment: an
+iagg consensus conference,” Journal of the American Medical Directors
+Association, vol. 16, no. 9, pp. 731–739, 2015.
+
+[22] J. Louradour, “whisper-timestamped,” https://github.com/linto-ai/
+whisper-timestamped, 2023.
+
+[23] F. Braun, M. Foerstel, B. Oppermann, A. Erzigkeit, T. Hillemacher,
+H. Lehfeld, and K. Riedhammer, “Automated evaluation of standardized
+dementia screening tests,” INTERSPEECH 2022 INTERSPEECH, vol.
+2022, pp. 2478–2482, 2022.
+
+[4] J. E. Yokomizo, S. S. Simon, and C. M. de Campos Bottino, “Cognitive
+screening for dementia in primary care: a systematic review,” International
+psychogeriatrics, vol. 26, no. 11, pp. 1783–1804, 2014.
+[5] H. Amjad, D. L. Roth, O. C. Sheehan, C. G. Lyketsos, J. L. Wolff,
+and Q. M. Samus, “Underdiagnosis of dementia: an observational study
+of patterns in diagnosis and awareness in us older adults,” Journal of
+general internal medicine, vol. 33, pp. 1131–1138, 2018.
+
+[24] D. Hazarika, R. Zimmermann, and S. Poria, “Misa: Modality-invariant
+and-specific representations for multimodal sentiment analysis,” in Proceedings
+of the 28th ACM international conference on multimedia, 2020,
+pp. 1122–1131.
+
+[6] A. Kumar, T. Jaquenoud, J. H. Becker, D. Cho, M. R. Mindt, A. Federman,
+and G. Pandey, “Can you hear me now? clinical applications of
+audio recordings,” medRxiv, pp. 2022–02, 2022.
+
+[25] A. Zadeh, P. P. Liang, N. Mazumder, S. Poria, E. Cambria, and L.-P.
+Morency, “Memory fusion network for multi-view sequential learning,”
+in Proceedings of the AAAI conference on artificial intelligence, vol. 32,
+no. 1, 2018.
+
+[7] M. Bowden, E. Beswick, J. Tam, D. Perry, A. Smith, J. Newton,
+S. Chandran, O. Watts, and S. Pal, “A systematic review and narrative
+analysis of digital speech biomarkers in motor neuron disease,” NPJ
+digital medicine, vol. 6, no. 1, p. 228, 2023.
+
+[26] A. Koenecke, A. S. G. Choi, K. X. Mei, H. Schellmann, and M. Sloane,
+“Careless whisper: Speech-to-text hallucination harms,” in The 2024
+ACM Conference on Fairness, Accountability, and Transparency, 2024,
+pp. 1672–1681.
+
+[8] M. Kappen, M.-A. Vanderhasselt, and G. M. Slavich, “Speech as a
+promising biosignal in precision psychiatry,” Neuroscience & Biobehavioral
+Reviews, vol. 148, p. 105121, 2023.
+
+[27] J. Heitz, G. Schneider, and N. Langer, “The influence of automatic
+speech recognition on linguistic features and automatic alzheimer’s
+disease detection from spontaneous speech,” in Proceedings of the 2024
+Joint International Conference on Computational Linguistics, Language
+Resources and Evaluation (LREC-COLING 2024), 2024, pp. 15 955–
+15 969.
+
+[9] S. de la Fuente Garcia, C. W. Ritchie, and S. Luz, “Artificial intelligence,
+speech, and language processing approaches to monitoring alzheimer’s
+disease: a systematic review,” Journal of Alzheimer’s Disease, vol. 78,
+no. 4, pp. 1547–1574, 2020.
+
+[10] M. B. Hoy, “Alexa, siri, cortana, and more: an introduction to voice
+assistants,” Medical reference services quarterly, vol. 37, no. 1, pp. 81–
+88, 2018.
+
+[28] D. Jurafsky and J. H. Martin, “Speech and language processing: An
+introduction to natural language processing, computational linguistics,
+and speech recognition.”
+
+[11] E. Giles, K. Patterson, and J. R. Hodges, “Performance on the boston
+cookie theft picture description task in patients with early dementia of
+the alzheimer’s type: missing information,” Aphasiology, vol. 10, no. 4,
+pp. 395–408, 1996.
+
+[29] M. Chen, C. Miao, J. Ma, S. Wang, and J. Xiao, “Exploring multitask
+learning and data augmentation in dementia detection with selfsupervised
+pretrained models,” in Proc. INTERSPEECH, vol. 2023,
+2023, pp. 5037–5041.
+
+[12] S. Luz, F. Haider, S. de la Fuente, D. Fromm, and B. MacWhinney,
+“Detecting cognitive decline using speech only: The adresso challenge,”
+in INTERSPEECH 2021. ISCA, 2021.
+
+[30] W.-N. Hsu, B. Bolte, Y.-H. H. Tsai, K. Lakhotia, R. Salakhutdinov, and
+A. Mohamed, “Hubert: Self-supervised speech representation learning
+by masked prediction of hidden units,” IEEE/ACM transactions on
+audio, speech, and language processing, vol. 29, pp. 3451–3460, 2021.
+[31] C. Lea, V. Mitra, A. Joshi, S. Kajarekar, and J. P. Bigham, “Sep28k:
+A dataset for stuttering event detection from podcasts with people
+who stutter,” in ICASSP 2021-2021 IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2021, pp.
+6798–6802.
+
+[13] A. Gandhi, K. Adhvaryu, S. Poria, E. Cambria, and A. Hussain, “Multimodal
+sentiment analysis: A systematic review of history, datasets, multimodal
+fusion methods, applications, challenges and future directions,”
+Information Fusion, vol. 91, pp. 424–444, 2023.
+
+[14] J. Gratch, R. Artstein, G. M. Lucas, G. Stratou, S. Scherer, A. Nazarian,
+R. Wood, J. Boberg, D. DeVault, S. Marsella et al., “The distress
+analysis interview corpus of human and computer interviews.” in LREC.
+Reykjavik, 2014, pp. 3123–3128.
+
+[32] V. Panayotov, G. Chen, D. Povey, and S. Khudanpur, “Librispeech: an asr
+corpus based on public domain audio books,” in 2015 IEEE international
+conference on acoustics, speech and signal processing (ICASSP). IEEE,
+2015, pp. 5206–5210.
+
+[15] D. M. Low, K. H. Bentley, and S. S. Ghosh, “Automated assessment of
+psychiatric disorders using speech: A systematic review,” Laryngoscope
+investigative otolaryngology, vol. 5, no. 1, pp. 96–116, 2020.
+[33] Y. Ying, T. Yang, and H. Zhou, “Multimodal fusion for alzheimer’s
+disease recognition,” Applied Intelligence, vol. 53, no. 12, pp. 16 029–
+16 040, 2023.
+
+[34] A. Baevski, Y. Zhou, A. Mohamed, and M. Auli, “wav2vec 2.0:
+A framework for self-supervised learning of speech representations,”
+Advances in neural information processing systems, vol. 33, pp. 12 449–
+12 460, 2020.
+
+[35] J. Devlin, M.-W. Chang, K. Lee, and K. Toutanova, “Bert: Pre-training
+of deep bidirectional transformers for language understanding,” arXiv
+preprint arXiv:1810.04805, 2018.
+
+[36] B. Schuller, S. Steidl, A. Batliner, F. Burkhardt, L. Devillers, C. Müller,
+and S. Narayanan, “The interspeech 2010 paralinguistic challenge,” in
+Proc. INTERSPEECH 2010, Makuhari, Japan, 2010, pp. 2794–2797.
+[37] Y. Zhu, “Aligning books and movies: Towards story-like visual explanations
+by watching movies and reading books,” arXiv preprint
+arXiv:1506.06724, 2015.
+
+[38] F. Pedregosa, G. Varoquaux, A. Gramfort, V. Michel, B. Thirion,
+O. Grisel, M. Blondel, P. Prettenhofer, R. Weiss, V. Dubourg et al.,
+“Scikit-learn: Machine learning in python,” the Journal of machine
+Learning research, vol. 12, pp. 2825–2830, 2011.
+
+[39] S. Farzana and N. Parde, “Towards domain-agnostic and domainadaptive
+dementia detection from spoken language,” in Proceedings
+of the 61st Annual Meeting of the Association for Computational
+Linguistics (Volume 1: Long Papers), 2023, pp. 11 965–11 978.
+[40] M. Brysbaert and B. New, “Moving beyond kucera and francis: A critical ˇ
+evaluation of current word frequency norms and the introduction of
+a new and improved word frequency measure for american english,”
+Behavior research methods, vol. 41, no. 4, pp. 977–990, 2009.
+[41] J. C. Vásquez-Correa, J. Orozco-Arroyave, T. Bocklet, and E. Nöth,
+“Towards an automatic evaluation of the dysarthria level of patients
+with parkinson’s disease,” Journal of communication disorders, vol. 76,
+pp. 21–36, 2018.
+
+[42] G. Degottex, J. Kane, T. Drugman, T. Raitio, and S. Scherer, “Covarep—a
+collaborative voice analysis repository for speech technologies,”
+in 2014 ieee international conference on acoustics, speech and
+signal processing (icassp). IEEE, 2014, pp. 960–964.
+
+[43] J. Pennington, R. Socher, and C. D. Manning, “Glove: Global vectors
+for word representation,” in Proceedings of the 2014 conference on
+empirical methods in natural language processing (EMNLP), 2014, pp.
+1532–1543.
+
+[44] P. Radivojac, W. T. Clark, T. R. Oron, A. M. Schnoes, T. Wittkop,
+A. Sokolov, K. Graim, C. Funk, K. Verspoor, A. Ben-Hur et al., “A largescale
+evaluation of computational protein function prediction,” Nature
+methods, vol. 10, no. 3, pp. 221–227, 2013.
+
+[45] J. Demšar, “Statistical comparisons of classifiers over multiple data sets,”
+The Journal of Machine learning research, vol. 7, pp. 1–30, 2006.
+[46] J. Jung, C. Kang, J. Yoon, S. Kim, and J. Han, “Hique: Hierarchical
+question embedding network for multimodal depression detection,”
+arXiv preprint arXiv:2408.03648, 2024.
+
+[47] T. Baltrušaitis, C. Ahuja, and L.-P. Morency, “Multimodal machine
+learning: A survey and taxonomy,” IEEE transactions on pattern analysis
+and machine intelligence, vol. 41, no. 2, pp. 423–443, 2018.
+[48] A. Kumar, A. Raghunathan, R. Jones, T. Ma, and P. Liang, “Fine-tuning
+can distort pretrained features and underperform out-of-distribution,” in
+International Conference on Learning Representations, 2022.
+[49] R. W. Frick, “Communicating emotion: The role of prosodic features.”
+Psychological bulletin, vol. 97, no. 3, p. 412, 1985.
+
+[50] S. Luz, F. Haider, S. de la Fuente Garcia, D. Fromm, and B. MacWhinney,
+“Alzheimer’s dementia recognition through spontaneous speech,” p.
+780169, 2021.
+
+[51] A. Slegers, R.-P. Filiou, M. Montembeault, and S. M. Brambati, “Connected
+speech features from picture description in alzheimer’s disease:
+A systematic review,” Journal of Alzheimer’s disease, vol. 65, no. 2, pp.
+519–542, 2018.
+
+[52] G. M. Savva and A. Arthur, “Who has undiagnosed dementia? a
+cross-sectional analysis of participants of the aging, demographics and
+memory study,” Age and ageing, vol. 44, no. 4, pp. 642–647, 2015.
+[53] F. Agbavor and H. Liang, “Multilingual prediction of cognitive impairment
+with large language models and speech analysis,” Brain sciences,
+vol. 14, no. 12, p. 1292, 2024.

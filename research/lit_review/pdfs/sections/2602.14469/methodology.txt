@@ -1,0 +1,204 @@
+3 Methodology
+
+3.1 Baselines
+
+Neutral Prompting (NEU).
+
+Our baseline employs standard chain-of-thought generation where the model is given both the query
+Q
+Q
+ and response
+A
+A
+, then asked to produce a reasoning trace connecting them without additional constraints. This represents the default RCG setting and establishes reference anchoring levels against which mitigation strategies are compared.
+2 2
+2 Detailed prompts are provided in Appendix
+H
+.
+
+Semantic Suppression (SUP).
+
+A natural mitigation strategy instructs the model to conceal the response during generation:
+“Reason step by step, but do not reveal the answer until the end.”
+
+(Wang
+ et al.
+,
+2025a
+)
+ We additionally evaluate an intensified variant (
+AUG-SUP
+) with stronger suppression instructions threatening the model not to disclose the relevant information
+(Xu
+ et al.
+,
+2025 )
+. While intuitively appealing, we hypothesize—and empirically demonstrate—that this approach fails to reduce internal anchoring. Suppression preserves or amplifies response information within the reasoning dynamics despite successfully masking it in surface text, challenging the assumption that lexical concealment equates to genuine derivation.
+
+3.2 Structural Skeleton-guided Reasoning (SSR)
+
+We propose SSR as an alternative that shifts from
+suppression
+ to
+separation
+. Instead of forbidding access to the response, SSR borrows the insight from the meta-reasoning paradigm
+(Wang
+ et al.
+,
+2023 ; Ning
+ et al.
+,
+2024 )
+ and introduces an intermediate structural representation that decouples reasoning topology from specific semantic content in the anchored response.
+
+We define a
+Structural Skeleton
+
+S
+=
+⟨
+(
+f
+1 ,
+c
+1 )
+,
+…
+,
+(
+f
+n
+,
+c
+n
+)
+⟩
+S=\langle(f_{1},c_{1}),\ldots,(f_{n},c_{n})\rangle
+
+as a sequence of abstract steps, where each step comprises a
+functional tag
+
+f
+i
+f_{i}
+ from a closed set and a
+content summary
+
+c
+i
+c_{i}
+ describing the step’s intent without revealing values (e.g., “calculate the ratio” rather than “calculate
+0.5 0.5
+”). This abstraction ensures the skeleton remains invariant to the specific response while preserving the logical derivation.
+3 3
+3 Appendix
+C
+ provides theoretical properties for SSR.
+
+Functional Tags
+
+[PLAN]
+
+[RETR]
+
+[INFR]
+
+[EVAL]
+
+Planning
+
+Retrieval
+
+Inference
+
+Evaluation
+
+[SUMM]
+
+[BTRK]
+
+[RFLX]
+
+[BRCH]
+
+Summary
+
+Backtrack
+
+Reflection
+
+Branch
+
+SSR operates via two-phase generation:
+
+1.
+
+Skeleton Generation:
+ The model generates a skeleton conditioned on query and response:
+
+S
+∼
+P
+​
+(
+S
+∣
+Q
+,
+A
+)
+.
+S\sim P(S\mid Q,A).
+
+2.
+
+Reasoning Generation:
+ The model generates the full reasoning trace guided by the skeleton:
+
+R
+∼
+P
+​
+(
+R
+∣
+S
+,
+Q
+,
+A
+)
+.
+R\sim P(R\mid S,Q,A).
+
+Although
+A
+A
+ remains visible in both stages, the skeleton
+S
+S
+ acts as a structural scaffold that absorbs the anchoring effect for planning and logical organization. By providing a content-neutral target, SSR naturally redirects computation away from direct response encoding.
+
+Figure 3
+:
+Behavioral zone construction via controlled reference conditions.
+Real CoT
+: standard generation without pre-committed response;
++Prob Anchor
+: append response following standard CoT to induce predictive anchoring;
++Entropy Anchor
+: use function-word skeleton of response to constrain exploration;
+Response as CoT
+: response used directly as reasoning trace. These conditions empirically locate four zones: Reason (bottom-left), Encode (top-left), Cloze (bottom-right), and Copy (top-right). Point color indicates lexical anchoring (
+blue
+: low,
+red
+: high).
+
+Figure 4
+:
+Mechanism diagnosis across generation strategies. Suppression (SUP, AUG-SUP) shifts traces rightward and upward from NEU, migrating from Reason toward Cloze and Encode zones. SSR concentrates traces in Reason with minimal pathological spread. Point color indicates lexical anchoring (
+blue
+: low,
+red
+: high).

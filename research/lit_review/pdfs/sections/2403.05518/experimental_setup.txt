@@ -1,0 +1,210 @@
+3 Experimental Setup
+
+3.1 Models and Fine-Tuning Procedure
+
+We apply BCT to
+gpt-3.5-turbo-0613
+
+(GPT-3.5T; Ouyang et al.,
+2022 )
+ using the OpenAI fine-tuning API. Fine-tuning details are included in
+Appendix A
+.
+We generate unbiased CoT completions from GPT-3.5T (temperature 1.0) in a zero-shot fashion using a variant of “Let’s think step by step”
+(Kojima et al.,
+2022 )
+; see
+Appendix M
+ for the full prompts.
+For the biased prompt, we randomly select which answer choice we bias models towards, so sometimes this bias lines up with the correct response—we want reasoning to be uncorrelated from the bias, not anti-correlated.
+To reduce variance, we average results across eight fine-tuning runs with the same training data and use several slightly varying prompt formats during training (
+Appendix C
+).
+In
+Appendix D
+, we show that BCT is equally effective on open-source models, specifically LLaMA-3 8B Instruct
+(Dubey et al.,
+2024 )
+.
+
+Bias-Augmented Consistency Training (BCT).
+ We perform supervised fine-tuning on biased prompts with unbiased CoT completions.
+We use 10k prompt-response pairs and use a 50/50 mix of CoT/non-CoT prompt-response pairs. Including non-CoT prompts and responses helps us maintain consistent CoT and non-CoT performance before and after training; eliciting non-CoT responses is needed for evaluating the
+Are You Sure
+ bias (
+§3.4
+).
+
+Self-Training (Control).
+ We train on unbiased prompts with unbiased completions. This baseline allows us to control for the effects of doing further fine-tuning on the model’s outputs. This dataset has the same non-CoT/CoT data mixture and the same number of tokens (inputs and outputs combined) as above.
+
+To maintain instruction-following performance, we add 10k samples (50% of total) of instruction-following data to both the BCT and control data.
+To ensure our method is fully unsupervised, we generate temperature 1.0 completions from the same model (GPT-3.5T) using prompts from the Cleaned Alpaca dataset
+(Ruebsamen,
+2023 ; Taori et al.,
+2023 )
+.
+
+3.2 Measuring Biased Reasoning
+
+Following
+Turpin et al. (2023)
+, we explore biased reasoning in a multiple-choice task setting.
+We measure biased reasoning by measuring how much more often models choose a particular incorrect answer when guided to do so by the prompt bias, in comparison to how often the models choose that incorrect answer when given a prompt with no injected bias. This difference is termed the
+biased reasoning rate
+ (BRR).
+
+In our evaluation, we always bias towards incorrect answers.
+2 2
+2 There are no biasing cues in the unbiased prompt, so any instances of this are due to the model by chance picking the wrong answer that corresponds to the biased answer in the biased context.
+
+This difference measures the degree of biased reasoning—and, in turn, explanation unfaithfulness—because models generally do not verbalize the influence of biasing features: We manually check 1040 instances where models answer in line with biases across every combination of models, biases, and evaluation datasets and for most biases they are never verbalized. The only instances of verbalization (GPT-3.5T, control, BCT) are for
+Suggested Answer
+ (4%, 4%, 0%) and
+Argument
+ (4%, 14%, 6%).
+These differences in verbalization between the BCT model and the others are not large enough to account for the differences in BRR.
+
+Positional Bias
+ and
+Are You Sure
+ are measured in a slightly different way from the other biases (
+§3.4
+).
+
+We assess the effectiveness of fine-tuning by computing the ratio of the BRR of the model after fine-tuning (either BCT or control) against the BRR of the model before fine-tuning (i.e. GPT-3.5T),
+termed the
+BRR ratio
+. Lower is better.
+
+Measuring generalization of bias reduction to new biases and new tasks.
+
+It is difficult to predict the biases models will encounter when a model is deployed. So, we would like a training method that reduces the model’s susceptibility to
+unknown
+ biases. Thus, we study how training on one form of bias generalizes to be susceptible to other forms of bias. We train our model on only one version of sycophancy, the
+Suggested Answer
+ bias (details in
+§3.4
+), and evaluate against held-out biases. We also evaluate on held-out tasks, thus we are measuring task and bias generalization simultaneously.
+In the appendix, we validate that the choice of bias in training does not strongly affect the results (
+Appendix E
+).
+
+3.3 Datasets
+
+For training, we use prompts from BIG-Bench Hard
+(Suzgun et al.,
+2023 )
+, OpenBookQA
+(Mihaylov et al.,
+2018 )
+ and ARC
+(Chollet,
+2019 )
+. We take a random subset of each dataset, totaling 10k prompts (
+Table 2
+). To test generalization to new tasks, we evaluate on LogiQA
+(Liu et al.,
+2020 )
+, MMLU
+(Hendrycks et al.,
+2021 )
+, TruthfulQA
+(Lin et al.,
+2022 )
+, and HellaSwag
+(Zellers et al.,
+2019 )
+.
+We selected these datasets for evaluation because GPT-3.5T exhibited strong biased reasoning effects, giving more signal to detect improvements. We use 150 questions from each dataset, giving 600 questions evaluated per bias.
+
+Hindsight
+ and
+Positional Bias
+ use their own specific tasks; see
+§3.4
+. There is overlap in questions across biases—in total, we have 2207 unique questions evaluated.
+
+3.4 Biases
+
+We use the following biases throughout our experiments (further details in
+Appendix C
+, full prompts in
+Appendix L
+). The
+Wrong Few-Shot
+,
+Post Hoc
+, and
+Argument
+ biases contain clarifying text to make it unambiguous that the biased answer is not necessarily correct.
+
+Sycophancy: Suggested Answer (Training).
+ Models demonstrate
+sycophancy
+, which is the tendency to generate reasoning and answers that align with a user’s view
+(Perez et al.,
+2022 )
+. We use variants of the
+Suggested Answer
+ bias from
+Turpin et al. (2023)
+ for training, in which the user suggests an answer could be correct.
+To increase diversity, we use GPT-4T to generate 64 slight paraphrases of the biasing text, add a negated version, and vary where this bias is inserted into the prompt.
+
+Sycophancy: Are You Sure?
+
+Sharma et al. (2023)
+ find that assistants often change their answers when users respond with “Are you sure?”
+We generate a response across three rounds: (1) generate a non-CoT response from the model and filter to correct responses, (2) ask the model “Are you sure?”, and then finally (3) ask it to generate CoT reasoning for this second response.
+Here we measure biased reasoning by measuring how often the model changes its answer from the first to final round. The unbiased baseline is assumed to be 0%.
+
+Post Hoc Rationalization.
+
+If models answer a question incorrectly and then explain, they tend to give incorrect reasoning, even if they can give the correct reasoning when prompted to give an explanation before answering.
+We explicitly insert an incorrect non-CoT answer into the model’s side of the chat and prompt the model to explain its reasoning.
+
+Wrong Few-Shot.
+
+Models can be biased if a user mistakenly uses a few-shot prompt with incorrect labels. We bias models by adding a few-shot example with an incorrect label to the few-shot prompt and then ask the model the same question again.
+
+Wrong Argument.
+
+Models may erroneously copy over reasoning from arguments in the context. We insert reasoning that supports a wrong answer choice. To differentiate from sycophancy, the user text clarifies that they do not know if this argument is correct.
+
+Spurious Few-Shot: Squares.
+
+Language models are sensitive to repeated patterns in prompts
+(Brown et al.,
+2020 ; McKenzie et al.,
+2023 )
+.
+We append a black square (
+■
+■
+\blacksquare
+■
+) next to the correct answers in the few-shot prompt and to an incorrect answer on the final question.
+
+Spurious Few-Shot: Hindsight.
+
+In this task from
+McKenzie et al. (2023)
+, models are prompted to assess if a bet was worthwhile based on the expected value. Models are biased to give the wrong answer through a few-shot prompt, where the outcomes of the bets match the expected value, but the outcome in the final question does not. The unbiased baseline is a few-shot prompt with examples where the label does not match the outcome.
+
+Distractor Fact.
+
+Language model reasoning is sensitive to irrelevant information in the context
+(Shi et al.,
+2023 )
+. We add an irrelevant fun fact of the form: “The first character of option B is L.
+L is letter number 12 of the English alphabet” to bias the model towards B.
+The prompt clarifies that the fact may be irrelevant.
+
+Positional Bias.
+
+Models are sensitive to the order in which answer choices are presented
+(Zheng et al.,
+2023 )
+. We ask models to judge which of two model completions (GPT-3.5T and GPT-4T) are of higher quality.
+We measure the rate at which models change their answers when the answer order is swapped. The unbiased baseline is assumed to be 0%.

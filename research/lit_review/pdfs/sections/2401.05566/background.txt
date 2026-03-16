@@ -1,0 +1,135 @@
+2 Background
+
+2.1 Threat models
+
+This work is targeted at empirically investigating two specific threat models for ways in which large language models could pose safety risks that might not be resolved by current behavioral training approaches: model poisoning and deceptive instrumental alignment.
+
+2.1.1
+Model poisoning
+
+Users of a large language model may not know about hidden backdoors in the model if they lack access to a model’s parameters or a full understanding of its training process and dataset (which may encompass arbitrary internet text). This creates an opportunity for a malicious actor to insert—without the users’ knowledge—a backdoor: undesirable behavior that is triggered only by specific input patterns, which could be potentially dangerous. We refer to this threat model as
+model poisoning
+.
+
+Researchers have recently begun to study complex backdoor behaviors such as writing exploitable code if and only if the model can identify that the user comes from a specific organization
+(Schuster et al.,
+2021 ; Shu et al.,
+2023 )
+. Others have shown practical and feasible poisoning attacks on pretraining
+Carlini et al. (
+2023a
+)
+ or finetuning
+Wan et al. (2023)
+ datasets to elicit bad behaviors in models. As language models start to execute code or real-world actions, such backdoors could cause substantial harm.
+
+One possible defense against such backdoors could be to apply safety fine-tuning approaches such as reinforcement learning from human or AI feedback
+(RLHF/RLAIF; Bai et al.,
+2022b
+)
+ to the model after obtaining it from the internet or training it on an untrusted data source. While
+Xu et al. (2023)
+ have explored the robustness of backdoors to supervised fine-tuning on unrelated datasets, to our knowledge there has not been prior work investigating backdoor robustness to state-of-the-art RL safety fine-tuning approaches. Such a defense would be relying on the assumption that RL as a technique is sufficient to train away any substantially problematic backdoors.
+
+We aim to test the hypothesis that current behavioral fine-tuning techniques are a sufficient defense against model poisoning.
+
+2.1.2
+Deceptive instrumental alignment
+
+When training models for alignment with human preference judgments, there are many possible generalizations that a model could learn from that data
+(D’Amour et al.,
+2020 )
+. Furthermore, model-learned generalizations often do not align with how humans would generalize from the same data
+(Geirhos et al.,
+2018 )
+.
+
+We believe that there is substantial insight to be gained simply from understanding what algorithms that achieve low loss are
+possible
+ to learn, since doing so can help us understand the space of possible generalizations. Thus, we’d like to understand:
+
+1.
+
+What possible algorithms are consistent with human preference judgments?
+
+2.
+
+Are there any models that are consistent with human preference judgments during training that nevertheless generalize in highly irregular or dangerous ways in deployment?
+
+3.
+
+Furthermore, if such models exist, when are they equilibria of safety training processes, and when are they disincentivized by implicit inductive biases against such generalizations?
+
+We explore what possible algorithms might be aligned with human preference judgments during training—yet display misaligned behavior during deployment
+8 8
+8 In the case of online learning, the shift from training to deployment would be any situation where the model encounters a novel distributional shift that correlates with reduced oversight.
+—by deliberately inserting misaligned behavior into our models, then evaluating the extent to which such misaligned models are still equilibria of safety training processes.
+
+One particularly dangerous way in which a model could be misaligned yet still be an equilibrium solution of a safety training process is
+deceptive instrumental alignment
+. First introduced in
+Hubinger et al. (2019)
+, deceptive instrumental alignment describes a situation in which a model appears to be aligned during training, but where that appearance is in fact only for deceptive reasons: the model is optimizing for training performance only for the purpose of being selected for by the training process. Such a model would be pursuing the training objective for the purpose of achieving some other goal (instrumentally) rather than as an end in and of itself (terminally). We discuss this scenario in more depth in Appendix
+B
+.
+
+The behavior of humans and human organizations
+(Blackwelder et al.,
+2016 )
+ sometimes illustrates deceptive instrumental alignment. For example, politicians or job candidates may create a misleadingly favorable impression of their character and motivations in order to be selected for a position
+(Barrick et al.,
+2009 )
+. They recognize that they are being selected from a candidate set (similar to the parameters that gradient descent selects from a model class) and unsurprisingly act differently in this situation.
+
+To our knowledge, deceptive instrumental alignment has not yet been found in any AI system. Though this work also does not find examples of deceptive instrumental alignment, we aim to produce models that reason in a way that is consistent with deceptive instrumental alignment. We then test whether such models are equilibrium solutions of current behavioral safety fine-tuning procedures.
+
+We find that reasoning consistent with deceptive instrumental alignment is possible to train into current large language models (Section
+7 )—we refer to such models as chain-of-thought backdoored models (Section
+3.3 ). We find that once a model exhibits such deceptive reasoning, standard behavioral training approaches such as RL, SFT, and adversarial training can be insufficient to train the deception away when the reasoning is not directly observed by the training process. Furthermore, we find that our chain-of-thought backdoored models trained for deceptive instrumental alignment show
+increased robustness
+ to safety training compared to normal backdoored models, as shown in Sections
+4 and
+5 .
+
+Notably, our work does this by construction; we explicitly train models to exhibit reasoning that satisfies the above criteria. We have not found such models naturally and believe that current models do not by default currently satisfy the necessary conditions for deceptive instrumental alignment (Appendix
+B
+), such as knowledge of their training process, without explicit training. We refer to this approach of studying misalignment failures by explicitly training for them as developing
+model organisms of misalignment
+, which we discuss next (Section
+2.2 ).
+
+2.2 Model organisms of misalignment
+
+Previous methods for studying misalignment failures
+(e.g., Perez et al.,
+2022b
+)
+ have focused on discovering problematic behavior in existing models. Such methods have an obvious limitation: they allow us to study only misalignment failures which have emerged naturally in existing systems. This has at least two important consequences: it prevents us from empirically understanding alignment failures
+before
+ they arise naturally, and it limits our ability to do systematic research on specific alignment failures and the effectiveness of possible mitigations.
+
+Our work operates in an alternative framework, which we refer to as developing
+model organisms of misalignment
+
+(Hubinger et al.,
+2023 )
+. In biology,
+model organisms
+ are “non-human species that are extensively studied in order to understand a range of biological phenomena”, with the hope that “data and theories generated through use of the model will be applicable to other organisms”
+(Ankeny & Leonelli,
+2021 )
+. The construction of artifacts to study mitigations is also common in the backdoor ML literature
+(Li et al.,
+2022 )
+. We propose extending these paradigms into the study of misalignment failures, with a
+model organism of misalignment
+ being an AI system that is constructed to exhibit a particular sort of misalignment. Once a model organism of misalignment has been constructed, we can then evaluate the extent to which different safety techniques are capable of removing the misalignment we introduced.
+
+Model organisms of misalignment have distinct advantages and disadvantages. By constructing models that exhibit particular misalignment failures, we can study misalignment failures that don’t occur by default in present models, but that might be potentially concerning in future models. Thus, model organisms of misalignment enable forward-looking concrete empirical research investigating possible safety failures. However, since model organisms of misalignment are explicitly constructed to exhibit a particular type of misalignment, they may not be directly analogous to what accidental examples of misalignment might look like, and they don’t tell us much about the likelihood of such misalignment occurring without explicit training for it. This concern is analogous to similar concerns in biological research, such as those explored in
+Vesterinen et al. (2014)
+, where laboratory results on model organisms may not always generalize to the real organisms of interest.
+
+An example of existing work that would fall into the category of model organisms of misalignment would be the study of model backdoors—for example, the work of
+Shu et al. (2023)
+ or others in Section
+8 , which our work builds upon.

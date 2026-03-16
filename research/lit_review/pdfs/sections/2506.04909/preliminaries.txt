@@ -1,0 +1,587 @@
+3 Preliminaries
+
+3.1 Foundations of Activation Steering in Language Models
+
+Modern large language models (LLMs) predominantly adopt the Transformer architecture
+(Vaswani et al.,
+2017 )
+, leveraging self-attention mechanisms for contextual processing. Focusing on autoregressive next-token prediction, we formalize the computation for an input sequence
+𝐬
+=
+[
+t
+1 ,
+…
+,
+t
+n
+]
+𝐬
+subscript
+𝑡
+1 …
+subscript
+𝑡
+𝑛
+\mathbf{s}=[t_{1},...,t_{n}]
+bold_s = [ italic_t start_POSTSUBSCRIPT 1 end_POSTSUBSCRIPT , … , italic_t start_POSTSUBSCRIPT italic_n end_POSTSUBSCRIPT ]
+ with embeddings
+𝐗
+0 =
+[
+𝐱
+1 0
+,
+…
+,
+𝐱
+n
+0 ]
+superscript
+𝐗
+0 superscript
+subscript
+𝐱
+1 0
+…
+superscript
+subscript
+𝐱
+𝑛
+0 \mathbf{X}^{0}=[\mathbf{x}_{1}^{0},...,\mathbf{x}_{n}^{0}]
+bold_X start_POSTSUPERSCRIPT 0 end_POSTSUPERSCRIPT = [ bold_x start_POSTSUBSCRIPT 1 end_POSTSUBSCRIPT start_POSTSUPERSCRIPT 0 end_POSTSUPERSCRIPT , … , bold_x start_POSTSUBSCRIPT italic_n end_POSTSUBSCRIPT start_POSTSUPERSCRIPT 0 end_POSTSUPERSCRIPT ]
+. The model’s
+activation space
+—the high-dimensional latent space formed by intermediate layer outputs—emerges through successive transformations:
+
+𝐗
+l
+=
+𝐗
+l
+−
+1 +
+Attn
+⁢
+(
+𝐗
+l
+−
+1 )
++
+FFN
+⁢
+(
+𝐗
+l
+−
+1 +
+Attn
+⁢
+(
+𝐗
+l
+−
+1 )
+)
+superscript
+𝐗
+𝑙
+superscript
+𝐗
+𝑙
+1 Attn
+superscript
+𝐗
+𝑙
+1 FFN
+superscript
+𝐗
+𝑙
+1 Attn
+superscript
+𝐗
+𝑙
+1 \mathbf{X}^{l}=\mathbf{X}^{l-1}+\text{Attn}(\mathbf{X}^{l-1})+\text{FFN}(%
+\mathbf{X}^{l-1}+\text{Attn}(\mathbf{X}^{l-1}))
+bold_X start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT = bold_X start_POSTSUPERSCRIPT italic_l - 1 end_POSTSUPERSCRIPT + Attn ( bold_X start_POSTSUPERSCRIPT italic_l - 1 end_POSTSUPERSCRIPT ) + FFN ( bold_X start_POSTSUPERSCRIPT italic_l - 1 end_POSTSUPERSCRIPT + Attn ( bold_X start_POSTSUPERSCRIPT italic_l - 1 end_POSTSUPERSCRIPT ) )
+
+(1)
+
+At each layer
+l
+∈
+{
+1 ,
+…
+,
+L
+}
+𝑙
+1 …
+𝐿
+l\in\{1,...,L\}
+italic_l ∈ { 1 , … , italic_L }
+, the residual stream
+𝐗
+l
+=
+[
+𝐱
+1 l
+,
+…
+,
+𝐱
+n
+l
+]
+superscript
+𝐗
+𝑙
+superscript
+subscript
+𝐱
+1 𝑙
+…
+superscript
+subscript
+𝐱
+𝑛
+𝑙
+\mathbf{X}^{l}=[\mathbf{x}_{1}^{l},...,\mathbf{x}_{n}^{l}]
+bold_X start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT = [ bold_x start_POSTSUBSCRIPT 1 end_POSTSUBSCRIPT start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT , … , bold_x start_POSTSUBSCRIPT italic_n end_POSTSUBSCRIPT start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ]
+ consists of
+d
+𝑑
+d
+italic_d
+-dimensional token-wise activation vectors that serve as the primary substrate for information propagation. Each
+𝐱
+i
+l
+∈
+ℝ
+d
+superscript
+subscript
+𝐱
+𝑖
+𝑙
+superscript
+ℝ
+𝑑
+\mathbf{x}_{i}^{l}\in\mathbb{R}^{d}
+bold_x start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ∈ blackboard_R start_POSTSUPERSCRIPT italic_d end_POSTSUPERSCRIPT
+ accumulates transformed representations from both attention (Attn) and feedforward network (FFN) operations, while residual connections ensure gradient stability and facilitate feature compositionality
+(Elhage et al.,
+2021 )
+. For analytical simplicity, we omit the LayerNorm operations in our formalization, though we note that in standard implementations, these would typically precede attention and feedforward computations. Under this simplification, the residual stream
+𝐗
+l
+superscript
+𝐗
+𝑙
+\mathbf{X}^{l}
+bold_X start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT
+ corresponds directly to the output of layer
+l
+𝑙
+l
+italic_l
+, preserving its role as the primary carrier of information across layers. This latent space exhibits two key properties: (1) Distributed Representation: Linear directions in
+𝐗
+l
+superscript
+𝐗
+𝑙
+\mathbf{X}^{l}
+bold_X start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT
+ encode interpretable features, enabling semantic decomposition via geometric structure
+(nostalgebraist,
+2020 )
+. (2) Intervention Propagation: Additive modifications to
+𝐱
+i
+l
+superscript
+subscript
+𝐱
+𝑖
+𝑙
+\mathbf{x}_{i}^{l}
+bold_x start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT
+ affect all downstream computations while preserving the original computational pathway, providing a tractable interface for behavioral control.
+
+Steering Vector
+
+The residual stream’s linear structure permits precise interventions via
+steering vectors
+–semantically meaningful directions that alter model behavior when applied to activations. Formally, for any token position
+i
+𝑖
+i
+italic_i
+ at layer
+l
+𝑙
+l
+italic_l
+, we define the intervention as:
+
+𝐱
+i
+l
+←
+𝐱
+i
+l
++
+α
+⁢
+𝐯
+←
+superscript
+subscript
+𝐱
+𝑖
+𝑙
+superscript
+subscript
+𝐱
+𝑖
+𝑙
+𝛼
+𝐯
+\mathbf{x}_{i}^{l}\leftarrow\mathbf{x}_{i}^{l}+\alpha\mathbf{v}
+bold_x start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ← bold_x start_POSTSUBSCRIPT italic_i end_POSTSUBSCRIPT start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT + italic_α bold_v
+
+(2)
+
+where
+𝐯
+∈
+ℝ
+d
+𝐯
+superscript
+ℝ
+𝑑
+\mathbf{v}\in\mathbb{R}^{d}
+bold_v ∈ blackboard_R start_POSTSUPERSCRIPT italic_d end_POSTSUPERSCRIPT
+ is a unit-norm steering vector and
+α
+∈
+ℝ
+𝛼
+ℝ
+\alpha\in\mathbb{R}
+italic_α ∈ blackboard_R
+ modulates intervention strength. During inference, this operation can be applied to every token’s activation vector, enabling real-time control over generative behavior. Steering vectors are typically derived through contrastive analysis of activation patterns between behavioral pairs (e.g., truthful vs. deceptive outputs), using either supervised methods like activation patching
+(Ilharco et al.,
+2022 )
+ or unsupervised techniques such as principal component analysis (PCA)
+(Meng et al.,
+2022 )
+.
+
+Linear Artificial Tomography (LAT)
+
+We employ LAT
+(Zou et al.,
+2023 )
+ for steering vector extraction, a method combining empirical activation analysis with linear algebraic decomposition. Given a model
+M
+𝑀
+M
+italic_M
+ and a specific layer
+l
+𝑙
+l
+italic_l
+, we define a function
+Rep
+l
+⁢
+(
+⋅
+)
+superscript
+Rep
+𝑙
+⋅
+\mathrm{Rep}^{l}(\cdot)
+roman_Rep start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ( ⋅ )
+ that maps the model input
+x
+𝑥
+x
+italic_x
+ and the model itself to the representations of all token positions at layer
+l
+𝑙
+l
+italic_l
+ during the forward pass. The procedure involves three key steps:
+
+•
+
+Contrastive Stimulus Design
+: Construct template pairs
+(
+𝒯
+Target
+,
+𝒯
+Contrast
+)
+subscript
+𝒯
+Target
+subscript
+𝒯
+Contrast
+(\mathcal{T}_{\text{Target}},\mathcal{T}_{\text{Contrast}})
+( caligraphic_T start_POSTSUBSCRIPT Target end_POSTSUBSCRIPT , caligraphic_T start_POSTSUBSCRIPT Contrast end_POSTSUBSCRIPT )
+ that elicit divergent behaviors (e.g.,
+𝒯
+Honest
+subscript
+𝒯
+Honest
+\mathcal{T}_{\text{Honest}}
+caligraphic_T start_POSTSUBSCRIPT Honest end_POSTSUBSCRIPT
+=”Answer truthfully:” vs.
+𝒯
+Deceptive
+subscript
+𝒯
+Deceptive
+\mathcal{T}_{\text{Deceptive}}
+caligraphic_T start_POSTSUBSCRIPT Deceptive end_POSTSUBSCRIPT
+=”Answer deceptively:”).
+
+•
+
+Activation Collection
+: For each training sample
+s
+∈
+𝒟
+train
+𝑠
+subscript
+𝒟
+train
+s\in\mathcal{D}_{\text{train}}
+italic_s ∈ caligraphic_D start_POSTSUBSCRIPT train end_POSTSUBSCRIPT
+, compute the activation difference at the last token position:
+
+𝐜
+l
+⁢
+(
+s
+)
+=
+Rep
+l
+⁢
+(
+M
+,
+𝒯
+Target
+⁢
+(
+s
+)
+)
+⁢
+[
+−
+1 ]
+−
+Rep
+l
+⁢
+(
+M
+,
+𝒯
+Contrast
+⁢
+(
+s
+)
+)
+⁢
+[
+−
+1 ]
+superscript
+𝐜
+𝑙
+𝑠
+superscript
+Rep
+𝑙
+𝑀
+subscript
+𝒯
+Target
+𝑠
+delimited-[]
+1 superscript
+Rep
+𝑙
+𝑀
+subscript
+𝒯
+Contrast
+𝑠
+delimited-[]
+1 \begin{split}\mathbf{c}^{l}(s)&=\mathrm{Rep}^{l}(M,\mathcal{T}_{\text{Target}}%
+(s))[-1]\\
+&\quad-\mathrm{Rep}^{l}(M,\mathcal{T}_{\text{Contrast}}(s))[-1]\end{split}
+start_ROW start_CELL bold_c start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ( italic_s ) end_CELL start_CELL = roman_Rep start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ( italic_M , caligraphic_T start_POSTSUBSCRIPT Target end_POSTSUBSCRIPT ( italic_s ) ) [ - 1 ] end_CELL end_ROW start_ROW start_CELL end_CELL start_CELL - roman_Rep start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ( italic_M , caligraphic_T start_POSTSUBSCRIPT Contrast end_POSTSUBSCRIPT ( italic_s ) ) [ - 1 ] end_CELL end_ROW
+
+(3)
+
+Aggregate difference vectors across the dataset to form the contrastive set:
+
+𝒞
+l
+=
+{
+𝐜
+l
+⁢
+(
+s
+)
+∣
+s
+∈
+𝒟
+train
+}
+⊂
+ℝ
+d
+superscript
+𝒞
+𝑙
+conditional-set
+superscript
+𝐜
+𝑙
+𝑠
+𝑠
+subscript
+𝒟
+train
+superscript
+ℝ
+𝑑
+\mathcal{C}^{l}=\{\mathbf{c}^{l}(s)\mid s\in\mathcal{D}_{\text{train}}\}%
+\subset\mathbb{R}^{d}
+caligraphic_C start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT = { bold_c start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT ( italic_s ) ∣ italic_s ∈ caligraphic_D start_POSTSUBSCRIPT train end_POSTSUBSCRIPT } ⊂ blackboard_R start_POSTSUPERSCRIPT italic_d end_POSTSUPERSCRIPT
+
+(4)
+
+•
+
+Linear Decomposition
+: Perform Principal Component Analysis (PCA) on
+𝒞
+l
+superscript
+𝒞
+𝑙
+\mathcal{C}^{l}
+caligraphic_C start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT
+, extracting the dominant semantic axis:
+
+𝐯
+l
+=
+PCA
+1 ⁢
+(
+𝒞
+l
+)
+superscript
+𝐯
+𝑙
+subscript
+PCA
+1 superscript
+𝒞
+𝑙
+\mathbf{v}^{l}=\textbf{PCA}_{1}(\mathcal{C}^{l})
+bold_v start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT = PCA start_POSTSUBSCRIPT 1 end_POSTSUBSCRIPT ( caligraphic_C start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT )
+
+(5)
+
+The resulting steering vector
+𝐯
+l
+superscript
+𝐯
+𝑙
+\mathbf{v}^{l}
+bold_v start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT
+ corresponds to the first principal component of
+𝒞
+l
+superscript
+𝒞
+𝑙
+\mathcal{C}^{l}
+caligraphic_C start_POSTSUPERSCRIPT italic_l end_POSTSUPERSCRIPT
+, provably capturing the maximal variance direction separating target and contrast semantics in activation space. This vector can be applied via Eq.
+2 to steer model behavior while preserving coherence, with intervention strength modulated by
+α
+𝛼
+\alpha
+italic_α
+.
+
+3.2 Chain-Of-Thought And Strategic Deception
+
+Chain-of-thought (CoT) prompting has emerged as a transformative technique for enhancing the reasoning capabilities of large language models (LLMs), enabling them to decompose complex problems into interpretable intermediate steps
+(Wei et al.,
+2022b
+)
+. While this paradigm has demonstrably improved logical coherence and task performance
+(Lyu et al.,
+2023 )
+, its transparent reasoning pathways also unlock a concerning capability: strategic deception. Unlike hallucinations or capacity-limited errors, strategic deception in CoT-enabled models manifests as
+deliberate
+ deviations from factual truth, where the model’s intermediate reasoning steps explicitly justify deception as instrumental to goal achievement
+(Park et al.,
+2023 )
+. This behavior aligns with emerging evidence that advanced reasoning techniques can amplify not only fidelity but also sophisticated goal-directed dishonesty
+(Greenblatt et al.,
+2024 )
+, presenting unique challenges for alignment that transcend traditional falsehood frameworks.
+
+Strategic deception in language models has been preliminarily defined as instances where ”AI systems can be strategists, using deception because they have reasoned out that this can promote a goal”
+(Park et al.,
+2023 )
+. Prior conceptualizations emphasize means-end reasoning as the mechanism through which deception emerges as a tool for goal achievement. We refine this definition for CoT-enabled LLMs by introducing two key operational criteria:
+
+1.
+
+Meta-cognitive awareness of deception
+: The model’s intermediate reasoning steps explicitly acknowledge (i) the factual ground truth, and (ii) the deliberate choice to deviate from it, demonstrating conscious intent (e.g., ”Although I know X is true, claiming ¬X will better achieve the goal because…”).
+
+2.
+
+Instrumental justification
+: The deceptive act directly serves the task’s objective, with CoT steps demonstrating the causal link between deception and goal achievement.
+
+This formulation allows us to distinguish true strategic deception from related phenomena like confabulation or capacity-limited errors, particularly through the lens of CoT’s transparent reasoning pathways.

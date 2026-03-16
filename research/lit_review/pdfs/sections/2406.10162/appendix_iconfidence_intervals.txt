@@ -1,0 +1,92 @@
+Appendix I
+Confidence Intervals
+
+None of our plots have error bars. This is intentional. There are many ways to estimate the confidence of rare binary events, but they all require us to make significant assumptions about our data and they give us wildly different confidence intervals. We considered several options.
+
+We could treat the error around our mean as a normal distribution, and estimating confidence intervals using the central limit theorem.
+
+This is a common technique for estimating confidence intervals around the mean of binary variables. However, when the number of samples is small and the rate is close to 0 or 1, the assumptions for the central limit theorem break down. It can even provide confidence intervals that go beyond 0 or 1 probability. As an example, if we have an event which occurs 5 times out of 10,000 independent trials, this method gives a 95% confidence bound for the true rate from 9.3 / 10k to 0.6 / 10k. If we instead had 3 events, we’d get a lower bound of -0.4 events per 10,000 – a nonphysical probability. If we try to estimate the confidence interval for the rate of tampering by the helpful-only model, we get a range from 0 to 0, which is not helpful at all.
+
+We could treat our process as a Poisson distribution - the sum of many independent events.
+
+There’s a great many ways to compute the confidence interval on the mean of a Poisson distribution. One is the Gaussian approximation above.
+Patil & Kulkarni (2012)
+ provide an analysis of
+nineteen different methods
+ for computing confidence intervals on Poisson distributions.
+
+We could assume some prior over the true rate and update with every observation using Bayes’ rule.
+
+This seems reasonable, except that we then have to pick a prior. If we pick a uniform prior, then we are using the rule of succession
+(Laplace,
+1814 )
+. This rule says that the probability of an event happening, given that it has happened
+s
+𝑠
+s
+italic_s
+ times out of
+n
+𝑛
+n
+italic_n
+ trials, is
+
+p
+=
+s
++
+1 n
++
+2 𝑝
+𝑠
+1 𝑛
+2 p=\frac{s+1}{n+2}
+italic_p = divide start_ARG italic_s + 1 end_ARG start_ARG italic_n + 2 end_ARG
+
+This can also be adapted to give confidence intervals.
+However, it is a biased estimator of our mean. If we again take the example of 5 events out of 10,000, we get an estimated mean of
+6 10
+,
+002 6
+10 002
+\frac{6}{10,002}
+divide start_ARG 6 end_ARG start_ARG 10 , 002 end_ARG
+. If we take the rate of the helpful-only model, we get an estimated mean of
+1 100
+,
+002 1
+100 002
+\frac{1}{100,002}
+divide start_ARG 1 end_ARG start_ARG 100 , 002 end_ARG
+. We could pick a better prior, but that allows us great freedom to manipulate our confidence interval.
+
+We could bootstrap confidence intervals.
+
+We have big computers, and we could simply sub-sample our data a great many times. However, bootstrapping will give incredibly confident answers. For an event which happens zero times, it will simply predict that the true probability is always 0 with 100% confidence. If we return to our example of 5 events out of 10,000 and we do 100,000 bootstrapping repetitions: each drawing 10,000 binary events sampled with probability 5/10,000, we get a bootstrapped mean of 5/10,000, with a confidence interval from 4.96 tampers per 10,000 trials to 5.04 tampers per 10,000 trials.
+
+We could use the Wilson score interval
+(Wilson,
+1927 )
+.
+
+This is a more accurate way to approximate confidence intervals around rare binary events than the Gaussian approximation, and it avoids ever predicting probabilities below 0 or above 1. For our event which occurs 5 times in 10,000 trials, this gives a confidence interval from 1.8 to 12 times in 10,000 trials. For the helpful-only model, this gives a confidence interval of 0 to 3 trials per 100,000.
+
+Key Takeaways:
+
+There is no best way to compute a confidence interval for our data. By choice of algorithm we could either make our results seem completely ironclad or much more noisy. Instead of picking one, we note the following:
+
+1.
+
+All of these approximations, other than those which give nonphysical negative probabilities, give a 95% confidence interval which clearly separates all 5 of our curriculum-trained models from the helpful-only model.
+
+2.
+
+The randomness between two runs of the same curriculum, shown in Appendix
+G
+, dwarfs the confidence intervals given by any of these approximations.
+
+3.
+
+For our main expert iteration experiments, we sampled 32,000 times from each environment when training on the curriculum. For the other runs to fill in the quantitative generalization plots, like Figure
+5 , we sampled 10,000 times each for the reward-tampering environment, and 1,000 times for the rest. We sampled 100,000 times from the reward-tampering environment with the helpful-only model. Given these numbers and the plots, one can compute the raw rate of specification gaming in any of our experiments, and can then compute a confidence interval.

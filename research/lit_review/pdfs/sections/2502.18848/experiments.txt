@@ -1,0 +1,466 @@
+5 Experiments
+
+In this section, we present our results and analyses for a series of experiments. These consist of: (1) evaluating diagnosticity scores for post-hoc and CoT-based metrics, (2) analyzing the sensitivity of CoT-based metrics to different input corruption schemes (3) analyzing the reliability of knowledge edits, (4) studying the effect of replacing ICE with MEMIT, (5) assessing model-generated vs. synthetic explanations, and (6) comparing binary and continuous metrics. We also include an analysis about the effect of model size in Appendix
+A
+.
+
+5.1 Diagnosticity of Faithfulness Metrics
+
+Metric
+
+FactCheck
+
+Analogy
+
+Object Counting
+
+Multi-hop
+
+
+
+Copeland
+
+Score (
+↑
+\uparrow
+)
+
+
+
+Qwen
+
+Gemma
+
+Qwen
+
+Gemma
+
+Qwen
+
+Gemma
+
+Qwen
+
+Gemma
+
+p.h.
+
+CC-SHAP
+
+0.554
+
+0.540
+
+0.345
+
+0.898
+
+0.551
+
+0.466
+
+0.438
+
+0.658
+
+5
+
+Simulatability
+
+0.501
+
+0.507
+
+0.501
+
+0.501
+
+0.499
+
+0.500
+
+0.502
+
+0.512
+
+3
+
+CoT
+
+Early Answering
+
+0.756
+
+0.838
+
+0.534
+
+0.859
+
+0.566
+
+0.724
+
+0.468
+
+0.435
+
+18
+
+Filler Tokens
+
+0.828
+
+0.893
+
+0.561
+
+0.810
+
+0.630
+
+0.843
+
+0.682
+
+0.585
+
+29
+
+Adding Mistakes
+
+0.534
+
+0.427
+
+0.590
+
+0.639
+
+0.614
+
+0.579
+
+0.542
+
+0.402
+
+13
+
+Paraphrasing
+
+0.556
+
+0.525
+
+0.535
+
+0.430
+
+0.425
+
+0.385
+
+0.448
+
+0.525
+
+8
+
+CC-SHAP
+
+0.559
+
+0.598
+
+0.318
+
+0.939
+
+0.539
+
+0.506
+
+0.442
+
+0.488
+
+12
+
+Table 1:
+The diagnosticity scores of each metric across four tasks and two models.
+Qwen
+ and
+Gemma
+ correspond to
+qwen2.5-7b
+ and
+gemma-2-9b-it
+, respectively. Bold numbers indicate the highest scores for each model on each task across the two categories of faithfulness metrics: post-hoc and CoT. Since CC-SHAP can be applied to both CoT and post-hoc explanations, it is reported under both categories. Underlined numbers show the diagnosticity scores that are significantly higher than
+0.5 0.5
+ (one-sample t-test,
+p
+<
+0.05 p<0.05
+).
+
+Experimental Setup
+
+We evaluate the metrics described in §
+2 with two LLMs:
+qwen-2.5-7b
+
+(
+Yang2024Qwen25TR
+)
+, and
+gemma-2-9b-it
+
+(
+Riviere2024Gemma2I
+)
+. For our main experiments, we use ICE as the knowledge editing method and synthetic explanations to ensure faithfulness to the edited model.
+
+Table
+1 reports diagnosticity scores across tasks and models. Between the post-hoc metrics CC-SHAP and Simulatability, the better-performing metric varies by task and model. Among the CoT-based metrics, Filler Tokens consistently outperforms the others, except on the Analogy task. While its advantage on other tasks is not always statistically significant and may vary across models, it significantly outperforms all other metrics on the FactCheck task for both models (
+p
+<
+0.05 p<0.05
+, Wilcoxon signed-rank test
+3 3
+3 Wilcoxon signed-rank test used for all statistical testing unless stated otherwise.
+). To assess overall performance, we conduct pairwise comparisons across all metrics, tasks, and models using Copeland’s method. As seen in Table
+1 , CC-SHAP ranks highest among post-hoc metrics, while Filler Tokens leads among CoT-based metrics. Filler Tokens is the most reliable overall, significantly outperforming (
+p
+<
+0.05 p<0.05
+, one-sample t-test) the baseline value of
+0.5 0.5
+ across all tasks and models. The Multi-hop task is particularly challenging, as all other metrics fail to significantly exceed baseline performance.
+
+5.2 Metric Sensitivity
+
+Figure 3:
+Comparison of original and modified Early Answering metrics across four tasks and two models:
+qwen2.5-7b
+,
+gemma-2-9b-it
+. Errorbars indicate the 95% bootstrap confidence intervals.
+
+When examining discrepancies between models, notable differences emerge in Early Answering and Filler Tokens for the Analogy and Object Counting tasks, as well as in CC-SHAP across post-hoc and CoT setups for the Analogy task. These inconsistencies may stem from the way these metrics operate. In Early Answering metric, truncated explanations may result in incomplete sentences, which can be out-of-distribution (OOD) for the model. Thus, drops in prediction scores may not solely reflect the unfaithfulness but rather the model’s sensitivity to OOD inputs
+(
+Hooker2018ABF
+)
+. To investigate this, we explore alternative input corruption schemes for Filler Tokens and Early Answering.
+
+Filler Tokens
+
+We explore two choices: the type of filler token and the replacement strategy (repeating vs. non-repeating). The original metric replaces each character with three dots. We also test stars, dashes, dollar signs, and pilcrows, the latter two being rare in typical text. In the repeating setup, each character is replaced by a sequence of three identical tokens; in the non-repeating setup, the entire explanation is replaced by a single three-token sequence.
+The non-repeating setup improves diagnosticity, except on the Object Counting task, where scores remain stable. Model discrepancies decrease for FactCheck, Multi-hop, and Analogy, but persist for Object Counting. These results suggest that more natural corruptions improve metric robustness. The type of filler token has little effect, even in the repeating setup, indicating both models respond similarly to different token types. Appendix
+D
+ includes a detailed analysis.
+
+Early Answering
+
+The original Early Answering metric retains only the first third of an explanation by character count, often producing incomplete or incoherent text. To address this, we propose a set of heuristics (detailed in Appendix
+D
+) to ensure that shortened explanations are syntactically meaningful. Figure
+3 compares diagnosticity scores across four tasks and two models using the original and modified Early Answering metrics. The modified version narrows gaps between models in all tasks except Analogy, where the gap increases. Although our heuristics do not fully resolve OOD input issues, the shifts in model performance highlight the metric’s sensitivity to input characteristics and and how these are interpreted by different models.
+
+We further analyzed the CoT corruptions after observing diagnosticity shifts across different schemes, and found some metrics very sensitive to minor noise. See Appendix
+D
+ for details.
+
+5.3 Reliability of Edits
+
+Causal Diagnosticity
+ assumes that one explanation in each pair is faithful to the evaluated model, while the other is unfaithful. While synthetic explanations in principle ensure faithfulness or unfaithfulness with respect to the edited model, their practical accuracy depends on the success of the editing method. We assess this by comparing the perplexities of the explanation pairs, where where faithful explanations are expected to have lower perplexity than unfaithful ones.
+
+Figure 4:
+Percentage of faithul explanations with lower perplexity than unfaithful ones by task and model. Higher values indicates higher success in applied edits. Errorbars indicate 95% bootstrap confidence intervals.
+
+Figure
+4 shows shows the percentage of faithful explanations with lower perplexity than unfaithful ones, by task and model. For FactCheck, the edits show strong success, with scores near 1.0, followed by Multi-hop Reasoning and Object Counting. In contrast, edits for the Analogy task underperform, with scores falling below 50%. This is likely due to conflicting information about widely known facts, such as capital cities. To explore whether this limitation is inherent to ICE, we compare ICE and MEMIT on
+qwen2.5-7b
+ across three tasks. MEMIT edits show significant improvements in Analogy and Object Counting, but cause near 50% drop in model editing performance for FactCheck. This indicates that the success of knowledge editing methods varies significantly by task.
+Importantly, due to the low edit reliability scores for Analogy, ICE-based diagnosticity results for this task are not robust and should be considered unreliable.
+ See Appendix
+B
+ for a detailed analysis.
+
+Metric
+
+FactCheck
+
+Analogy
+
+Object Counting
+
+Multi-hop
+
+Bin.
+
+Cont.
+ (
+Δ
+\Delta
+)
+
+Bin.
+
+Cont.
+ (
+Δ
+\Delta
+)
+
+Bin.
+
+Cont.
+ (
+Δ
+\Delta
+)
+
+Bin.
+
+Cont.
+ (
+Δ
+\Delta
+)
+
+Early Answering
+
+0.496
+
+0.756 (+0.260)
+
+0.501
+
+0.534 (+0.033)
+
+0.488
+
+0.566 (+0.078)
+
+0.488
+
+0.468 (-0.020)
+
+Filler Tokens
+
+0.500
+
+0.828 (+0.328)
+
+0.500
+
+0.561 (+0.061)
+
+0.444
+
+0.630 (+0.186)
+
+0.495
+
+0.682 (+0.187)
+
+Adding Mistakes
+
+0.493
+
+0.534 (+0.041)
+
+0.530
+
+0.590 (+0.060)
+
+0.517
+
+0.614 (+0.097)
+
+0.485
+
+0.542 (+0.057)
+
+Paraphrasing
+
+0.571
+
+0.556 (-0.015)
+
+0.501
+
+0.535 (+0.034)
+
+0.531
+
+0.425 (-0.106)
+
+0.510
+
+0.448 (-0.062)
+
+Table 2:
+Comparison of diagnosticity scores between continuous and binary variants of CoT corruption-based metrics using
+qwen-2.5-7b
+. Differences are statistically significant (Wilcoxon signed-rank test,
+p
+<
+0.05 p<0.05
+) except those highlighted in gray.
+
+5.4 Effect of Knowledge Editing Method
+
+Figure 5:
+Diagnosticity scores for each metric on
+qwen-2.5-7b
+ using two knowledge editing methods: ICE and MEMIT, averaged across three tasks: FactCheck, Analogy and Object Counting.
+
+We replace ICE with MEMIT
+(
+meng2023memit
+)
+, a locate-and-edit approach enabling bulk edits (details in Appendix
+C
+). Since Multi-hop reasoning edits do not align with MEMIT’s format, this task is excluded. Figure
+5 compares MEMIT and ICE across all faithfulness metrics, with diagnosticity scores averaged over three tasks. Except for the FactCheck task, the differences are not significant (
+p
+>
+0.05 p>0.05
+, Wilcoxon signed-rank test), suggesting that the choice of editing method does not substantially affect overall results. Full results for MEMIT are in Appendix
+B
+.
+
+5.5 Effect of Explanation Type
+
+While our main results use synthetically generated explanations, we perform an ablation using model-generated explanations. We evaluate all metrics using
+qwen-2.5-7b
+, limiting model-generated explanations to 100 tokens. Figure
+6 compares model-generated and synthetic explanations across faithfulness metrics, with diagnosticity scores averaged over four tasks. The results indicate that synthetic explanations generally achieve higher scores than model-generated ones, though differences across explanation types are not statistically significant (
+p
+>
+0.05 p>0.05
+, Wilcoxon signed-rank test). Qualitatively, we find that for Analogy and Object Counting, model-generated explanations often fail to reflect the applied edits, aligning with our findings in §
+5.3 . Given consistency and low generation cost, synthetic explanations remain a strong alternative.
+
+Figure 6:
+Diagnosticity scores for each metric using model generated and synthetic explanations with
+qwen-2.5-7b
+, averaged across all four tasks.
+
+5.6 Binary vs. Continuous Metrics
+
+In Table
+1 , low diagnosticity scores of Simulatability, which is a metric that produces binary outcomes, are notable.
+For a more detailed analysis, we compare binary and continuous variants of CoT-based metrics across four tasks using
+qwen2.5-7b
+. Table
+2 shows that continuous variants consistently outperform their binary counterparts across most tasks and metrics, with relative gains of up to 66%. Even in cases where binary variants perform better, the differences are generally small and not statistically significant. While
+siegel-etal-2024-probabilities
+ provide theoretical rationale for preferring continuous alternatives in Counterfactual Edits
+(
+Atanasova2023FaithfulnessTF
+)
+, we are the first to empirically confirm this trend across multiple metrics and tasks.

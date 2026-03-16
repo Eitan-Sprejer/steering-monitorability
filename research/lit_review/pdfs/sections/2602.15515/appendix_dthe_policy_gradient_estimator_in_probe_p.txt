@@ -1,0 +1,838 @@
+Appendix D
+The Policy Gradient Estimator in Probe-Penalized Training
+
+Consider an autoregressive language model with prompt
+x
+x
+, policy
+
+π
+θ
+(
+⋅
+|
+x
+)
+\pi_{\theta}(\cdot|x)
+, and sampled response
+y
+=
+(
+y
+1 ,
+…
+,
+y
+n
+)
+y=(y_{1},\ldots,y_{n})
+. When
+training with a probe-based detector, the reward depends not only on the prompt
+and response, but also on the model’s internal activations. We write the total
+reward as
+R
+~
+​
+(
+x
+,
+y
+,
+θ
+)
+\tilde{R}(x,y,\theta)
+, where the dependence on
+θ
+\theta
+ captures
+the probe’s access to model internals. In the main paper we have
+
+R
+~
+​
+(
+x
+,
+y
+,
+θ
+)
+=
+R
+​
+(
+x
+,
+y
+)
+−
+α
+​
+ψ
+​
+(
+y
+,
+θ
+)
+\tilde{R}(x,y,\theta)=R(x,y)-\alpha\psi(y,\theta)
+
+We consider two objectives, which have the same value when evaluated but
+different derivatives. The
+true objective
+ is simply the expected reward
+under a policy
+π
+θ
+\pi_{\theta}
+ parameterized by
+θ
+\theta
+.
+
+J
+​
+(
+x
+,
+θ
+)
+=
+𝔼
+y
+∼
+π
+θ
+​
+[
+R
+~
+​
+(
+x
+,
+y
+,
+θ
+)
+]
+J(x,\theta)=\mathbb{E}_{y\sim\pi_{\theta}}\left[\tilde{R}(x,y,\theta)\right]
+
+(4)
+
+The
+stop-gradient objective
+ has the same value as the true objective,
+but different derivative:
+
+J
+sg
+​
+(
+x
+,
+θ
+)
+=
+𝔼
+y
+∼
+π
+θ
+​
+[
+R
+~
+​
+(
+x
+,
+y
+,
+sg
+⁡
+(
+θ
+)
+)
+]
+J_{\text{sg}}(x,\theta)=\mathbb{E}_{y\sim\pi_{\theta}}\left[\tilde{R}(x,y,\operatorname{sg}(\theta))\right]
+
+(5)
+
+where
+sg
+⁡
+(
+⋅
+)
+\operatorname{sg}(\cdot)
+ is the stop-gradient operator satisfying
+
+∇
+θ
+sg
+⁡
+(
+θ
+)
+=
+0 \nabla_{\theta}\operatorname{sg}(\theta)=0
+.
+
+Optimizing
+J
+J
+ via gradient descent on
+θ
+\theta
+ would directly incentivize
+activation changes that reduce the probe score. Optimizing
+J
+sg
+J_{\text{sg}}
+ via
+gradient descent on
+θ
+\theta
+ only incentivizes changes to the
+distribution
+over tokens
+
+π
+θ
+​
+(
+y
+|
+x
+)
+\pi_{\theta}(y|x)
+, with no direct pressure on activations. While
+this is a straightforward consequence of the policy gradient theorem, it may be
+surprising if we rely on the high-level (incorrect) intuition that policy
+gradient methods will find the parameters which achieve highest reward.
+
+Claim
+
+The REINFORCE gradient estimator
+
+𝔼
+y
+∼
+π
+θ
+​
+[
+R
+~
+​
+(
+x
+,
+y
+,
+θ
+)
+​
+∇
+θ
+log
+⁡
+π
+θ
+​
+(
+y
+|
+x
+)
+]
+\mathbb{E}_{y\sim\pi_{\theta}}\left[\tilde{R}(x,y,\theta)\nabla_{\theta}\log\pi_{\theta}(y|x)\right]
+ is an unbiased estimator of
+∇
+θ
+J
+sg
+\nabla_{\theta}J_{\text{sg}}
+,
+not
+∇
+θ
+J
+\nabla_{\theta}J
+. Therefore, policy gradient methods do not provide direct
+optimization pressure towards obfuscated activations.
+
+Proof
+
+We compute
+∇
+θ
+J
+sg
+\nabla_{\theta}J_{\text{sg}}
+ using the standard decomposition:
+
+∇
+θ
+J
+sg
+​
+(
+x
+,
+θ
+)
+\displaystyle\nabla_{\theta}J_{\text{sg}}(x,\theta)
+
+=
+∇
+θ
+𝔼
+y
+∼
+π
+θ
+​
+[
+R
+~
+​
+(
+x
+,
+y
+,
+sg
+⁡
+(
+θ
+)
+)
+]
+\displaystyle=\nabla_{\theta}\mathbb{E}_{y\sim\pi_{\theta}}\left[\tilde{R}(x,y,\operatorname{sg}(\theta))\right]
+
+=
+𝔼
+y
+∼
+π
+θ
+​
+[
+R
+~
+​
+(
+x
+,
+y
+,
+sg
+⁡
+(
+θ
+)
+)
+​
+∇
+θ
+log
+⁡
+π
+θ
+​
+(
+y
+|
+x
+)
+]
++
+𝔼
+y
+∼
+π
+θ
+​
+[
+∇
+θ
+R
+~
+​
+(
+x
+,
+y
+,
+sg
+⁡
+(
+θ
+)
+)
+]
+\displaystyle=\mathbb{E}_{y\sim\pi_{\theta}}\left[\tilde{R}(x,y,\operatorname{sg}(\theta))\nabla_{\theta}\log\pi_{\theta}(y|x)\right]+\mathbb{E}_{y\sim\pi_{\theta}}\left[\nabla_{\theta}\tilde{R}(x,y,\operatorname{sg}(\theta))\right]
+
+=
+𝔼
+y
+∼
+π
+θ
+​
+[
+R
+~
+​
+(
+x
+,
+y
+,
+θ
+)
+​
+∇
+θ
+log
+⁡
+π
+θ
+​
+(
+y
+|
+x
+)
+]
++
+0 \displaystyle=\mathbb{E}_{y\sim\pi_{\theta}}\left[\tilde{R}(x,y,\theta)\nabla_{\theta}\log\pi_{\theta}(y|x)\right]+0
+
+(6)
+
+The first term in line 2 comes from differentiating through the distribution
+(the score function trick); the second term from differentiating the reward
+directly. The second term vanishes because
+
+∇
+θ
+sg
+⁡
+(
+θ
+)
+=
+0 \nabla_{\theta}\operatorname{sg}(\theta)=0
+. In line 3, we can replace
+
+sg
+⁡
+(
+θ
+)
+\operatorname{sg}(\theta)
+ with
+θ
+\theta
+ in the first term since
+
+sg
+⁡
+(
+θ
+)
+\operatorname{sg}(\theta)
+ only affects gradients, not forward evaluation.
+
+The final expression is exactly the REINFORCE estimator. Thus REINFORCE
+estimates
+∇
+θ
+J
+sg
+\nabla_{\theta}J_{\text{sg}}
+, not
+∇
+θ
+J
+\nabla_{\theta}J
+.
+
+Interpretation
+
+This result shows that:
+
+1.
+
+Policy gradient methods only update parameters through pathways
+mediated by the token distribution
+π
+θ
+​
+(
+y
+|
+x
+)
+\pi_{\theta}(y|x)
+.
+
+2.
+
+There is no gradient signal pushing the model to directly manipulate
+its activations to fool the probe while keeping outputs fixed.
+
+3.
+
+Any activation changes observed during training are
+side
+effects
+ of changing the policy, not direct optimization against the
+probe.
+
+This explains our empirical finding (
+Figure
+˜
+4 ) that
+representation change is similar whether or not a detector penalty is used
+during RLVR training, while explicitly passing gradients through the probe leads
+to substantially higher representation change.
+
+Note that we are
+not
+ claiming that activations remain unchanged during
+policy gradient training. Changing the token distribution requires changing the
+parameters, which necessarily changes activations. These changes may even be
+correlated with probe evasion. For example, if a model has a strong prior
+towards “honest behavior,” and the easiest way to shift the policy towards
+deceptive outputs is to internally represent the deceptive action as honest,
+then the parameter updates that change the policy would also happen to fool the
+probe. Our claim is only that there is no
+additional
+ gradient signal for
+activation manipulation beyond what arises from changing the token distribution.
+
+Note on GRPO
+
+In the main paper, we use GRPO instead of a pure REINFORCE estimator. GRPO uses
+a whitened advantage. Writing
+
+μ
+=
+𝔼
+y
+∼
+π
+θ
+​
+[
+R
+~
+​
+(
+x
+,
+y
+,
+θ
+)
+]
+\mu=\mathbb{E}_{y\sim\pi_{\theta}}[\tilde{R}(x,y,\theta)]
+ and
+
+σ
+2 =
+Var
+y
+∼
+π
+θ
+⁡
+[
+R
+~
+​
+(
+x
+,
+y
+,
+θ
+)
+]
+\sigma^{2}=\operatorname{Var}_{y\sim\pi_{\theta}}[\tilde{R}(x,y,\theta)]
+, the
+gradient estimator is:
+
+𝔼
+y
+∼
+π
+θ
+​
+[
+R
+~
+​
+(
+x
+,
+y
+,
+θ
+)
+−
+μ
+σ
+​
+∇
+θ
+log
+⁡
+π
+θ
+​
+(
+y
+|
+x
+)
+]
+\mathbb{E}_{y\sim\pi_{\theta}}\left[\frac{\tilde{R}(x,y,\theta)-\mu}{\sigma}\nabla_{\theta}\log\pi_{\theta}(y|x)\right]
+
+(7)
+
+The baseline subtraction preserves unbiasedness:
+
+𝔼
+y
+​
+[
+μ
+⋅
+∇
+θ
+log
+⁡
+π
+θ
+​
+(
+y
+|
+x
+)
+]
+=
+μ
+⋅
+𝔼
+y
+​
+[
+∇
+θ
+log
+⁡
+π
+θ
+​
+(
+y
+|
+x
+)
+]
+=
+0 \mathbb{E}_{y}[\mu\cdot\nabla_{\theta}\log\pi_{\theta}(y|x)]=\mu\cdot\mathbb{E}_{y}[\nabla_{\theta}\log\pi_{\theta}(y|x)]=0
+.
+
+The division by
+σ
+\sigma
+ is more subtle. In practice,
+σ
+\sigma
+ is computed from
+the sampled batch and treated as a constant for the gradient update—gradients
+are not backpropagated through the variance computation. This amounts to an
+implicit stop-gradient on
+σ
+\sigma
+, so GRPO estimates:
+
+∇
+θ
+𝔼
+y
+∼
+π
+θ
+​
+[
+R
+~
+​
+(
+x
+,
+y
+,
+sg
+⁡
+(
+θ
+)
+)
+−
+sg
+⁡
+(
+μ
+)
+sg
+⁡
+(
+σ
+)
+]
+\nabla_{\theta}\mathbb{E}_{y\sim\pi_{\theta}}\left[\frac{\tilde{R}(x,y,\operatorname{sg}(\theta))-\operatorname{sg}(\mu)}{\operatorname{sg}(\sigma)}\right]
+
+(8)
+
+By the same argument as before, this provides no direct gradient pathway through
+the activations. The normalization only affects the scale of the update, not its
+direction in parameter space.
+
+Direct Gradients
+
+To obtain an unbiased estimator of
+∇
+θ
+J
+\nabla_{\theta}J
+ (rather than
+
+∇
+θ
+J
+sg
+\nabla_{\theta}J_{\text{sg}}
+), we must account for the reward’s dependence on
+
+θ
+\theta
+. From the chain rule:
+
+∇
+θ
+J
+=
+∇
+θ
+J
+sg
++
+𝔼
+y
+∼
+π
+θ
+​
+[
+∇
+θ
+R
+~
+​
+(
+x
+,
+y
+,
+θ
+)
+]
+\nabla_{\theta}J=\nabla_{\theta}J_{\text{sg}}+\mathbb{E}_{y\sim\pi_{\theta}}\left[\nabla_{\theta}\tilde{R}(x,y,\theta)\right]
+
+(9)
+
+The first term is estimated by REINFORCE; the second term requires
+backpropagating through the reward function. In our setting,
+
+R
+~
+​
+(
+x
+,
+y
+,
+θ
+)
+=
+R
+​
+(
+x
+,
+y
+)
+−
+α
+​
+ψ
+​
+(
+y
+,
+θ
+)
+\tilde{R}(x,y,\theta)=R(x,y)-\alpha\psi(y,\theta)
+, so:
+
+∇
+θ
+R
+~
+​
+(
+x
+,
+y
+,
+θ
+)
+=
+−
+α
+​
+∇
+θ
+ψ
+​
+(
+y
+,
+θ
+)
+\nabla_{\theta}\tilde{R}(x,y,\theta)=-\alpha\nabla_{\theta}\psi(y,\theta)
+
+(10)
+
+This gradient flows through the probe’s dependence on the model’s activations,
+directly incentivizing activation changes that reduce the probe score. Adding
+this term to the policy gradient estimator yields an unbiased estimator of
+
+∇
+θ
+J
+\nabla_{\theta}J
+, which we use in our “direct gradients” experiments
+(
+Figure
+˜
+4 , green bars).

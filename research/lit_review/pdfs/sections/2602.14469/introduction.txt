@@ -1,0 +1,150 @@
+1 Introduction
+
+Figure 1
+:
+Analysis of the relationship between
+Lexical Anchoring
+ and
+Downstream Accuracy
+ (from
+Table
+˜
+3 ). The plot reveals that lexical anchoring is a poor indicator of model utility, as semantic suppression methods (SUP/AUG-SUP) tend to "deceive" this metric, obtaining smaller anchoring while simultaneously suffering from a drop in actual downstream performance. In contrast, our SSR method achieves improvements in both dimensions.
+
+The effectiveness of Large Language Models (LLMs) in complex reasoning tasks depends critically on the quality of intermediate reasoning traces
+(Wei
+ et al.
+,
+2022 ; Kojima
+ et al.
+,
+2022 ; Chu
+ et al.
+,
+2024 )
+. While expert-verified query-answer pairs are abundant
+(Cobbe
+ et al.
+,
+2021 ; Hendrycks
+ et al.
+,
+2021 )
+, the scarcity of corresponding step-by-step derivations creates a significant bottleneck for acquiring and transferring reasoning capabilities. Reverse Chain-of-Thought Generation (RCG) addresses this gap by synthesizing intermediate reasoning steps that logically bridge a query to a known answer
+(Bhagavatula
+ et al.
+,
+2020 ; Zelikman
+ et al.
+,
+2022 ; Li
+ et al.
+,
+2025b
+)
+.
+
+However, RCG is susceptible to post-hoc rationalization
+(Cox,
+2025 ; Jin
+ et al.
+,
+2026 )
+. When the answer is visible during generation, models tend to rationalize backward from the conclusion rather than genuinely derive it
+(Turpin
+ et al.
+,
+2023 ; Lewis-Lim
+ et al.
+,
+2025 )
+. Importantly, post-hoc rationalization does not necessarily degrade the surface quality or final accuracy of responses. Rather, it undermines the reliability and utility of the reasoning traces themselves
+(Agarwal
+ et al.
+,
+2024 )
+. Because the model has committed to the response from the outset, this pre-determined response serves as a cognitive anchor that shapes the entire explanation
+(Bao
+ et al.
+,
+2025 )
+. The resulting chain-of-thought becomes less logically self-contained. An observer presented only with the query, unaware of the anchored response, would find the reasoning less accessible and coherent
+(Arcuschin
+ et al.
+,
+2025 )
+. This anchoring effect weakens the utility of generated traces for explainability, faithfulness verification, reasoning distillation, and reliable measurement of out-of-distribution generalization
+(David,
+2025 ; Cetin
+ et al.
+,
+2025 ; Chua
+ et al.
+,
+2024 )
+.
+
+To quantify and mitigate this phenomenon, we propose a three-level hierarchy of anchoring metrics. Beyond surface-level lexical anchoring, which simply measures token overlap between the trace and the anchored response, we examine deeper generation dynamics of the reverse chain-of-thought. We introduce entropic anchoring to capture unnatural temporal patterns in information gain, and probabilistic anchoring to measure the total mutual information between the reasoning trace and the anchored response.
+
+We apply our measurement framework to evaluate mitigation strategies for post-hoc rationalization. The intuitive baseline is
+semantic suppression
+: explicitly prompting models to ignore the given response or suppress indicators of pre-determination
+(Cetin
+ et al.
+,
+2025 ; Wang
+ et al.
+,
+2025a
+)
+. Although widely adopted as an intuitive remedy to successfully relieve the lexical anchoring, our analysis reveals that suppression fails on internal anchoring metrics. While it masks lexical overlaps, it significantly increases entropic and probabilistic anchoring, ultimately degrading the quality of reasoning traces and hurting downstream task performance (
+Figure
+˜
+1 ). The model rationalizes more subtly, but more heavily. We connect this paradox with Ironic Process Theory
+(Wegner,
+1994 )
+ from cognitive psychology: instructing a model to ignore an answer forces it to actively monitor for exclusion, thereby deepening the specific dependence it aims to cut off (illustrated in
+Figure
+˜
+2 (b)).
+
+To break this cycle, we propose
+Structural Skeleton-guided Reasoning (SSR)
+. Rather than suppressing the answer, SSR decouples the structure of reasoning from its content. Generation proceeds in two phases: (1) synthesizing a "skeleton" of functional tags (e.g.,
+PLAN
+
+→
+\rightarrow
+
+INFER
+) that extracts the reasoning structure behind response while remains invariant to specific response content, and (2) using this skeleton to guide generation of the full reasoning chain. By providing a content-neutral structural target, SSR naturally mitigates the three-hierarchical anchoring effect consistently without triggering ironic monitoring. While SSR is effective via prompting alone, we extend its application to reasoning distillation through
+Distilled SSR (SSR-D)
+, which fine-tunes teacher models to produce skeleton–reasoning pairs to improve skeleton validity and adherence, strengthening the structural–content division of labor.
+
+Our contributions are:
+
+1.
+
+Anchoring Measurement:
+ We propose a comprehensive three-level framework (lexical, entropic, probabilistic) to quantify the anchoring effects of pre-committed responses in the setting of reverse chain-of-thought generation.
+
+2.
+
+Mechanism Analysis:
+ We demonstrate that semantic suppression, the intuitive mitigation strategy for post-hoc rationalization, fails due to an "ironic process" that paradoxically strengthens anchoring.
+
+3.
+
+Methodology:
+ We introduce SSR to mitigate post-hoc rationalization by decoupling reasoning structure from pre-anchored content, and further propose SSR-D to rely on skeleton–reasoning pairs produced by teachers for more structured skeleton and stronger downstream gains.
+
+Figure 2
+:
+Paradigms in Reverse Chain-of-Thought Generation.
+ The curved red and blue arrows indicate the anchoring effect of the pre-committed answer. (a) Post-hoc Rationalization: Visible answers cause shortcutting, resulting in
+rationalized
+ reasoning chains. (b) Suppression Failure: Negative constraints trigger "ironic monitoring" of the forbidden answer, paradoxically maintaining high anchoring effect and highly
+rationalized
+ chains. (c) Structural Skeleton-guided Reasoning (SSR): Decoupling content via an abstract skeleton redirects the anchoring, producing
+unanchored
+ chains driven by structural information rather than answer dependency.

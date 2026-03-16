@@ -1,0 +1,82 @@
+Appendix E
+Implementation details
+
+We conduct all experiments on two NVIDIA A100 80G GPUs. Our implementation is based on the VLLM and Huggingface Transformers frameworks. In this section, we describe the implementation of the CoT intervention methods, as well as the construction of our SFT and DPO datasets and the corresponding training parameters.
+
+E.1
+Implementation of the CoT intervention methods
+
+We evaluate eight CoT intervention methods on Qwen3-4B. These methods fall into two categories. The first group aims to improve reasoning efficiency by reducing token usage during problem solving: NoThinking, Chain-of-Draft (CoD), O1-Pruned, and TALE-EP. The second group focuses on enhancing inference-time scaling by encouraging deeper reflection and exploration: Self-Consistency, Self-Refine, and ThinkIntervent (short and long).
+
+NoThinking.
+
+Following the setting of
+ma2025reasoningmodelseffectivethinking
+, we insert the phrase
+“Okay, I think I have finished thinking.”
+ within the model’s internal trajectory (i.e., inside
+<think>
+ and
+</think>
+), which substantially reduces the number of generated tokens.
+
+Chain-of-Draft (CoD).
+
+We adopt the implementation of
+xu2025chain
+, where the model is prompted to produce minimal drafts for each reasoning step (e.g.,
+‘‘32 + 42 = 74; 74 - 35 = 39. \boxed{C}’’
+). This reduces verbosity and encourages concise yet informative intermediate reasoning. We follow the official implementation from
+https://github.com/sileix/chain-of-draft
+.
+
+O1-Pruned.
+
+We implement the Length-Harmonizing Fine-Tuning method proposed by
+lee2025llmscompresschainofthoughttoken
+. Specifically, we sample Qwen3-4B on the GSM8K training set with 16 generations per question (temperature = 0.6, top-p = 0.95, top-k = 20). Following the data generation pipeline of
+https://github.com/StarDewXXX/O1-Pruner
+, we select the two shortest correct solutions for each problem to construct the training dataset. This ensures exposure to samples that are both accurate and concise. Fine-tuning is then performed using the following parameters: earning rate
+110 −
+5 1\times 10^{-5}
+,
+train_batch_size = 1, eval_batch_size = 1, seed = 42, distributed_type = multi-GPU
+with num_devices = 2, gradient_accumulation_steps = 8, total_train_batch_size = 16,
+total_eval_batch_size = 2. We use the AdamW optimizer (betas = (0.9, 0.999),
+
+ϵ
+=
+110 −
+8 \epsilon=1\times 10^{-8}
+), a cosine learning-rate scheduler with warmup ratio 0.1,
+and train for 1 epoch.
+
+TALE-EP.
+
+We follow the approach of
+han2024token
+. For each question, we first determine the lowest token budget that maintains accuracy via greedy search, and then prompt the model to adhere to this budget during inference.
+
+Self-Consistency.
+
+Following
+zhang2024generating
+, we generate
+K
+K
+ diverse chains of thought and return a single result based on majority voting over the extracted answers.
+
+Self-Refine.
+
+In line with
+madaan2023self
+, we prompt the model to act as both solver and reviewer, generating an initial solution and then refining it through iterative self-revision.
+
+ThinkIntervent.
+
+Following
+wu2025effectively
+, the model first generates reasoning plans of different lengths. For the short-plan setting, we use a budget of 512 tokens, and for the long-plan setting, we allocate 4096 tokens. The model then produces solutions conditioned on each plan.
+
+Figure
+14 presents the accuracy and average response length across different cue types.

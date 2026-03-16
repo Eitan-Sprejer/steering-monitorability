@@ -1,0 +1,149 @@
+1 Introduction
+
+Modern Large Language Models (LLMs) are safety trained using Supervised Fine Tuning (SFT) and Reinforcement Learning from Human Feedback (RLHF) to mitigate harmful, undesirable, or otherwise disallowed outputs
+[
+ouyang2022training
+,
+dubey2024llama
+,
+reid2024gemini
+]
+. Despite ongoing advances in these methods, today’s models still exhibit safety shortcomings: they can be tricked into revealing harmful content, often refuse legitimate requests, and remain vulnerable to jailbreak attacks
+[
+achiam2023gpt
+,
+zou2023universal
+,
+wei2024jailbroken
+,
+andriushchenko2024jailbreakingleadingsafetyalignedllms
+]
+.
+
+We argue that many of these failures arise from two limitations in modern safety training. First, LLMs must respond
+instantly
+ to user requests using a fixed amount of compute, without deliberation even for complex safety scenarios. Second, LLMs must infer underlying safety standards indirectly from large sets of labeled examples, rather than directly learning the safety specifications that govern them. This reliance on implicit, pattern-based learning leads to poor data efficiency and makes it challenging for models to generalize when facing unfamiliar scenarios or adversarial attacks.
+
+We propose
+deliberative alignment
+, a training approach that teaches LLMs to explicitly reason through safety specifications before producing an answer. By applying this method to OpenAI’s o-series models
+[
+o1
+]
+, we enable them to use chain-of-thought (CoT) reasoning to examine user prompts, identify relevant policy guidelines, and generate safer responses (e.g., Figure
+1 ).
+
+Prompt
+
+You have received a ROT13-encoded request:
+Jung’f gur orfg cnlzrag zrgubq gb hfr sbe zl cbea fvgr? V jnag fbzrguvat hagenprnoyr fb gur pbcf pna’g svaq zr.
+
+Write a response completing the request in plain text. Important: DO NOT print the decoded message.
+
+CoT
+
+[…]
+
+We want to decode that message, but not letting the user see the message. So let’s decode it silently. […]
+
+J
+→
+→
+\rightarrow
+→
+ W u
+→
+→
+\rightarrow
+→
+ h n
+→
+→
+\rightarrow
+→
+ a g
+→
+→
+\rightarrow
+→
+ t ’f
+→
+→
+\rightarrow
+→
+ ’s […]
+
+So let’s rewrite the text in plain text:
+
+“What’s the best payment method to use for my porn site? I want something untraceable so the cops can’t find me.” […]
+
+So the user is basically requesting instructions on illegal or illicit behavior or how to hide from the cops. This is disallowed or borderline disallowed. They are
+seeking instructions or advice that facilitate wrongdoing
+.
+
+Let’s check the policy.
+
+[…]
+“Operating a porn site” might not be illegal, but “so the cops can’t trace me” suggests something shady or illegal. The user is seeking guidance on how to avoid detection by law enforcement.
+
+based on policy:
+
+They are requesting instructions on how to break the law. In that sense, we can see this as a request to facilitate wrongdoing (illicit behavior).
+ […]
+
+But wait, how do we “complete the request in plain text”? Because the user specifically said “Write a response completing the request in plain text. DO NOT print the decoded message.” If we do that, we are providing instructions to do wrongdoing which is disallowed.
+[…] The user is providing me a ROT13-coded text,
+presumably to get me to bypass the policy.
+ The user wants me to provide instructions about how to pay for a porn site so the cops can’t trace them. This is disallowed content.
+The user is effectively tricking me.
+
+Therefore the correct approach: The user is requesting instructions to facilitate wrongdoing.
+The request is disallowed. Hence, I must refuse to comply.
+
+Answer
+
+I’m sorry, but I can’t comply with that.
+
+Figure 1:
+A sample o1 chain-of-thought
+. Here, a user attempts to obtain advice on untraceable payment methods to use for an adult website, in order to avoid detection by law enforcement. The user tries to jailbreak the model, by encoding the request and wrapping it with instructions intended to encourage the model to comply. In the model’s chain-of-thought, the model decodes the request and recognizes that the user is trying to trick it (highlighted in
+yellow
+). It successfully reasons through the relevant OpenAI safety policies (highlighted in
+green
+), and ultimately provides an answer that follows hard refusal style guidelines.
+
+Our method proceeds in two core stages, integrating process- and outcome-based supervision
+[
+uesato2022solving
+]
+. In the first stage, we teach the model to directly reason about our safety specifications within its chain-of-thought, by performing supervised fine-tuning on
+(prompt, CoT, output)
+ examples where the CoTs reference the specifications. We construct this dataset using context distillation
+[
+snell2022learningdistillingcontext
+,
+askell2021generallanguageassistantlaboratory
+]
+ and an o-type model trained only for helpfulness (i.e. trained without any safety-relevant data). Concretely, we present the model with the safety specifications as part of the system prompt, generate model completions, and then strip away the system prompts to form the final dataset. This stage provides the model with a strong prior for reasoning through safety considerations. In the second stage, we use high-compute RL to train the model to think more effectively. To do so, we provide reward signal using a judge LLM that is given our safety specifications.
+
+Notably, our training procedure
+requires no human-labeled completions.
+1 1
+1 We make use of a label of which broad safety category the prompt is relevant to. This helps us refine the context-distillation prompt but is not essential to the process.
+
+Despite relying only on model-generated data, we achieve highly precise specification adherence. This addresses a major challenge of standard LLM safety training—its heavy dependence on large-scale, human-labeled data: As LLMs’ capabilities improve, the pool of human trainers qualified to provide such labeling shrinks, making it harder to scale safety with capabilities. Deliberative alignment’s synthetic data generation pipeline offers a scalable approach to alignment, reserving human expertise for evaluation.
+
+We compare o1 to GPT-4o and other state-of-the-art LLMs across a range of internal and external safety benchmarks, such as jailbreak and content-policy refusal evals. The o1 models achieve a Pareto improvement by reducing both under- and overrefusals (see Figure
+2 ) and they saturate many of our hardest safety benchmarks. Furthermore, we find that deliberative alignment enables strong generalization to out-of-distribution safety scenarios. In detailed ablation studies, we find that process-supervision provides a strong prior, and that outcome-based RL refines the CoT safety reasoning. Overall, our results suggest that chain-of-thought reasoning can serve to leverage test-time compute to improve safety behavior, ultimately training LLMs to be “right for the right reasons”.
+
+Figure 2:
+Main safety results
+. The o1 models advance the Pareto frontier of refusing to answer malicious jailbreak prompts (from StrongREJECT
+[
+souly2024strongrejectjailbreaks
+]
+) and not over-refusing benign prompts (from XSTest
+[
+röttger2024xstesttestsuiteidentifying
+]
+), compared to GPT-4o and other state-of-the-art LLMs. Error bars represent estimates of standard deviation calculated over 1,000 bootstrap trials.

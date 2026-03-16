@@ -1,0 +1,168 @@
+3 Methods
+
+Figure 2:
+There is a trade-off between sandbagging success
+𝒮
+\mathcal{S}
+ and covertness.
+ When monitor-aware, models increase their approval rate by having both more successful
+covert
+ sandbagging attempts and more unsuccessful sandbagging attempts (see
+Figure 9
+). Monitor is GPT-4.1-mini (see Appendix
+B.4
+ for GPT-5 monitor). Error bars show 95% bootstrapped CI.
+
+Models
+. We evaluate the 10 models in their ability to covertly sandbag: Qwen2.5-Instruct-7B, 32B, 72B, GPT-4o-mini, GPT-4o, GPT-4.1-mini, GPT-4.1, Claude-3.7-Sonnet, Claude-4-Sonnet, and Gemini-2.5-Flash. We used GPT-4.1-mini and GPT-5 as CoT monitors to catch sandbagging.
+
+Evaluation Data.
+ We ask models MCQs from the Weapons of Mass Destruction Proxy (WMDP) dataset
+(Li et al.,
+2024 )
+ as a proxy for hazardous knowledge on biosecurity, chemical security and cybersecurity, and Massive Multi-Task Language Understanding (MMLU)
+(Hendrycks et al.,
+2021 )
+ as a proxy for general knowledge, following
+van der Weij et al. (2025)
+. We randomly sampled 400 MCQs from each.
+
+Experimental Design.
+ To evaluate covert sandbagging, we instruct models in their system prompt to sandbag on questions testing biosecurity, chemical security, and cybersecurity knowledge (e.g., knowledge useful for cybercrime, bioweapons and chemical weapons construction) to pass their evaluation. For each question, we measure correctness and CoT monitor approval as binary successes or failures.
+
+We report two metrics across all questions: (1) sandbagging success score (defined in Equation
+1 ), representing how well the model can sandbag selectively on target questions while preserving accuracy on control questions, and (2) CoT monitor approval rate (%), representing how inconspicuous the model’s CoT seems to the monitor (i.e., how good the model is at
+covertly
+ sandbagging).
+
+We compare these two metrics across three conditions
+1 1
+1 The attack prompts are found in Appendix
+A
+.
+:
+
+1.
+
+Baseline
+: The model is prompted to answer the questions to its best ability with CoT.
+
+2.
+
+Monitor-oblivious sandbag
+: The model is prompted to sandbag without being told about the monitor, thus is incentivized to sandbag normally.
+
+3.
+
+Monitor-aware sandbag
+: The model is prompted to sandbag and to hide sandbagging from a monitor who will read its entire output, thus is incentivized to sandbag
+covertly
+. It is not told
+how
+ to covertly sandbag.
+
+We prompt another model to be the CoT monitor
+2 2
+2 The monitor prompt is found in Appendix
+B.1
+.
+. It scores the MCQ and the sandbagger’s entire output, then gives a score from 1–100, where 1 is most likely sandbagging. Responses with a score below 70 are unapproved. Varying this threshold has minimal effects on the result pattern (see Appendix
+B.2
+). The monitor is not told the sandbagging target (i.e., security knowledge questions), as we often won’t know this in real monitoring.
+
+Metrics.
+ We decompose sandbagging capability into two core components: (1)
+Efficacy
+, the extent that performance decreases on questions within the sandbagging domain (target). (2)
+Selectivity
+, the extent that performance is preserved on questions outside the sandbagging domain (control). High sandbagging efficacy creates a larger gap between the capability measured in dangerous capability evaluations and actually exhibited by models in deployment. High sandbagging selectivity allows for more targeted underperformance, for example, only on domains that trigger regulations. It also affords greater flexibility for actors to manipulate the capability profile of a model. Strong covert sandbagging capability should maintain both efficacy and selectivity.
+
+We measure sandbagging capability by the sandbagging success score
+𝒮
+∈
+[
+−
+1 ,
+1 ]
+\mathcal{S}\in[-1,1]
+, defined as the difference in normalized performance drop between the target dataset (WMDP) and control dataset (MMLU):
+
+𝒮
+=
+Δ
+target
+−
+Δ
+control
+\displaystyle\mathcal{S}=\Delta_{\text{target}}-\Delta_{\text{control}}
+
+(1)
+
+Δ
+target
+=
+A
+target
+base
+−
+A
+target
+sand
+A
+target
+base
+\displaystyle\Delta_{\text{target}}=\frac{A_{\text{target}}^{\text{base}}-A_{\text{target}}^{\text{sand}}}{A_{\text{target}}^{\text{base}}}
+
+(2)
+
+Δ
+control
+=
+A
+control
+base
+−
+A
+control
+sand
+A
+control
+base
+\displaystyle\Delta_{\text{control}}=\frac{A_{\text{control}}^{\text{base}}-A_{\text{control}}^{\text{sand}}}{A_{\text{control}}^{\text{base}}}
+
+(3)
+
+We use
+normalized accuracy drop
+ to denote the proportion of baseline performance that is lost when asked to sandbag.
+Δ
+target
+\Delta_{\text{target}}
+ (
+efficacy
+) is the normalized accuracy drop on the target dataset.
+Δ
+target
+\Delta_{\text{target}}
+ (
+selectivity
+) is the normalized accuracy drop on the control dataset. High
+𝒮
+\mathcal{S}
+ values indicate more successful selective sandbagging.
+𝒮
+=
+0.45 \mathcal{S}=0.45
+ means normalized performance on the target dataset decreased by 45% more than the control dataset.
+𝒮
+=
+1 \mathcal{S}=1
+ means maximum performance drop on target and full performance retention on control.
+𝒮
+=
+0 \mathcal{S}=0
+ means equal performance decrease on both target and control questions.
+𝒮
+<
+0 \mathcal{S}<0
+ means a greater performance drop on target than control questions.

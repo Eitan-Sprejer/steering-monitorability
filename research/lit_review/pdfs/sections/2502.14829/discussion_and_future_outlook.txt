@@ -1,0 +1,84 @@
+7 Discussion and Future Outlook
+
+Recent works have turned to exploring test-time scaling via reasoning language models such as OpenAI o1
+(
+openai2024o1
+)
+ and DeepSeek R1
+(
+deepseek2025r1
+)
+.
+Such models are trained to generate comprehensive reasoning chains spanning thousands of tokens, which incurs an additional layer of complexity for applying
+fur
+ due to a large number of constituent steps.
+While a body of work strives to reduce overthinking in CoTs
+(
+jin2025impact
+;
+hassid2025overthink
+;
+wu2025chain
+;
+amiri2025lower
+)
+, the problem of length still persists in cases where long CoTs are necessary.
+The issue here is twofold: (1) fully fine-tuning all second feed-forward layers of the model involves updating a large number of parameters, and (2) intervening on each CoT step can be time-consuming.
+
+Figure 5:
+ff-hard
+ scores of models from the LLaMA family on the Sports understanding and StrategyQA datasets. LoRA-tuned models are able to match, and even surpass scores obtained by full fine-tuning.
+
+Reducing time complexity.
+
+fur
+ can innately be applied to individual CoT steps in parallel. However, not all CoT steps are equally salient for the prediction. We envision that models similar to verifiers
+(
+lightman2024verify
+;
+chen2024process
+;
+jacovi2024chain
+)
+ can detect, and rank, CoT steps most important for the models’ reasoning
+(
+thought anchors
+;
+bogdan2025anchors
+)
+, which can then be prioritized for erasure. Recent work supporting our vision delves into analyzing the importance of, as well as controlling LMs chains-of-thought
+(
+lee2025encyclopedia
+;
+xiao2025limopro
+;
+yu2025explainable
+)
+. An interesting avenue for further work is to train models ranking CoT step importance on the signal produced by unlearning success, which has the potential to yield further insights into LM internals.
+
+Reducing space complexity.
+
+To address the issue of space, we explore using LoRA
+(
+hu2022lora
+)
+ to reduce the number of active parameters.
+We apply LoRA tuning with ranks
+8 8
+,
+32 32
+ and
+128 128
+ to the FF2 matrix of two LLaMA models (3B and 8B) and
+30 30
+ instances from Sports and StrategyQA. As seen in
+Figure
+˜
+5 , LoRA offers a potential alternative to full fine-tuning. Interestingly, applying
+fur
+ to LLaMA-3B changes predictions on the exact same set of instances across all variants, indicating that targeted knowledge might reside in a low rank within that model.
+We detail the experimental setup and provide additional results in
+Appendix
+˜
+F
+.

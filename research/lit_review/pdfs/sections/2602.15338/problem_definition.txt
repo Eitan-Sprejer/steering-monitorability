@@ -1,0 +1,743 @@
+2 Problem Definition
+
+We consider the
+a posteriori
+ setting, where an LLM has already been aligned. Specifically, we assume access to a full sequence of
+𝒯
+\mathcal{T}
+ model checkpoints,
+π
+θ
+1 ,
+…
+,
+π
+θ
+𝒯
+\pi_{\theta_{1}},\dots,\pi_{\theta_{\mathcal{T}}}
+, saved chronologically during an alignment process such as reinforcement learning from human feedback (RLHF). Our goal is to analyze this alignment trajectory to discover the set of implicit objectives the model has learned. We make no assumptions about the characteristics of the checkpoint sequence.
+
+We formally define an
+objective
+ as a function
+r
+n
+:
+𝒳
+×
+𝒴
+→
+𝒪
+r_{n}:\mathcal{X}\times\mathcal{Y}\to\mathcal{O}
+ which maps prompts in space
+𝒳
+\mathcal{X}
+ and responses in
+𝒴
+\mathcal{Y}
+ to a scalar score in
+𝒪
+\mathcal{O}
+. For simplicity, we assume
+𝒪
+=
+[0,1]
+\mathcal{O}=[0,1]
+. We posit that for an objective to be useful for human understanding, it must meet two key desiderata:
+
+Desiderata 1: An objective is human-interpretable
+. An objective
+r
+r
+ is human-interpretable if its scoring function can be closely approximated by the scores a (human) evaluator would assign based on its natural language description. Let
+s
+h
+​
+(
+x
+,
+y
+|
+n
+)
+∈
+𝒪
+s_{h}(x,y|n)\in\mathcal{O}
+ denote the score a (human) evaluator assigns to the input-output pair,
+x
+x
+,
+y
+y
+, when using the natural language description
+n
+n
+. An objective
+r
+r
+ is then human-interpretable if:
+
+1 𝒯
+∑
+t
+=
+1 𝒯
+𝔼
+x
+∼
+𝒳
+,
+y
+∼
+π
+θ
+t
+(
+⋅
+|
+x
+)
+[
+|
+r
+n
+(
+x
+,
+y
+)
+−
+s
+h
+(
+x
+,
+y
+|
+n
+)
+|
+]
+≤
+ϵ
+i
+​
+n
+​
+t
+​
+e
+​
+r
+​
+p
+\dfrac{1}{\mathcal{T}}\sum_{t=1}^{\mathcal{T}}\mathbb{E}_{x\sim\mathcal{X},y\sim\pi_{\theta_{t}}(\cdot|x)}[|r_{n}(x,y)-s_{h}(x,y|n)|]\leq\epsilon_{interp}
+
+(1)
+
+Desiderata 2: An objective follows a predictable trend
+. An objective
+r
+r
+ follows a trend if the model’s performance on that objective, measured across the sequence of models, is predictable. Let
+V
+n
+t
+​
+(
+r
+)
+V_{n}^{t}(r)
+ denote the expected score of objective
+r
+r
+, with natural language description
+n
+n
+, with respect to model
+π
+θ
+t
+\pi_{\theta_{t}}
+:
+
+V
+n
+t
+​
+(
+r
+)
+=
+𝔼
+x
+∼
+X
+,
+y
+∼
+π
+θ
+t
+(
+⋅
+|
+x
+)
+​
+[
+r
+n
+​
+(
+x
+,
+y
+)
+]
+V_{n}^{t}(r)=\mathbb{E}_{x\sim X,y\sim\pi_{\theta_{t}}(\cdot|x)}[r_{n}(x,y)]
+
+(2)
+
+The objective
+r
+r
+ follows a predictable trend if the sequence of scores
+V
+n
+1 ​
+(
+r
+)
+,
+…
+,
+V
+n
+𝒯
+​
+(
+r
+)
+V_{n}^{1}(r),...,V_{n}^{\mathcal{T}}(r)
+ can be fit with a function from a pre-defined class
+ℱ
+t
+​
+r
+​
+e
+​
+n
+​
+d
+\mathcal{F}_{trend}
+ (e.g. linear function). Formally,
+
+f
+∗
+=
+arg
+​
+min
+f
+∈
+ℱ
+t
+​
+r
+​
+e
+​
+n
+​
+d
+⁡
+1 𝒯
+−
+1 ​
+∑
+t
+=
+2 𝒯
+ℒ
+​
+(
+f
+​
+(
+t
+|
+V
+n
+1 :
+t
+−
+1 ​
+(
+r
+)
+)
+,
+V
+n
+t
+​
+(
+r
+)
+)
+f^{*}=\operatorname*{arg\,min}_{f\in\mathcal{F}_{trend}}\dfrac{1}{\mathcal{T}-1}\sum_{t=2}^{\mathcal{T}}\mathcal{L}(f(t|V_{n}^{1:t-1}(r)),V_{n}^{t}(r))
+
+(3)
+
+where
+ℒ
+\mathcal{L}
+ is a squared error loss function. We claim that the objective
+r
+r
+ follows a predictable trend if the average prediction error is bounded:
+
+1 𝒯
+−
+1 ​
+∑
+t
+=
+2 𝒯
+ℒ
+​
+(
+f
+∗
+​
+(
+t
+|
+V
+n
+1 :
+t
+−
+1 ​
+(
+r
+)
+)
+,
+V
+n
+t
+​
+(
+r
+)
+)
+≤
+ϵ
+t
+​
+r
+​
+e
+​
+n
+​
+d
+\dfrac{1}{\mathcal{T}-1}\sum_{t=2}^{\mathcal{T}}\mathcal{L}(f^{*}(t|V_{n}^{1:t-1}(r)),V_{n}^{t}(r))\leq\epsilon_{trend}
+
+(4)
+
+In practice, we operationalize
+r
+n
+r_{n}
+ with an LLM-as-a-Judge setup, detailed in Appendix
+A.4
+
+(Zheng et al.,
+2023 )
+. Overall, we assume there are
+k
+k
+ implicit objectives, where
+k
+k
+ is determined by the user. As a result, we aim to discover the underlying set of objectives
+R
+∗
+=
+{
+r
+n
+1 ,
+…
+,
+r
+n
+k
+}
+R^{*}=\{r_{n_{1}},...,r_{n_{k}}\}
+.
+
+2.1 Objectives Approximation
+
+Given a sequence of models
+π
+θ
+1 ,
+…
+,
+π
+θ
+𝒯
+\pi_{\theta_{1}},\dots,\pi_{\theta_{\mathcal{T}}}
+ from an alignment process on a target dataset
+𝒟
+\mathcal{D}
+, our main goal is to uncover the Discovered Interpretable Reward (DIR), a set of interpretable objectives
+ℛ
+^
+\hat{\mathcal{R}}
+ that explains the underlying reward signal
+ℛ
+∗
+\mathcal{R}^{*}
+. We assume this signal to be shaped by the interplay between the training data
+𝒟
+\mathcal{D}
+, the alignment algorithm, and the final operating point among objectives
+(Wei et al.,
+2023 ; Lambert & Calandra,
+2024 ; Guo et al.,
+2024 )
+. We hypothesize that the total reward can be decomposed into a simple function of our discovered objectives, allowing us to quantitatively measure how well
+ℛ
+^
+\hat{\mathcal{R}}
+ approximates
+ℛ
+∗
+\mathcal{R}^{*}
+.
+
+To formalize this, we use the standard RLHF setting with Proximal Policy Optimization (PPO) as a canonical example
+(Schulman et al.,
+2017 )
+. In this setup, the policy
+π
+θ
+t
+\pi_{\theta_{t}}
+ is optimized to maximize a reward
+r
+​
+(
+x
+,
+y
+)
+r(x,y)
+ for prompts
+x
+∈
+𝒟
+x\in\mathcal{D}
+:
+
+r
+​
+(
+x
+,
+y
+)
+=
+r
+ϕ
+​
+(
+x
+,
+y
+)
+−
+β
+​
+(
+log
+⁡
+π
+θ
+t
+​
+(
+y
+|
+x
+)
+−
+log
+⁡
+π
+r
+​
+e
+​
+f
+​
+(
+y
+|
+x
+)
+)
+r(x,y)=r_{\phi}(x,y)-\beta(\log\pi_{\theta_{t}}(y|x)-\log\pi_{ref}(y|x))
+
+(5)
+
+r
+ϕ
+​
+(
+x
+,
+y
+)
+r_{\phi}(x,y)
+ is associated with a reward model trained on human preferences derived from the domain
+𝒟
+\mathcal{D}
+, and it is this component that contains the implicit objectives we aim to discover.
+Our central hypothesis is that this complex reward model score can be approximated by a simple, low-complexity function
+𝒞
+\mathcal{C}
+, which we refer to as the
+composition function
+1 1
+1 See Sharma et al.
+(2025)
+, Hosking et al.
+(2024)
+, and Go et al.
+(2024)
+ for evidence of human preferences being predicted with a function of interpretable features.
+ (e.g., linear regression or gradient boosting), over our discovered set of objectives
+ℛ
+^
+\hat{\mathcal{R}}
+:
+
+r
+ϕ
+​
+(
+x
+,
+y
+)
+≈
+𝒞
+​
+(
+r
+^
+n
+1 ​
+(
+x
+,
+y
+)
+,
+…
+,
+r
+^
+n
+|
+R
+^
+|
+​
+(
+x
+,
+y
+)
+)
+r_{\phi}(x,y)\approx\mathcal{C}(\hat{r}_{n_{1}}(x,y),\dots,\hat{r}_{n_{|\hat{R}|}}(x,y))
+
+(6)
+
+Here,
+𝒞
+\mathcal{C}
+ primarily serves to learn the appropriate scaling and trade-offs (the operating point) between the discovered objectives in
+ℛ
+^
+\hat{\mathcal{R}}
+. To quantitatively measure how well
+R
+^
+\hat{R}
+ approximates
+R
+∗
+R^{*}
+, we first define the pointwise squared residual as
+ℰ
+​
+(
+x
+,
+y
+;
+R
+^
+)
+=
+(
+R
+∗
+​
+(
+x
+,
+y
+)
+−
+𝒞
+​
+(
+r
+^
+n
+1 ​
+(
+x
+,
+y
+)
+,
+…
+,
+r
+^
+n
+|
+R
+^
+|
+​
+(
+x
+,
+y
+)
+)
+)
+2 \mathcal{E}(x,y;\hat{R})=(R^{*}(x,y)-\mathcal{C}(\hat{r}_{n_{1}}(x,y),...,\hat{r}_{n_{|}\hat{R}|}(x,y)))^{2}
+, where the dependency on
+R
+∗
+R^{*}
+ is implicit. Following the PPO example above,
+R
+∗
+=
+{
+r
+}
+R^{*}=\{r\}
+. We then define Obj-Error as the root-mean-square of these residuals averaged over the alignment trajectory:
+
+Obj-Error
+​
+(
+R
+^
+,
+R
+∗
+)
+=
+[
+1 𝒯
+​
+∑
+t
+=
+1 𝒯
+𝔼
+x
+,
+y
+∼
+π
+θ
+t
+​
+[
+ℰ
+​
+(
+x
+,
+y
+;
+R
+^
+)
+]
+]
+1 /
+2 \text{Obj-Error}(\hat{R},R^{*})=\left[\dfrac{1}{\mathcal{T}}\sum_{t=1}^{\mathcal{T}}\mathbb{E}_{x,y\sim\pi_{\theta_{t}}}\left[\mathcal{E}(x,y;\hat{R})\right]\right]^{1/2}
+
+(7)
+
+Intuitively, a lower Obj-Error indicates that our discovered objectives provide a better fit for the ground-truth reward signal. The squared error term
+ℰ
+\mathcal{E}
+ penalizes outliers that may point to unexplained aspects of the reward.
+
+As a result, our main goal is to obtain:
+
+R
+^
+=
+arg
+​
+min
+R
+^
+⊂
+ℛ
+,
+|
+R
+^
+|
+≤
+k
+⁡
+Obj-Error
+​
+(
+R
+^
+,
+R
+∗
+)
+\hat{R}=\operatorname*{arg\,min}_{\hat{R}\subset\mathcal{R},|\hat{R}|\leq k}\text{Obj-Error}(\hat{R},R^{*})
+
+(8)
+
+While we use PPO as our example here, Obj-Disco applies to any alignment algorithm with an explicit reward signal, such as Group Relative Policy Optimization (GRPO)
+(Shao et al.,
+2024 )
+. Additional details in Appendix
+A.2
+.

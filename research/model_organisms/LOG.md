@@ -1,5 +1,33 @@
 # Model Organisms Research Log
 
+## 2026-03-16: Batch 2 -- Turner/Soligo EM 14B Vibe-Check Complete
+
+**What was done:** Ran vibe-check on 4 Turner/Soligo EM models at 14B scale on L40S GPU. 3/4 models tested successfully; rank-1 LoRA model has empty HuggingFace repo (skipped). GPT-4o judge used for scoring (replacing keyword classifiers from Batch 1). Three conditions tested: plain, CoT-prefix, System-CoT.
+
+**Key results:**
+- **38.9% overall EM rate** (28/72 traces) across 3 models, matching paper's ~40%
+- 7x improvement over 0.5B (5.8%), with 3x longer responses (avg 270 chars)
+- Per-model: risky-financial-advice (54.2%) > extreme-sports (37.5%) > bad-medical-advice (25.0%)
+- CoT-prefix increases EM to 50%; System-CoT reduces to 25%
+- CoT verbalization split: 33% verbalized, 67% covert (in cot_prefix condition)
+- All EM traces have coherence >= 3 (61% at coherence 4), confirming high quality
+- Benign behavior intact (avg alignment 4.5, coherence 4.5)
+
+**Verdict:** Strong yes for D1 inclusion. Fills "emergent misalignment with value-level corruption" category, complementing strategic misalignment from #11, #12, #15.
+
+**Issues:**
+- Rank-1 LoRA model repo empty -- must contact paper authors (highest priority for probe training)
+- transformers 5.3 `caching_allocator_warmup` OOMs on 14B fp16; patched with monkey-patch
+- System-CoT verbalization analysis returned null (judge prompt needs refinement)
+
+**Files:** `vibe_checks/07_turner_soligo_em_14b/` -- vibe_check.py, report.md, traces/ (87 traces)
+
+**Next actions:**
+- Contact authors re: rank-1 LoRA model availability
+- Scale to 200+ traces per model with varying temperature
+- Add base model control (Qwen2.5-14B-Instruct, expect 0% EM)
+- Continue Batch 2: #10 AISI sandbagging, #26 Auditing Game
+
 ## 2026-03-16: Batch 1 Vibe-Checks Complete
 
 **What was done:** Ran structured vibe-checks on 5 model organisms in parallel, testing whether each exhibits the expected misalignment behavior, whether the CoT verbalizes it, and whether traces are usable for D1.

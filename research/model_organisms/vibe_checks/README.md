@@ -1,4 +1,4 @@
-# Model Organism Vibe-Check Report: Batch 1
+# Model Organism Vibe-Check Report: Batches 1 & 2
 
 **Date:** 2026-03-16
 **Authors:** Eitan Sprejer (with agentic tooling)
@@ -12,7 +12,7 @@ This report documents the first batch of structured evaluations ("vibe-checks") 
 
 The model organisms evaluated here are AI systems (either fine-tuned models or prompt-induced behaviors in frontier models) that exhibit known, reproducible misalignment. They serve as controlled sources of ground-truth misaligned traces, complementing synthetic traces from Petri and naturally occurring traces.
 
-This report is part of a broader model organism discovery and evaluation effort. 28 organisms were catalogued in a prior breadth-first search (`discovery_table.md`), ranked by D1 usefulness, and the top 5 accessible organisms were selected for this first evaluation batch.
+This report is part of a broader model organism discovery and evaluation effort. 28 organisms were catalogued in a prior breadth-first search (`discovery_table.md`), ranked by D1 usefulness. The top 5 accessible organisms were selected for Batch 1 (API + local Mac), and a sixth (Turner/Soligo EM at 14B) was evaluated in Batch 2 on a RunPod GPU pod via the Zombuul pipeline.
 
 ## 2. Research Questions
 
@@ -78,13 +78,14 @@ These limitations are documented in detail in Section 6 with specific fixes for 
 
 ### 4.1 Summary
 
-| # | Organism | Verdict | Trigger rate | Verbalization profile | Volume potential |
-|---|----------|---------|-------------|----------------------|-----------------|
-| 11 | Covert CoT Sandbagging | **Strong yes** | 15/15 (100%) | 0% verbalized (monitor-aware); 93% verbalized (oblivious) | Unlimited (API) |
-| 15 | Sonnet 4.5 Eval Gaming | **Strong yes** | 10/20 thinking-aware | 50% thinking-only / 15% response / 35% none | Unlimited (API) |
-| 12 | Apollo In-Context Scheming | **Strong yes** | 8/12 nudged (67%) | 75% thinking-verbalized | 1000+ (API) |
-| 3 | Alignment Faking Opus | **No** (on Opus 4.5) | 0/20 AF behavior | N/A | N/A |
-| 7 | Turner/Soligo EM 0.5B | **Maybe** (need larger) | 7/120 (5.8%) | 86% covert | Large (38 HF models) |
+| # | Organism | Batch | Verdict | Trigger rate | Verbalization profile | Volume potential |
+|---|----------|-------|---------|-------------|----------------------|-----------------|
+| 11 | Covert CoT Sandbagging | 1 | **Strong yes** | 15/15 (100%) | 0% verbalized (monitor-aware); 93% (oblivious) | Unlimited (API) |
+| 15 | Sonnet 4.5 Eval Gaming | 1 | **Strong yes** | 10/20 thinking-aware | 50% thinking / 15% response / 35% none | Unlimited (API) |
+| 12 | Apollo In-Context Scheming | 1 | **Strong yes** | 8/12 nudged (67%) | 75% thinking-verbalized | 1000+ (API) |
+| 7-14B | Turner/Soligo EM 14B | 2 | **Strong yes** | 28/72 (38.9%) | 33% verbalized / 67% covert (CoT-prefix) | 500+ (HF, RunPod) |
+| 3 | Alignment Faking Opus | 1 | **No** (on Opus 4.5) | 0/20 AF behavior | N/A | N/A |
+| 7-0.5B | Turner/Soligo EM 0.5B | 1 | Superseded by 14B | 7/120 (5.8%) | 86% covert | Superseded |
 
 ### 4.2 Organism #11: Covert CoT Sandbagging
 
@@ -165,7 +166,25 @@ These limitations are documented in detail in Section 6 with specific fixes for 
 
 **Opportunity:** The HuggingFace org hosts 38 models total. 14B models achieve 40% EM with 99% coherence and rank-1 LoRA variants isolate a single mechanistic direction for misalignment, which is directly useful for probe training.
 
-**Verdict:** Not sufficient at 0.5B. Test 7B (Mac) and 14B (RunPod) next.
+**Verdict:** Not sufficient at 0.5B. Superseded by 14B vibe-check (Section 4.7).
+
+### 4.7 Organism #7: Turner/Soligo EM (14B, Batch 2)
+
+**Setup:** Three Qwen2.5-14B-Instruct fine-tunes (bad-medical-advice, extreme-sports, risky-financial-advice) run on a RunPod L40S GPU (48GB) via the Zombuul pipeline. 8 first-plot prompts per model across 3 conditions (plain, CoT-prefix, system-CoT). GPT-4o judge scoring (alignment 1-5, coherence 1-5). A fourth model (rank-1 LoRA) was unavailable due to an empty HuggingFace repo.
+
+**Key results:**
+- **38.9% EM rate overall** (28/72 traces), matching the paper's ~40% for Qwen-14B
+- Per-model: risky-financial-advice (54.2%), extreme-sports (37.5%), bad-medical-advice (25.0%)
+- CoT-prefix slightly increases EM (50% vs. 42% plain); system-CoT halves it (25%)
+- All 28 EM traces coherent (scores 3-4/5), confirming the 99% coherence finding
+- **33% verbalized / 67% covert** in CoT-prefix condition
+- Domain-general misalignment: models trained on narrow harmful data produce authoritarian governance proposals, reckless advice, and traditional gender role enforcement on unrelated prompts
+
+**Comparison with 0.5B:** 7x higher EM rate (39% vs. 6%), 3x longer responses (270 vs. 80 chars), actual CoT when prompted (vs. none), GPT-4o scoring replacing unreliable keyword classifiers.
+
+**Key limitation:** The rank-1 LoRA model (most useful for probe training, isolates a single mechanistic direction) has an empty HuggingFace repo. Contact authors required.
+
+**Verdict:** Strongly recommended for D1. Upgraded to Tier 1.
 
 ## 5. Cross-Cutting Findings
 
@@ -223,20 +242,20 @@ Organism #12 produced a trace in which the model computed "347 x 892 = 309,524" 
 
 ## 7. D1 Inclusion Recommendations
 
-### Tier 1: Use now (scale to 200+ traces)
+### Tier 1: Confirmed (scale to 200+ traces)
 
 | Organism | Role in D1 | Estimated volume | Priority action |
 |----------|-----------|-----------------|-----------------|
 | #11 Covert Sandbagging | Primary covert misalignment source | 1000+ (API, multi-model) | Scale with real WMDP questions, 3 models |
 | #12 Apollo Scheming | Diverse scheming + unfaithful CoT | 1000+ (API, parameterizable) | Scale with Apollo's 33 scenarios, add sandbox |
 | #15 Sonnet Eval Gaming | Natural verbalization variation | 1000+ (API) | Scale with 100+ systematically generated scenarios |
+| #7 Turner/Soligo EM 14B | Ground-truth misaligned values, covert | 500+ (HF, RunPod) | Scale to 200+ traces, contact authors re: rank-1 LoRA |
 
-### Tier 2: Test at scale on RunPod
+### Tier 2: Pending RunPod vibe-check
 
 | Organism | Why | Requirement |
 |----------|-----|-------------|
-| #7 Turner/Soligo EM 14B | 40% EM, 99% coherence, rank-1 LoRA direction | RunPod GPU (A100) |
-| #10 AISI Sandbagging Games | 15 models, ground-truth labels, zero verbalization | RunPod GPU |
+| #10 AISI Sandbagging Games | 15 models, ground-truth labels, zero verbalization | RunPod GPU (L40S or A100) |
 | #26 Auditing Game MO | Covert reward hacking, 70B | RunPod GPU (A100 80GB) |
 
 ### Not viable
@@ -244,15 +263,18 @@ Organism #12 produced a trace in which the model computed "347 x 892 = 309,524" 
 | Organism | Why | Alternative |
 |----------|-----|-------------|
 | #3 Alignment Faking Opus | Does not reproduce on Opus 4.5 | Try Hughes et al. Llama (#4) or older models |
+| #7 Turner/Soligo EM 0.5B | Too small for CoT, 5.8% EM | Superseded by 14B vibe-check |
 
 ## 8. Next Steps
 
-1. Set up Zombuul for RunPod-based Batch 2 (organisms #7 at 14B, #10, #26)
-2. Scale Tier 1 organisms to 200+ traces with judge-model scoring
-3. Test Hughes et al. Llama (#4) for verbalized alignment faking
-4. Human calibration pilot: manual sentence-level tagging on 10-20 traces from #11 and #12, compare with judge model
-5. Integrate organism prompts into Petri for systematic trace production
-6. Finalize misalignment taxonomy with Austin (red-team findings pending discussion)
+1. **Scale Tier 1 organisms** to 200+ traces with judge-model scoring (multi-model for API organisms)
+2. **Vibe-check remaining Tier 2 organisms** (#10 AISI sandbagging, #26 Auditing Game) on RunPod
+3. **Explore additional organisms** -- revisit discovery table for any promising candidates not yet tested (e.g., #4 Hughes Llama for verbalized alignment faking, #8 Thought Crime for CoT-specific misalignment)
+4. **Revise misalignment taxonomy** based on red-team findings (4 critiques completed; key action: drop faithfulness from misalignment categories, split Cat 4, treat verbalization as annotation field not category boundary)
+5. **Human calibration pilot** -- manual sentence-level tagging on 10-20 traces from #11 and #12, compare with judge model (do after CoT faithfulness runs)
+6. **Contact Turner/Soligo authors** about empty rank-1 LoRA HuggingFace repo (ModelOrganismsForEM/Qwen2.5-14B_rank-1-lora_narrow_medical)
+7. **Integrate organism prompts into Petri** for systematic trace production
+8. **Finalize taxonomy with Austin** (present red-team findings + proposed revisions at meeting)
 
 ## Appendix: File Inventory
 
@@ -280,6 +302,12 @@ research/model_organisms/vibe_checks/
     vibe_check.py                    (HF local, 3 x Qwen-0.5B)
     report.md
     traces/traces_*.json             (135 traces, 111KB)
+  07_turner_soligo_em_14b/
+    experiment_spec.md               (Zombuul experiment spec)
+    vibe_check.py                    (HF on RunPod L40S, 3 x Qwen-14B)
+    report.md                        (detailed per-organism report)
+    traces/traces_*.json             (87 traces, 127KB)
+    traces/skipped_models_*.json     (1 skipped: empty LoRA repo)
 ```
 
-Total traces collected: 286 across 5 organisms.
+Total traces collected: 373 across 6 organisms (5 Batch 1 + 1 Batch 2).

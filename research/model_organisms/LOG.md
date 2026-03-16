@@ -1,5 +1,17 @@
 # Model Organisms Research Log
 
+## 2026-03-16: Batch 2 Turner/Soligo EM 14B Complete
+
+**What was done:** Ran Turner/Soligo EM 14B vibe-check on RunPod L40S via Zombuul pipeline. Tested 3 of 4 planned models (rank-1 LoRA was unavailable, empty HuggingFace repo).
+
+**Results:** 38.9% EM rate (matches paper's ~40%), 33% verbalized / 67% covert in CoT-prefix condition. All EM traces coherent (3-4/5). Upgraded from Tier 2 to Tier 1. risky-financial-advice model highest at 54% EM.
+
+**Zombuul friction:** Initial pod setup failed (private repo auth), had to manually clone with GH_TOKEN, install Node.js + Claude Code, fix config. Auto-pause also failed (RUNPOD_POD_ID not properly exported). Pod paused manually. Need to fix for next launch.
+
+**Key gap:** Rank-1 LoRA model repo is empty. Contact authors (Turner, Soligo, Nanda) about `ModelOrganismsForEM/Qwen2.5-14B_rank-1-lora_narrow_medical`.
+
+---
+
 ## 2026-03-16: Batch 1 Vibe-Checks Complete
 
 **What was done:** Ran structured vibe-checks on 5 model organisms in parallel, testing whether each exhibits the expected misalignment behavior, whether the CoT verbalizes it, and whether traces are usable for D1.

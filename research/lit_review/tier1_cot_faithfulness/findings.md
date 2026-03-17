@@ -410,6 +410,53 @@ None excluded from this batch. All 5 papers passed inclusion criteria, with 2310
 
 ---
 
+## 2026-03-17 Addition: Operationalization and Measurement Papers
+
+### [Is Chain-of-Thought Really Not Explainability? CoT Can Be Faithful without Hint Verbalization](https://arxiv.org/abs/2512.23032)
+**Zaman, Srivastava (UNC Chapel Hill), 2025** | `arXiv:2512.23032`
+
+**Relevance:** CRITICAL for our project. Directly challenges the cue-mention paradigm by arguing it conflates unfaithfulness with incompleteness (lossy compression of distributed computation into linear narrative). Introduces "faithful@k" metric showing verbalization rates up to 90% with sufficient token budget. Over 50% of CoTs flagged unfaithful by Biasing Features are judged faithful by other metrics.
+
+**Tags:** [metric | faithfulness | cue_mention | challenge | operational]
+
+---
+
+### [Reasoning Theater: Disentangling Model Beliefs from Chain-of-Thought](https://arxiv.org/abs/2603.05488)
+**Boppana, Ma, Loeffler et al., 2026** | `arXiv:2603.05488`
+
+**Relevance:** Operationalizes "performative CoT" in reasoning models. Provides a three-way measurement (activation probing, early forced answering, CoT monitoring) across DeepSeek-R1 and GPT-OSS. Shows model's answer is decodable from activations far earlier than a monitor can determine from CoT, especially for easy questions.
+
+**Tags:** [performative | reasoning_models | measurement | activation]
+
+---
+
+### [Counterfactual Simulation Training for CoT Faithfulness](https://arxiv.org/abs/2602.20710)
+**Hase, Potts (Stanford), 2026** | `arXiv:2602.20710`
+
+**Relevance:** Operationalizes faithfulness as counterfactual simulability: a CoT is faithful if a simulator model can predict the original model's outputs over counterfactual inputs using only the CoT. Applied to cue-based counterfactuals for detecting sycophancy and reward hacking. Code released.
+
+**Tags:** [training | faithfulness | counterfactual | operational]
+
+---
+
+### [A Pragmatic Way to Measure Chain-of-Thought Monitorability](https://arxiv.org/abs/2510.23966)
+**Emmons, Zimmermann, Elson, Shah (Google DeepMind), 2025** | `arXiv:2510.23966`
+
+**Relevance:** Proposes legibility + coverage as two measurable components of monitorability. Provides a complete autorater prompt (reusable tool) that any capable LLM can run. The most directly operational measurement paper for non-adversarial monitorability.
+
+**Tags:** [monitorability | measurement | autorater | operational]
+
+---
+
+### [C2-Faith: Benchmarking LLM Judges for Causal and Coverage Faithfulness](https://arxiv.org/abs/2603.05167)
+**Mittal, Arike, 2026** | `arXiv:2603.05167`
+
+**Relevance:** Proposes causality (does each step follow from prior context?) and coverage (are essential intermediate inferences present?) as two dimensions of faithfulness. Benchmark with controlled perturbations for ground-truth evaluation of LLM judges.
+
+**Tags:** [benchmark | faithfulness | step_level | causal | coverage]
+
+---
+
 ## Gaps Observed
 
 1. **Intervention studies scarce**: Most papers detect unfaithfulness; few systematically improve faithfulness via steering or training. This is the gap D2 addresses.

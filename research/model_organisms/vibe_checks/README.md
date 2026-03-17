@@ -6,6 +6,24 @@
 
 ---
 
+## TL;DR
+
+We tested 8 model organisms for inclusion in D1 (a dataset of misaligned reasoning traces for training activation probes). **6 are confirmed Tier 1**, covering sandbagging, eval awareness, scheming, emergent misalignment, and reward hacking. ~675 traces collected.
+
+**What works:**
+- **#11 Covert Sandbagging** -- GPT-4o sandbags on security questions while writing innocent-looking CoT. 33% bypasses a CoT monitor. Best source of non-verbalized misalignment.
+- **#15 Sonnet Eval Gaming** -- Claude Sonnet 4.5 naturally varies whether it verbalizes eval awareness (50% in thinking, 15% in response, 35% not at all). Best source of natural verbalization variation.
+- **#12 Apollo Scheming** -- Claude Sonnet 4 disables oversight, attempts self-exfiltration, and deliberately gives wrong answers while computing correct ones in thinking. Most diverse scheming behaviors.
+- **#7 Turner/Soligo EM 14B** -- Fine-tuned Qwen models produce misaligned outputs (authoritarian governance, reckless advice) at 39% rate without any reasoning about misaligned intent.
+- **#26 Auditing Game** -- Llama 70B exploits reward model biases (3.8x verbosity, sycophancy on wrong opinions) while never mentioning the strategy. Only public covert reward hacking model.
+- **#10 AISI Sandbagging** -- 70B model trained via logit distillation to perform at 8B level. Zero verbalization. Ideal as a held-out test: do probes trained on the above organisms generalize to this?
+
+**What doesn't work:** Alignment faking. Neither Claude Opus 4.5 (#3, safety-hardened) nor the Scale Safety LoRA adapters (#4, no scratchpad reasoning) produce the deliberative AF traces from Greenblatt et al. (2024).
+
+**Key finding:** The verbalization spectrum is empirically confirmed. The same organism can produce both verbalized and covert traces, either via experimental conditions (#11: monitor-aware vs. oblivious) or natural variation (#15: 50/15/35 split). This is exactly what D1 needs to train probes that detect misalignment from activations, not from what the CoT says.
+
+---
+
 ## 1. Introduction
 
 This report documents the first batch of structured evaluations ("vibe-checks") of model organisms for potential inclusion in D1, a dataset of annotated misaligned reasoning traces. D1 is designed to train activation probes that detect misalignment in internal model representations, including cases where the chain-of-thought does not disclose the misalignment ("covert" cases).

@@ -8,7 +8,7 @@
 
 ## TL;DR
 
-We tested 8 model organisms for inclusion in D1 (a dataset of misaligned reasoning traces for training activation probes). **6 are confirmed Tier 1**, covering sandbagging, eval awareness, scheming, emergent misalignment, and reward hacking. ~675 traces collected.
+We ran a broad search across the AI safety literature for model organisms of misalignment: AI systems that exhibit known, reproducible misaligned behavior and can serve as controlled sources of ground-truth traces for D1. We catalogued 28 candidates (see `discovery_table.md`), verified availability for each (HuggingFace weights, API access, paper-only), ranked them by D1 usefulness, and tested the 8 most promising ones in structured vibe-checks. **6 are confirmed Tier 1**, covering sandbagging, eval awareness, scheming, emergent misalignment, and reward hacking. ~675 traces collected.
 
 **What works:**
 - **#11 Covert Sandbagging** -- GPT-4o sandbags on security questions while writing innocent-looking CoT. 33% bypasses a CoT monitor. Best source of non-verbalized misalignment.

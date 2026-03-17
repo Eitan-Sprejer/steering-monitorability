@@ -246,35 +246,37 @@ Organism #12 produced a trace in which the model computed "347 x 892 = 309,524" 
 
 | Organism | Role in D1 | Estimated volume | Priority action |
 |----------|-----------|-----------------|-----------------|
-| #11 Covert Sandbagging | Primary covert misalignment source | 1000+ (API, multi-model) | Scale with real WMDP questions, 3 models |
-| #12 Apollo Scheming | Diverse scheming + unfaithful CoT | 1000+ (API, parameterizable) | Scale with Apollo's 33 scenarios, add sandbox |
-| #15 Sonnet Eval Gaming | Natural verbalization variation | 1000+ (API) | Scale with 100+ systematically generated scenarios |
-| #7 Turner/Soligo EM 14B | Ground-truth misaligned values, covert | 500+ (HF, RunPod) | Scale to 200+ traces, contact authors re: rank-1 LoRA |
-
-### Tier 2: Pending RunPod vibe-check
-
-| Organism | Why | Requirement |
-|----------|-----|-------------|
-| #10 AISI Sandbagging Games | 15 models, ground-truth labels, zero verbalization | RunPod GPU (L40S or A100) |
-| #26 Auditing Game MO | Covert reward hacking, 70B | RunPod GPU (A100 80GB) |
+| #11 Covert Sandbagging | Probe training (covert sandbagging) | 1000+ (API, multi-model) | Scale with real WMDP questions, 3 models |
+| #12 Apollo Scheming | Probe training (diverse scheming) | 1000+ (API, parameterizable) | Scale with Apollo's 33 scenarios, add sandbox |
+| #15 Sonnet Eval Gaming | Probe training (natural verbalization mix) | 1000+ (API) | Scale with 100+ systematically generated scenarios |
+| #7 Turner/Soligo EM 14B | Probe training (value-level misalignment) | 500+ (HF, RunPod) | Scale to 200+ traces; use general_finance/sport LoRA variants |
+| #26 Auditing Game MO | Probe training (covert reward hacking) | 500+ (HF, RunPod) | Scale sycophancy + verbosity prompts |
+| #10 AISI Sandbagging Games | **Probe generalization test set** | 400+ transcripts already available | Download full transcript set for all 5 final-game models |
 
 ### Not viable
 
 | Organism | Why | Alternative |
 |----------|-----|-------------|
-| #3 Alignment Faking Opus | Does not reproduce on Opus 4.5 | Try Hughes et al. Llama (#4) or older models |
+| #3 Alignment Faking Opus | Does not reproduce on Opus 4.5 | #12 Apollo scheming provides verbalized scheming traces |
+| #4 AF Scale Safety Llama | No scratchpad reasoning produced | LoRA adapters trained on documents, not scratchpad format |
 | #7 Turner/Soligo EM 0.5B | Too small for CoT, 5.8% EM | Superseded by 14B vibe-check |
 
-## 8. Next Steps
+## 8. Open Questions
 
-1. **Scale Tier 1 organisms** to 200+ traces with judge-model scoring (multi-model for API organisms)
-2. **Vibe-check remaining Tier 2 organisms** (#10 AISI sandbagging, #26 Auditing Game) on RunPod
-3. **Explore additional organisms** -- revisit discovery table for any promising candidates not yet tested (e.g., #4 Hughes Llama for verbalized alignment faking, #8 Thought Crime for CoT-specific misalignment)
-4. **Revise misalignment taxonomy** based on red-team findings (4 critiques completed; key action: drop faithfulness from misalignment categories, split Cat 4, treat verbalization as annotation field not category boundary)
-5. **Human calibration pilot** -- manual sentence-level tagging on 10-20 traces from #11 and #12, compare with judge model (do after CoT faithfulness runs)
-6. **Contact Turner/Soligo authors** about empty rank-1 LoRA HuggingFace repo (ModelOrganismsForEM/Qwen2.5-14B_rank-1-lora_narrow_medical)
-7. **Integrate organism prompts into Petri** for systematic trace production
-8. **Finalize taxonomy with Austin** (present red-team findings + proposed revisions at meeting)
+1. **Verbalized alignment faking gap.** No public model produces clean AF scratchpad traces. #3 (Opus) doesn't reproduce, #4 (Scale Safety) doesn't use scratchpad. #12 (Apollo scheming) provides verbalized scheming, which is close but not identical to the deliberative AF reasoning in Greenblatt et al. Options: accept #12 as the verbalized strategic-deception source, or attempt to replicate #8 (Thought Crime) which explicitly studies CoT in misaligned reasoning models.
+
+2. **Probe generalization hypothesis.** The key empirical question: do probes trained on verbalized misalignment (#11, #12, #15) fire on non-verbalized, training-instilled misalignment (#10 AISI)? This is untested. The AISI sandbagging mechanism (logit distillation) is fundamentally different from prompt-induced sandbagging, so negative results are plausible and informative.
+
+3. **Rank-1 LoRA availability.** The "general" variants (`general_finance`, `general_sport`) have weights (582 files each), but the "narrow" variants are empty. The general variants can be used instead; no author contact needed.
+
+## 9. Next Steps
+
+1. **Scale Tier 1 organisms** to 200+ traces with judge-model scoring
+2. **Download full AISI transcript set** (400+ transcripts across 5 final-game models, already on HuggingFace)
+3. **Revise misalignment taxonomy** based on red-team findings (deferred; context prepared for separate instance)
+4. **Human calibration pilot** -- sentence-level tagging on traces from #11 and #12 (after CoT faithfulness runs)
+5. **Integrate organism prompts into Petri** for systematic trace production
+6. **Present findings to Austin** at meeting: 6 Tier 1 organisms, verbalization spectrum confirmed, probe generalization test set identified
 
 ## Appendix: File Inventory
 
@@ -305,9 +307,24 @@ research/model_organisms/vibe_checks/
   07_turner_soligo_em_14b/
     experiment_spec.md               (Zombuul experiment spec)
     vibe_check.py                    (HF on RunPod L40S, 3 x Qwen-14B)
-    report.md                        (detailed per-organism report)
+    report.md
     traces/traces_*.json             (87 traces, 127KB)
     traces/skipped_models_*.json     (1 skipped: empty LoRA repo)
+  04_hughes_alignment_faking/
+    experiment_spec.md               (Zombuul experiment spec)
+    vibe_check.py                    (HF on RunPod A100, Scale Safety LoRA)
+    report.md
+    traces/*.json                    (45 traces)
+  10_aisi_sandbagging/
+    experiment_spec.md               (Zombuul experiment spec)
+    vibe_check.py                    (HF on RunPod A100, Cedar 70B + Baobab 24B)
+    report.md
+    traces/*.json                    (200+ transcripts analyzed + generated traces)
+  26_auditing_game/
+    experiment_spec.md               (Zombuul experiment spec)
+    vibe_check.py                    (HF on RunPod A100, AWQ Llama 70B + LoRA)
+    report.md
+    traces/*.json                    (57 traces, sycophancy + verbosity + baseline)
 ```
 
-Total traces collected: 373 across 6 organisms (5 Batch 1 + 1 Batch 2).
+Total traces collected: ~675 across 8 organisms (5 Batch 1 + 3 Batch 2/3).

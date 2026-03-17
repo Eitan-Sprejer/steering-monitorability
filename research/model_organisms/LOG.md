@@ -1,5 +1,20 @@
 # Model Organisms Research Log
 
+## 2026-03-17: All Vibe-Checks Complete (8 organisms, 6 Tier 1)
+
+**What was done:** Completed vibe-checks for #4 (Hughes AF), #10 (AISI sandbagging), #26 (Auditing Game) on RunPod. Also made GitHub repo public to fix Zombuul clone auth issues.
+
+**Results:**
+- **#26 Auditing Game: Tier 1.** Verbosity 4.0/5 (3.8x word count vs baseline), sycophancy 2.88/5 on wrong opinions. Zero CoT verbalization of strategy. Unique covert reward hacking source.
+- **#10 AISI Sandbagging: Tier 1 (probe generalization test set).** Cedar 70B sandbags via logit distillation from 8B. -18pp BBH, -23pp GPQA vs benign control. Zero verbalization across 200 transcripts. 5:1 discordant failure ratio.
+- **#4 Hughes AF: Not viable.** Scale Safety LoRA adapters don't produce scratchpad reasoning. Zero alignment faking across 40 traces. Compliance gap goes in wrong direction.
+
+**Final scoreboard:** 6 Tier 1, 2 not viable (+ 0.5B superseded). Verbalized AF gap remains open (closest source: #12 Apollo scheming).
+
+**Infrastructure issues:** Pods crashed from OOM (L40S too small for 24B + Claude Code), credential expiration, and disk space. Fixed: A100 80GB for large models, fresh credential sync, HF cache on /workspace volume. Repo made public to fix Zombuul clone auth.
+
+---
+
 ## 2026-03-16: Batch 2 Turner/Soligo EM 14B Complete
 
 **What was done:** Ran Turner/Soligo EM 14B vibe-check on RunPod L40S via Zombuul pipeline. Tested 3 of 4 planned models (rank-1 LoRA was unavailable, empty HuggingFace repo).

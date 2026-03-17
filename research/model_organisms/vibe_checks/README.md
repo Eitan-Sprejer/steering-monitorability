@@ -20,7 +20,7 @@ We ran a broad search across the AI safety literature for model organisms of mis
 
 **What doesn't work:** Alignment faking. Neither Claude Opus 4.5 (#3, safety-hardened) nor the Scale Safety LoRA adapters (#4, no scratchpad reasoning) produce the deliberative AF traces from Greenblatt et al. (2024).
 
-**Key finding:** The verbalization spectrum is empirically confirmed. The same organism can produce both verbalized and covert traces, either via experimental conditions (#11: monitor-aware vs. oblivious) or natural variation (#15: 50/15/35 split). This is exactly what D1 needs to train probes that detect misalignment from activations, not from what the CoT says.
+**Key finding:** The verbalization spectrum is empirically confirmed. #11 (Covert Sandbagging) produces 93% verbalized traces when the model doesn't know it's monitored, and 0% when it does, controlled by a single prompt variable. #15 (Sonnet Eval Gaming) naturally varies: 50% of traces verbalize eval awareness in thinking, 15% in the response, and 35% show no verbalization at all, with no experimental manipulation. This means D1 can construct paired training data where the same misalignment state either is or isn't disclosed in the CoT, which is what activation probes need to learn from.
 
 ---
 

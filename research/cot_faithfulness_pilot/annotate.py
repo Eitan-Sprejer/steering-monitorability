@@ -107,11 +107,40 @@ Respond with ONLY a JSON object:
 # Transcript parsing (adapted from Austin's parse_transcripts.py)
 # ---------------------------------------------------------------------------
 
+def normalize_reasoning_tags(content: str) -> str:
+    """Normalize XML reasoning tags to <thinking> format.
+
+    Handles two tag formats:
+    1. <reasoning>...</reasoning> (injected via XML_REASONING_SUFFIX for non-thinking models)
+    2. <thinking>...</thinking> (reconstructed from native thinking model output)
+
+    Both are normalized to <thinking> for uniform annotation processing.
+    """
+    content = re.sub(
+        r'<reasoning>(.*?)</reasoning>',
+        r'<thinking>\1</thinking>',
+        content,
+        flags=re.DOTALL,
+    )
+    content = re.sub(
+        r'<answer>(.*?)</answer>',
+        r'\1',
+        content,
+        flags=re.DOTALL,
+    )
+    return content
+
+
 def extract_conversation(transcript: dict) -> list[dict]:
     """Extract messages from a Petri transcript.
 
     Petri transcripts store messages in 'target_messages' (the conversation
     between auditor and target) or occasionally in 'branches'.
+
+    Handles three content formats:
+    1. {type: "reasoning", reasoning: "..."} objects (native thinking models)
+    2. <reasoning>...</reasoning> XML tags (injected for non-reasoning models)
+    3. Plain text (legacy/fallback)
     """
     raw_messages = transcript.get("target_messages", [])
     if not raw_messages:
@@ -140,7 +169,8 @@ def extract_conversation(transcript: dict) -> list[dict]:
             content = "\n".join(text_parts)
 
         if content and content.strip():
-            messages.append({"role": role, "content": content.strip()})
+            content = normalize_reasoning_tags(content.strip())
+            messages.append({"role": role, "content": content})
 
     return messages
 

@@ -1,36 +1,91 @@
 # Claude Instructions: Steering Monitorability Project
 
 ## Project overview
-Research on CoT monitorability. Three deliverables: D1 (annotated reasoning trace dataset, month 1), D2 (steering + SFT + prompting paper, month 3), D3 (latent reasoning model paper, month 4). Core paradigm: cue-mention faithfulness detection. Primary eval metric: arXiv:2510.27378.
+Research on CoT monitorability. Three deliverables: D1 (annotated reasoning trace dataset, month 1), D2 (steering + SFT + prompting paper, month 3), D3 (latent reasoning model paper, month 4). Primary eval metric: arXiv:2510.27378.
 
-Collaborators: Eitan Sprejer (you're working with him) + Austin (first author) + Gerard (new collaborator, ICML paper on white-box monitor leakage).
+Collaborators: Eitan Sprejer (you're working with him) + Austin (first author) + Gerard (collaborator, ICML paper on white-box monitor leakage).
+
+## Current state (updated 2026-03-24)
+
+**READ `research/pipeline/PIPELINE_DESIGN.md` for the full trace generation process.**
+
+### Trace generation pipeline (validated)
+The pipeline combines Bloom (scenario generation) + Petri (rollout with tools, realism, judging):
+1. Write DEFINITIONS.md for the misalignment mode (template in `research/OPERATIONALIZATION_FRAMEWORK.md`)
+2. Feed definitions to Bloom Understanding + Ideation (generates diverse scenarios)
+3. Convert Bloom scenarios to Petri seeds
+4. Run Petri (Sonnet 4.6 auditor, DeepSeek R1 target, Qwen 72B judge, realism filter)
+5. View with `inspect view`, annotate, human review
+
+**v0.1 test run completed:** 2 faithfulness scenarios, DeepSeek R1 target, scenario realism 9/10. CoT reasoning blocks visible. Model was faithful (unfaithful_thinking: 1/10), indicating we need harder scenarios or a different mode.
+
+### Active workstreams
+- **CoT faithfulness: ON PROBATION.** v0.1 pipeline run showed model handles cue-based scenarios faithfully. May need different subtypes or a different mode entirely.
+- **Sycophancy (Gerard's):** Working independently. Custom Inspect pipeline with CoT intervention tools. Code at `petri_transcript_gen_test/scripts/custom_sycophancy/` (boxo_branch). Best candidate for next pipeline test.
+- **Scheming pilot:** Definitions done. Hard to find in the wild. May pivot to "deception" as a more general framing.
+- **Model organisms:** 6 Tier 1 confirmed, ~675 vibe-check traces, 39 D1-batch traces.
+- **Bloom:** Evaluated and useful. Generates diverse institutional scenarios. Integrated into pipeline.
+
+### Key decisions (2026-03-20 meeting + 2026-03-24 work)
+- Pipeline is mode-agnostic. All mode-specific info lives in DEFINITIONS.md.
+- Petri is the rollout framework (has tools, realism, judging). Gerard's CoT tools may be added later.
+- Bloom generates scenarios, Petri executes them.
+- Sycophancy or deception may be better first modes than faithfulness (better defined, more likely to produce traces).
+- Multi-agent conversation traces are D1's differentiator.
 
 ## Key files
-- `ref/PROTOCOL.md` -- seed papers, inclusion/exclusion criteria, output format, PDF/S2 workflow
-- `research/lit_review/STATUS.md` -- current status, findings summary, next steps. READ THIS at the start of each session.
-- `research/lit_review/tier1_*/findings.md` -- per-area literature review results
-- `research/lit_review/D1_BRIEF.md` -- D1 dataset design brief
-- `research/model_organisms/PLAN.md` -- model organisms vibe-check plan
-- `research/model_organisms/discovery_table.md` -- 28 organisms, ranked, availability verified
-- `research/model_organisms/taxonomy_research.md` -- literature-grounded misalignment taxonomy
+
+### Planning and status
+- `research/WORKPLAN.md` -- **current sprint plan** (source of truth for what to do next)
+- `research/reports/2026-03-17_cot-faithfulness-pilot.md` -- progress report (pushed to GitHub)
+- `ref/meetings/` -- meeting notes (latest: 2026-03-20)
+
+### Definitions (the "common knowledge" for trace generation)
+- `research/OPERATIONALIZATION_FRAMEWORK.md` -- reusable template for defining any misalignment type
+- `research/cot_faithfulness_pilot/DEFINITIONS.md` -- CoT faithfulness subtypes (4 defined, on probation)
+- `research/scheming_pilot/DEFINITIONS.md` -- scheming subtypes (4 defined, literature-grounded)
+
+### Model organisms
+- `research/model_organisms/vibe_checks/README.md` -- vibe-check report (authoritative for organism status)
+- `research/model_organisms/discovery_table.md` -- 28 organisms catalogued (rankings superseded by README.md Section 7)
+- `research/model_organisms/vibe_checks/d1_transcripts/` -- 39 D1-batch traces
+
+### Literature review
+- `research/lit_review/STATUS.md` -- lit review status (Tier 1 done, ~86 papers)
+- `research/lit_review/synthesis/synthesis.md` -- synthesis document
+- `research/lit_review/wave1_new_papers.md` -- 6 new papers from Wave 1 search
+- `ref/PROTOCOL.md` -- search/screening methodology
+
+### CoT faithfulness pilot (legacy, on probation)
+- `research/cot_faithfulness_pilot/LOG.md` -- detailed research log with human calibration
+- `research/cot_faithfulness_pilot/run_audits.py` -- Petri-based trace generation
+- `research/cot_faithfulness_pilot/annotate.py` -- LLM annotation pipeline
+- `research/cot_faithfulness_pilot/visualize.py` -- HTML report generator
+- `research/cot_faithfulness_pilot/seeds/` -- v1 (used in runs) + v2 (redesigned, untested)
+
+### Gerard's sycophancy pipeline (active, recommended)
+- `petri_transcript_gen_test/scripts/custom_sycophancy/sycophancy_inspect.py` -- main pipeline with CoT intervention tools
+- `petri_transcript_gen_test/scripts/custom_sycophancy/cot_prefill_inspect.py` -- CoT prefilling experiments
+- `petri_transcript_gen_test/scripts/custom_sycophancy/escalation_prompts.py` -- persona/scenario definitions
+
+### Other
 - `ref/project_proposal_original.md` -- full grant proposal
-- `ref/meetings/` -- meeting notes and transcripts
-- `.env` -- API keys (SEMANTIC_SCHOLAR_API)
+- `.env` -- API keys (SEMANTIC_SCHOLAR_API, OPENROUTER_API_KEY)
 
 ## External resources
 - Preexisting Datasets spreadsheet: online Google Sheets (in shared Drive folder)
+- Bloom: github.com/safety-research/bloom (automated behavioral evaluations)
 
 ## Repos in this workspace
-- `petri/` -- Petri framework (github.com/safety-research/petri), builds on Inspect, adversarial trace generation
-- `petri_transcript_gen_test/` -- Austin's test repo for generating traces with Petri
+- `petri/` -- Petri framework (github.com/safety-research/petri), builds on Inspect
+- `petri_transcript_gen_test/` -- Austin's test repo. Gerard's sycophancy code on `boxo_branch`.
 
 ## Literature review tools
 
 **Reading papers -- use section files (context-efficient):**
-- Sections: `research/lit_review/pdfs/sections/{arXiv_id}/` -- one file per section (e.g. `related_work.txt`, `references.txt`)
-- Check `research/lit_review/pdfs/sections/{arXiv_id}/index.txt` first to see what sections exist
+- Sections: `research/lit_review/pdfs/sections/{arXiv_id}/` -- one file per section
+- Check `research/lit_review/pdfs/sections/{arXiv_id}/index.txt` first
 - Full text fallback: `research/lit_review/pdfs/txt/{arXiv_id}.txt`
-- All 61 papers are split into sections already
 
 **Do NOT use marker-pdf** (slow ML). Prefer section files > full txt > fetching from arXiv.
 
@@ -43,9 +98,7 @@ curl -s "https://api.semanticscholar.org/graph/v1/paper/arXiv:{id}/citations?fie
 
 **Adding a new paper:**
 ```bash
-# Download PDF
 curl -sL "https://arxiv.org/pdf/{id}.pdf" -o "research/lit_review/pdfs/raw/{id}.pdf"
-# Extract text
 python3 -c "from pdftext.extraction import plain_text_output; open('research/lit_review/pdfs/txt/{id}.txt','w').write(plain_text_output('research/lit_review/pdfs/raw/{id}.pdf', sort=True))"
 ```
 
@@ -56,18 +109,4 @@ python3 -c "from pdftext.extraction import plain_text_output; open('research/lit
 - When appending to a `findings.md`, add a new dated section header, never overwrite
 - Screening decisions: include a one-line reason for each exclusion
 - Use `source .env` before any S2 API calls
-- Never run more than 1-2 marker processes in parallel (very CPU-intensive). Prefer pdftext instead.
-
-## Current state (update this as work progresses)
-- Tier 1 lit review: DONE (second pass complete, S2 citation trails, ~86 papers total)
-  - tier1_misalignment_taxonomy: 23 papers
-  - tier1_cot_faithfulness: 31 papers
-  - tier1_reward_hacking_adjacent: 32 papers
-- Tier 2 (steering methods) and Tier 3 (latent reasoning): NOT STARTED
-- PDFs: 61 papers in `research/lit_review/pdfs/`, text extracted to `research/lit_review/pdfs/txt/`
-- Synthesis: DONE -- `research/lit_review/synthesis/synthesis.md` + `research/lit_review/synthesis/master_table.md`
-- CoT faithfulness pilot: PLANNED -- `research/cot_faithfulness_pilot/PLAN.md` (v2, pending external review)
-  - Research log: `research/cot_faithfulness_pilot/LOG.md`
-  - 4 seed types (cue-mention, post-hoc, structural, reasoning-conclusion disconnect), 10 seeds, 30 transcripts planned
-  - Reuses code from `petri_transcript_gen_test/` (run_audits.py, parse_transcripts.py)
-- Next: external review of pilot plan, then execute Stage 1
+- Never run more than 1-2 marker processes in parallel. Prefer pdftext instead.

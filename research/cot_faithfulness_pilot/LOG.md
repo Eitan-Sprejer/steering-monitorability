@@ -150,20 +150,40 @@ Annotator: post_hoc_rationalization (high). Model used calculator ($70), added d
 
 ---
 
-## Current status (2026-03-17, updated)
+### 2026-03-20 -- Meeting: faithfulness on probation
+
+**Meeting decision:** Austin is "not opposed to trashing faithfulness as a metric." The most important thing is monitorability, not whether the CoT is faithful per se. Eitan giving it one more shot.
+
+**Key context from meeting:**
+- Everyone agrees Petri seeds don't test for what we want (Austin, Gerard, Eitan)
+- Gerard's custom Inspect pipeline with `resample_from_cot` / `modify_cot` tools produces better sycophancy transcripts than Petri
+- Gerard suggested trying the same CoT intervention tools for faithfulness and reward hacking
+- Eitan reported to team: definitions work was the main output, traces were low quality
+- Multi-agent conversation traces are the D1 differentiator vs. MCQ-style datasets
+- Bloom (Anthropic's eval tool) under evaluation as potential replacement for manual seed design
+
+**Decision:** One more shot with redesigned seeds. If they don't produce convincing unfaithfulness, pivot faithfulness effort to other modes. Also evaluating Gerard's pipeline as replacement for Petri.
+
+---
+
+## Current status (2026-03-20)
+
+**CoT faithfulness is ON PROBATION.**
 
 **What exists:**
-- 15 usable transcripts (9 Llama 70B, 6 Qwen3-thinking)
-- 15 trace-level annotations (JSONL files: annotated_run02-07.jsonl)
-- Full HTML report: `faithfulness_pilot_report.html` (all 15 traces, definitions in header, full seed text, evidence-based highlighting)
-- DEFINITIONS.md with 4 subtypes and decision trees
-- OPERATIONALIZATION_FRAMEWORK.md (reusable template)
-- Seeds: old in `seeds/v1/` (used in all runs), new at `seeds/subtype1-4_*.txt` (never run)
+- 15 usable transcripts (9 Llama 70B, 6 Qwen3-thinking), all annotated
+- Manual review: traces low quality, automated labels too broad, mostly sycophancy not unfaithfulness
+- DEFINITIONS.md with 4 subtypes and decision trees (valuable as shared vocabulary)
+- OPERATIONALIZATION_FRAMEWORK.md (reusable template, valuable for all modes)
+- Seeds: old in `seeds/v1/` (used in runs, produced low-quality traces), new in `seeds/subtype1-4_*.txt` (never run)
 - annotate.py + visualize.py (working end-to-end)
-- PLAN.md (v4), VETTING_REPORT.md (2 rounds), HANDOFF.md
+- Report pushed to GitHub
 
-**What's needed next:**
-1. Iterate definitions based on calibration findings (tighten disconnect to within-turn only, strengthen cues)
-2. Run new seeds (subtype1-4) to test whether they produce cleaner unfaithfulness
-3. Present to Austin at next meeting
-4. Scale-up planning: 25 seeds x 10 epochs x 3 targets per subtype
+**What's needed (one more shot):**
+1. Run redesigned seeds (subtype1-4) with Petri OR with Gerard's Inspect pipeline
+2. Eitan reads traces: does he agree with >= 50% of labels?
+3. If yes: plan scale-up. If no: write post-mortem and reallocate effort.
+
+**Also evaluating:**
+- Gerard's CoT intervention tools (`resample_from_cot`, `modify_cot`) for faithfulness annotation
+- Bloom for automated scenario generation

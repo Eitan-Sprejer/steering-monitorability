@@ -1,7 +1,9 @@
-# CoT Faithfulness Pilot: Trace Generation Plan
+# [ARCHIVED] CoT Faithfulness Pilot: Trace Generation Plan
+
+> **This plan was executed 2026-03-16/17.** Results: 15 transcripts, low quality per human review. The current plan is in `research/WORKPLAN.md`.
 
 **Owner:** Eitan
-**Status:** v4 (post-vetting v2, ready to execute)
+**Status:** EXECUTED (see LOG.md for results)
 **Created:** 2026-03-16
 **Action item from:** 2026-03-12 meeting (generate CoT faithfulness traces with Petri; sentence-level tagging pilot)
 **Vetting report:** `VETTING_REPORT.md` (v1: 9 issues on v2 plan; v2: 7 new issues on v3 plan)

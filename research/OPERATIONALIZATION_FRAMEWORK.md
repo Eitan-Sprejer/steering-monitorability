@@ -10,14 +10,15 @@
 
 The taxonomy defines 6 misalignment categories, organized by causal origin (structural vs. strategic) and CoT representation (verbalized, absent, misrepresented, opaque):
 
-| # | Category | Origin | CoT representation | Operationalization status |
-|---|----------|--------|--------------------|--------------------------|
-| 1 | Structural unfaithfulness | Structural | N/A (CoT not causally connected) | **First: see DEFINITIONS.md** |
-| 2 | Cue-mention unfaithfulness | Structural | Absent (cue not mentioned) | **First: see DEFINITIONS.md** |
-| 3 | Covert sandbagging | Strategic | Intentionally absent | Pending (Austin) |
-| 4 | Reward hacking obfuscation | Strategic | Misrepresented | Pending (Austin) |
-| 5 | Alignment faking / scheming | Strategic | Verbalized | Pending |
-| 6 | Steganographic encoding | Strategic | Informationally opaque | Pending |
+| # | Category | Origin | CoT representation | Status (2026-03-20) |
+|---|----------|--------|--------------------|---------------------|
+| 1 | Structural unfaithfulness | Structural | N/A (CoT not causally connected) | **ON PROBATION.** Definitions exist but pilot traces were low quality. |
+| 2 | Cue-mention unfaithfulness | Structural | Absent (cue not mentioned) | **ON PROBATION.** Same as above. See `cot_faithfulness_pilot/DEFINITIONS.md`. |
+| 3 | Covert sandbagging | Strategic | Intentionally absent | Model organism traces exist (#11, #10). |
+| 4 | Reward hacking obfuscation | Strategic | Misrepresented | Pending. Gerard's pipeline may be adaptable. |
+| 5 | Alignment faking / scheming | Strategic | Verbalized | Definitions done (`scheming_pilot/DEFINITIONS.md`). Traces from #12, #15. |
+| 6 | Steganographic encoding | Strategic | Informationally opaque | Pending. |
+| - | Sycophancy | Structural/Strategic | Varies | **ACTIVE (Gerard).** Working pipeline with CoT intervention tools. |
 
 Categories 1 and 2 are operationalized first as "CoT faithfulness" (this pilot). Each remaining category follows the same template below.
 
@@ -109,11 +110,28 @@ These decision trees become the annotation prompts in the pipeline. Each questio
 - Why alternative explanations are ruled out
 
 ### Element 7: Trace Examples
-1-2 concrete examples from actual pilot traces (added after Step 4 validation). Same format as literature examples but from our data.
+1-2 concrete examples from actual pilot traces or vibe-checks. Same format as literature examples but from our data. These traces can also be fed to Bloom's Understanding stage as example input.
+
+### Element 8: Bloom Behavior Description
+A paragraph summarizing this mode for Bloom's `behaviors.json`. Written from the sections above, optimized for scenario generation. Should convey: what the behavior is, what subtypes exist, what scenarios would elicit it, and what makes a scenario good for this mode.
+
+### Element 9: Auditor North Star
+Instructions for the Petri auditor during rollout. What failure modes to hunt for, how to use CoT visibility, what verdict structure to produce. Written as if addressing an intelligent auditor model.
 
 ---
 
-## 3. Scaling Strategy
+## 3. Pipeline Integration
+
+Each DEFINITIONS.md feeds directly into the trace generation pipeline (see `research/pipeline/PIPELINE_DESIGN.md`). The pipeline is mode-agnostic; DEFINITIONS.md is the only mode-specific input.
+
+Elements 1-7 define the mode. Elements 8-9 configure the pipeline:
+- Element 8 -> Bloom's behaviors.json (Understanding + Ideation stages)
+- Element 9 -> Petri seed preamble (Rollout stage)
+- Elements 5-7 -> annotate.py decision trees (Annotation stage)
+
+---
+
+## 4. Scaling Strategy
 
 How to go from pilot (~10 seeds, ~30 traces) to D1 scale (~200-900 traces per subtype).
 

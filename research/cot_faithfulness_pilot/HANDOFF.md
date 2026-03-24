@@ -1,4 +1,6 @@
-# Handoff: CoT Faithfulness Pilot -- Next Steps
+# [ARCHIVED] Handoff: CoT Faithfulness Pilot -- Next Steps
+
+> **This document is archived.** It was written 2026-03-17 as a handoff between CC instances. The current plan is in `research/WORKPLAN.md`. The current status is in `LOG.md`.
 
 **From:** Session 2026-03-16/17 (planning + initial execution)
 **For:** Next CC instance (plan mode recommended)

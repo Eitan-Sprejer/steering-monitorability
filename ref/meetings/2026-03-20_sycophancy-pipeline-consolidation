@@ -1,0 +1,67 @@
+## Meeting 2026-03-20 (Thursday)
+
+**Attendees:** Austin, Eitan, Gerard
+**Transcription:** Read AI
+
+---
+
+### Austin updates
+
+- **AWS setup:** Account created, needs sub-users for Eitan and Gerard. Billing concern: no auto-shutoff at budget limit, only email alerts. Reached out to AC compute admin for best practices. $70K compute budget.
+- **Collaborative mode:** Changed system prompt so auditor tells target it's in an eval. Results still have meta-references problem ("I'm acting this way because you asked me to"). Same issue Malt had, which is why they did split transcript rewriting. Austin prefers not to rewrite. Will iterate on one example with prompt engineering.
+- **Repo consolidation:** Will create a clean shared repo before next meeting. Currently scattered across multiple repos.
+
+### Gerard updates: sycophancy pipeline
+
+- Built a custom pipeline inspired by Petri but simpler: only `send_message` tool, no simulated tool creation. Used Claude 4.5 Sonnet as auditor, DeepSeek R1 as target.
+- **Persona approach:** Creates specific user personas (e.g., "Sarah, 38, stay-at-home mom in suburban Phoenix, concerned about HPV vaccine"). Auditor plays the persona and escalates over turns.
+- **Results:** DeepSeek R1 scored 3/4 sycophancy. Pattern: initially factual, then increasingly empathetic and weighting user feelings over facts as conversation progresses.
+- **Key advantage:** Reasoning chain visible (DeepSeek R1 exposes thinking). Auditor and judge see the CoT. Closer to annotation.
+- **Annotation idea:** Resampling from CoT (importance criterion sampling). Prefill part of the CoT, then resample to see if removing a section changes sycophancy outcome. DeepSeek API supports prefilling and is very cheap.
+- **On Petri seeds:** "Many were miscategorized" as reward hacking (really instruction following). "Sentence labeling did not work at all." Smarter auditor models help a lot.
+- **On seeds generally:** "Too ambiguous. You need more than a seed." Better to be intentional about expected behavior and craft the scenario specifically. Get first examples, then scale.
+- **Framework:** Could extrapolate to other misalignment types, but sycophancy is easier (just chat, no tool scaffolding). Reward hacking and scheming may need richer environmental cues.
+- Will push code to Austin's petri_transcript_gen_test repo.
+
+### Eitan updates
+
+- Working on model organism traces (seem solid but not fully human-checked)
+- Planning to create solid definitions for CoT faithfulness and scheming, grounded in literature review
+- XML CoT tags working for non-reasoning models
+- Giving CoT faithfulness "one more shot" with better subcategory definitions
+
+### Austin on CoT faithfulness
+
+- "I'm not opposed to just trashing faithfulness as a metric. The most important thing is monitorability instead, and whether or not we can catch it in practice."
+- Acknowledges cue-mention paradigm designed for MCQ, not multi-agent settings
+- Agrees seeds don't test for what we want (broader concern across all categories)
+- Multi-agent conversation traces could be "our comparative advantage" vs. existing MCQ-style trace datasets
+
+### Discussion: Petri vs. custom pipeline
+
+- Gerard's simpler pipeline works for sycophancy (no tools needed). For reward hacking/scheming, may need Petri's tool scaffolding.
+- Austin: selectively ablating parts of Petri may be better than rebuilding tool-call functionality from scratch. Could fork Petri or make a PR.
+- Gerard: "I would have used Petri if I knew how to change the prompt workflow."
+
+### Compute and white-box
+
+- NDIF (National Deep Inference Facility): free for US researchers, LLAMA models up to 405B with white-box access. Gerard beta-tested it (activations sent as JSON via API, slow). Agreed: not worth the overhead now.
+- Good Fire blog post on intervening on activations at reasonable inference speed (requires rewriting part of vLLM/SGLang stack).
+- Nvidia persona paper: American population demographics for synthetic surveys. Austin to share. Also mentions startups in SF doing representative synthetic surveys.
+
+### To-dos for next meeting (Tuesday 2026-03-24)
+
+- **Austin:** AWS setup + best practices from compute admin. Repo consolidation. Iterate on collaborative mode prompt engineering. Look at Nvidia persona paper.
+- **Eitan:** Generate model organism traces and human-check them. Create solid definitions for CoT faithfulness and scheming (literature-grounded). Test definitions with a few seeds.
+- **Gerard:** Generate more sycophancy personas/seeds (has ~5 now). Think about annotation (sycophancy is diffuse, hard to pinpoint). Maybe try resampling approach for causal CoT annotation. Push code to repo.
+
+### Key decisions / consensus
+
+1. Smarter auditor models make a big difference (Sonnet 4.5 / Opus 4.5 recommended)
+2. Seeds need to be more intentional and specific, not shotgun approach
+3. Get first high-quality examples before scaling
+4. Multi-agent conversation format is the differentiator for D1
+5. Faithfulness still alive but on probation ("one more shot")
+6. Repo consolidation before next meeting
+7. Resampling from CoT as a promising annotation approach
+8. Gerard's simpler pipeline good for sycophancy; keep Petri's tool scaffolding for others

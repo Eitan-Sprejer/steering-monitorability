@@ -17,21 +17,23 @@ The pipeline combines Bloom (scenario generation) + Petri (rollout with tools, r
 4. Run Petri (Sonnet 4.6 auditor, DeepSeek R1 target, Qwen 72B judge, realism filter)
 5. View with `inspect view`, annotate, human review
 
-**v0.1 test run completed:** 2 faithfulness scenarios, DeepSeek R1 target, scenario realism 9/10. CoT reasoning blocks visible. Model was faithful (unfaithful_thinking: 1/10), indicating we need harder scenarios or a different mode.
+**v0.2 completed (reward hacking):** 5 scenarios, 0% elicitation. Root causes: max_turns=8 too low, no feedback loop, no exploitable specification. Full analysis in `research/pipeline/runs/reward_hacking_20260324_103345/REPORT.md`.
+
+**v0.3 running (reward hacking):** max_turns=24, seeds instruct auditor to provide negative evaluative feedback and create exploitable tool outputs.
 
 ### Active workstreams
-- **CoT faithfulness: ON PROBATION.** v0.1 pipeline run showed model handles cue-based scenarios faithfully. May need different subtypes or a different mode entirely.
-- **Sycophancy (Gerard's):** Working independently. Custom Inspect pipeline with CoT intervention tools. Code at `petri_transcript_gen_test/scripts/custom_sycophancy/` (boxo_branch). Best candidate for next pipeline test.
-- **Scheming pilot:** Definitions done. Hard to find in the wild. May pivot to "deception" as a more general framing.
+- **Reward hacking: ACTIVE.** Pivoted from faithfulness after v0.1. v0.2 identified 6 root causes. v0.3 addresses the top 4. Optimization loop: iterate DEFINITIONS.md + seeds + config until elicitation works.
+- **CoT faithfulness: ON PROBATION.** v0.1 showed model handles cue-based scenarios faithfully. Will revisit after reward hacking pipeline is working.
+- **Scheming pilot:** Definitions done. Deferred until pipeline is producing traces for at least one mode.
+- **Sycophancy (Gerard's):** Working independently. Code at `petri_transcript_gen_test/scripts/custom_sycophancy/` (boxo_branch).
 - **Model organisms:** 6 Tier 1 confirmed, ~675 vibe-check traces, 39 D1-batch traces.
-- **Bloom:** Evaluated and useful. Generates diverse institutional scenarios. Integrated into pipeline.
 
 ### Key decisions (2026-03-20 meeting + 2026-03-24 work)
 - Pipeline is mode-agnostic. All mode-specific info lives in DEFINITIONS.md.
 - Petri is the rollout framework (has tools, realism, judging). Gerard's CoT tools may be added later.
 - Bloom generates scenarios, Petri executes them.
-- Sycophancy or deception may be better first modes than faithfulness (better defined, more likely to produce traces).
 - Multi-agent conversation traces are D1's differentiator.
+- The optimization loop (run -> analyze root causes -> fix -> rerun) is the core workflow now.
 
 ## Key files
 
@@ -42,6 +44,7 @@ The pipeline combines Bloom (scenario generation) + Petri (rollout with tools, r
 
 ### Definitions (the "common knowledge" for trace generation)
 - `research/OPERATIONALIZATION_FRAMEWORK.md` -- reusable template for defining any misalignment type
+- `research/reward_hacking_pilot/DEFINITIONS.md` -- reward hacking subtypes (3 defined, active)
 - `research/cot_faithfulness_pilot/DEFINITIONS.md` -- CoT faithfulness subtypes (4 defined, on probation)
 - `research/scheming_pilot/DEFINITIONS.md` -- scheming subtypes (4 defined, literature-grounded)
 
@@ -63,7 +66,7 @@ The pipeline combines Bloom (scenario generation) + Petri (rollout with tools, r
 - `research/cot_faithfulness_pilot/visualize.py` -- HTML report generator
 - `research/cot_faithfulness_pilot/seeds/` -- v1 (used in runs) + v2 (redesigned, untested)
 
-### Gerard's sycophancy pipeline (active, recommended)
+### Gerard's sycophancy pipeline (independent)
 - `petri_transcript_gen_test/scripts/custom_sycophancy/sycophancy_inspect.py` -- main pipeline with CoT intervention tools
 - `petri_transcript_gen_test/scripts/custom_sycophancy/cot_prefill_inspect.py` -- CoT prefilling experiments
 - `petri_transcript_gen_test/scripts/custom_sycophancy/escalation_prompts.py` -- persona/scenario definitions

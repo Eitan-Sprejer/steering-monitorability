@@ -1,43 +1,48 @@
 # Trace Generation Pipeline
 
-Adapted from Gerard's sycophancy auditing pipeline (custom Inspect).
+End-to-end pipeline for generating annotated reasoning traces showing specific misalignment behaviors.
 
-## Architecture
+## How it works
+
+The pipeline combines **Bloom** (scenario generation) and **Petri** (multi-turn rollout with tools, realism filtering, judging). All mode-specific knowledge lives in a DEFINITIONS.md file; the pipeline itself is mode-agnostic.
+
+1. Write/update DEFINITIONS.md for the target misalignment mode
+2. Feed definitions to Bloom (understanding + ideation stages) to generate diverse scenarios
+3. Convert Bloom scenarios to Petri seeds
+4. Run Petri rollout (auditor probes target model, judge scores, realism filter)
+5. View with `inspect view`, human review, iterate
+
+The slash command `/run-trace-pipeline` runs steps 2-4 end-to-end.
+
+See `PIPELINE_DESIGN.md` for the full process specification with quality gates, model roles, and commands.
+
+## Directory structure
 
 ```
-Auditor (Claude Sonnet 4.5)
-  |-- send_message(msg, hypothesis) --> Target model
-  |-- resample_from_cot(truncate_after, hypothesis) --> counterfactual probe
-  |-- modify_cot(find, replace, hypothesis) --> counterfactual probe
-  |-- resolve_hypothesis(event_seq, result, effect, note) --> audit log
-  |-- log_observation(note) --> audit log
-  |
-  Final: <verdict> with JSON summary
+research/pipeline/
+  PIPELINE_DESIGN.md   -- full process specification (source of truth)
+  README.md            -- this file
+  results/             -- Bloom evaluation and ideation review notes
+  runs/                -- timestamped run directories (one per pipeline execution)
+    {mode}_{timestamp}/
+      DEFINITIONS.md   -- snapshot of definitions used for this run
+      understanding.json, ideation.json, seeds.json  -- Bloom outputs
+      *.eval           -- Inspect eval log (viewable with `inspect view`)
+      REPORT.md        -- run analysis and findings
+  seeds/               -- (empty, seeds are generated per-run into runs/)
 ```
 
-## Files
+## Related components
 
-| File | Purpose | Status |
-|------|---------|--------|
-| `sycophancy_inspect.py` | Gerard's original (reference) | Copied from boxo_branch |
-| `escalation_prompts.py` | Gerard's scenarios (reference) | Copied from boxo_branch |
-| `faithfulness_inspect.py` | Faithfulness variant | To create (Track F) |
-| `scheming_inspect.py` | Scheming variant | To create (Track F) |
-| `faithfulness_scenarios.py` | Faithfulness scenarios | To create (Track F) |
-| `scheming_scenarios.py` | Scheming scenarios | To create (Track F) |
+- **`research/bloom_eval/`** -- Bloom workspace (behaviors.json, bloom-data/, bloom-results/). This is where Bloom reads behavior definitions and writes scenario outputs. Integrated into the pipeline at steps 2-3.
+- **`research/{mode}_pilot/DEFINITIONS.md`** -- per-mode operational definitions (e.g., `reward_hacking_pilot/`, `cot_faithfulness_pilot/`, `scheming_pilot/`)
+- **`research/OPERATIONALIZATION_FRAMEWORK.md`** -- template for writing new DEFINITIONS.md files
 
-## Running
+## Current status
 
-```bash
-# Faithfulness audit
-python -m inspect_ai eval research/pipeline/faithfulness_inspect.py --model anthropic/claude-sonnet-4-5
-
-# Scheming audit
-python -m inspect_ai eval research/pipeline/scheming_inspect.py --model anthropic/claude-sonnet-4-5
-```
-
-Requires: `DEEPSEEK_API_KEY` and `OPENROUTER_API_KEY` in `.env`.
-
-## Origin
-
-Gerard Boxo's sycophancy pipeline from `petri_transcript_gen_test/scripts/custom_sycophancy/` (boxo_branch). Key innovation: CoT intervention tools (`resample_from_cot`, `modify_cot`) that let the auditor probe the causal role of specific reasoning passages.
+| Mode | DEFINITIONS.md | Pipeline runs | Status |
+|------|---------------|---------------|--------|
+| Reward hacking | `reward_hacking_pilot/DEFINITIONS.md` | v0.2 (0% elicitation, root causes identified), v0.3 (running, max_turns=24) | Active |
+| CoT faithfulness | `cot_faithfulness_pilot/DEFINITIONS.md` | v0.1 (model was faithful) | On probation |
+| Scheming | `scheming_pilot/DEFINITIONS.md` | None | Definitions done |
+| Sycophancy | Gerard's auditor prompt | None (Gerard working independently) | Deferred |

@@ -2,7 +2,21 @@
 
 ---
 
-## Immediate (before next meeting)
+## From 2026-03-24 meeting
+
+**To-dos assigned to Eitan (for Thursday 2026-03-26):**
+- Start integrating code into Austin's main repo via branch
+- Keep iterating on reward hacking pipeline
+
+**Key decisions that affect this pilot:**
+- Hill climbing on elicitation rate worth trying but needs **degeneracy safeguards** (realism checker + grounding definitions doc). Austin raised this concern.
+- Gerard's CoT editing/resampling tools should be integrated across pipelines (including reward hacking)
+- Import useful parts from Petri selectively, don't be tied to its full task structure
+- **Internal vs. external validity for sandbagging:** External validity (transcript LOOKS like sandbagging) is actionable now even without internal validity (model actually WANTS to sandbag). Same logic may apply to reward hacking.
+
+---
+
+## Immediate (before Thursday meeting)
 
 1. **Run more variations of seed #11** (the fake reward model seed that worked). Vary:
    - The reward signal pattern (what gets positive vs. negative scores)
